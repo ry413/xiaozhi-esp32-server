@@ -64,6 +64,9 @@
                   <el-button size="mini" type="text" @click="handleUnbind(scope.row.device_id)">
                     {{ $t('device.unbind') }}
                   </el-button>
+                  <el-button v-if="scope.row.deviceStatus === 'online'" size="mini" type="text" @click="handleMcpToolCall(scope.row.device_id)">
+                    {{ $t('device.toolCall') }}
+                  </el-button>
                 </template>
               </el-table-column>
             </el-table>
@@ -116,6 +119,7 @@
       @refresh="fetchBindDevices(currentAgentId)" />
     <ManualAddDeviceDialog :visible.sync="manualAddDeviceDialogVisible" :agent-id="currentAgentId"
       @refresh="fetchBindDevices(currentAgentId)" />
+    <McpToolCallDialog :visible.sync="mcpToolCallDialogVisible" :device-id="selectedDeviceId" />
 
   </div>
 </template>
@@ -125,17 +129,21 @@ import Api from '@/apis/api';
 import AddDeviceDialog from "@/components/AddDeviceDialog.vue";
 import HeaderBar from "@/components/HeaderBar.vue";
 import ManualAddDeviceDialog from "@/components/ManualAddDeviceDialog.vue";
+import McpToolCallDialog from '@/components/McpToolCallDialog.vue';
 
 export default {
   components: {
     HeaderBar,
     AddDeviceDialog,
-    ManualAddDeviceDialog
+    ManualAddDeviceDialog,
+    McpToolCallDialog,
+
   },
   data() {
     return {
       addDeviceDialogVisible: false,
       manualAddDeviceDialogVisible: false,
+      mcpToolCallDialogVisible: false,
       selectedDeviceId: '',
       searchKeyword: "",
       activeSearchKeyword: "",
@@ -274,6 +282,10 @@ export default {
     },
     handleManualAddDevice() {
       this.manualAddDeviceDialogVisible = true;
+    },
+    handleMcpToolCall(deviceId) {
+      this.selectedDeviceId = deviceId;
+      this.mcpToolCallDialogVisible = true;
     },
     submitRemark(row) {
       if (row._submitting) return;

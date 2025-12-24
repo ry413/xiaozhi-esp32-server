@@ -210,4 +210,21 @@ public class DeviceController {
         deviceService.manualAddDevice(user.getId(), dto);
         return new Result<>();
     }
+
+    @GetMapping("/wallpapers/{deviceId}")
+    @Operation(summary = "获取设备壁纸id集")
+    @RequiresPermissions("sys:role:normal")
+    public Result<List<Integer>> getDeviceWallpapers(@PathVariable String deviceId) {
+        List<Integer> wallpaper_ids = deviceService.getDeviceWallpaperIds(deviceId);
+        return new Result<List<Integer>>().ok(wallpaper_ids);
+    }
+
+    @PostMapping("/wallpapers/{deviceId}")
+    @Operation(summary = "设置设备壁纸id集")
+    @RequiresPermissions("sys:role:normal")
+    public Result<Void> setDeviceWallpapers(@PathVariable String deviceId, @RequestBody List<Integer> wallpaperIds) {
+        deviceService.setDeviceWallpaperIds(deviceId, wallpaperIds);
+        return new Result<>();
+    }
+    
 }

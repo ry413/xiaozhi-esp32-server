@@ -1,12 +1,14 @@
 package xiaozhi.modules.device.entity;
 
 import java.util.Date;
+import java.util.List;
 
 import com.baomidou.mybatisplus.annotation.FieldFill;
 import com.baomidou.mybatisplus.annotation.IdType;
 import com.baomidou.mybatisplus.annotation.TableField;
 import com.baomidou.mybatisplus.annotation.TableId;
 import com.baomidou.mybatisplus.annotation.TableName;
+import com.baomidou.mybatisplus.extension.handlers.JacksonTypeHandler;
 
 import io.swagger.v3.oas.annotations.media.Schema;
 import lombok.Data;
@@ -14,7 +16,7 @@ import lombok.EqualsAndHashCode;
 
 @Data
 @EqualsAndHashCode(callSuper = false)
-@TableName("ai_device")
+@TableName(value = "ai_device", autoResultMap = true)
 @Schema(description = "设备信息")
 public class DeviceEntity {
 
@@ -64,4 +66,8 @@ public class DeviceEntity {
     @Schema(description = "创建时间")
     @TableField(fill = FieldFill.INSERT)
     private Date createDate;
+
+    @Schema(description = "壁纸id集")
+    @TableField(typeHandler = JacksonTypeHandler.class)
+    private List<Integer> wallpaperIds;
 }

@@ -80,6 +80,14 @@ public class SwaggerConfig {
     }
 
     @Bean
+    public GroupedOpenApi wallpaperApi() {
+        return GroupedOpenApi.builder()
+                .group("wallpaper")
+                .pathsToMatch("/wallpaper/**")
+                .build();
+    }
+
+    @Bean
     public OpenAPI customOpenAPI() {
         return new OpenAPI().info(new Info()
                 .title("xiaozhi-esp32-manager-api")

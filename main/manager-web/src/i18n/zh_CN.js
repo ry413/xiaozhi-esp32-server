@@ -417,6 +417,11 @@ export default {
   'changePassword.passwordChangedSuccessfully': '密码修改成功，请重新登录',
   'changePassword.changeFailed': '密码修改失败',
 
+  // DeviceWallpaperDialog组件文本
+  'deviceWallpaper.title': '壁纸管理',
+  'deviceWallpaper.cancel': '取消',
+  'deviceWallpaper.save': '保存',
+
   // 设备管理页面文本
   'device.management': '设备管理',
   'device.add': '添加设备',
@@ -449,6 +454,7 @@ export default {
   'device.manualAdd': '手动添加',
   'device.unbind': '解绑',
   'device.toolCall': '工具调用',
+  'device.setWallpapers': '设置壁纸',
   'device.selectAtLeastOne': '请至少选择一条记录',
   'device.confirmBatchUnbind': '确认要解绑选中的 {count} 台设备吗？',
   'device.batchUnbindSuccess': '成功解绑 {count} 台设备',

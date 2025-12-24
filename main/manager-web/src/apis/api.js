@@ -10,7 +10,7 @@ import user from './module/user.js'
 import voiceClone from './module/voiceClone.js'
 import voiceResource from './module/voiceResource.js'
 import knowledgeBase from './module/knowledgeBase.js'
-
+import wallpaper from './module/wallpaper.js'
 
 
 /**
@@ -41,5 +41,6 @@ export default {
     dict,
     voiceResource,
     voiceClone,
-    knowledgeBase
+    knowledgeBase,
+    wallpaper
   }

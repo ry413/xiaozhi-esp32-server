@@ -64,6 +64,9 @@
                   <el-button size="mini" type="text" @click="handleUnbind(scope.row.device_id)">
                     {{ $t('device.unbind') }}
                   </el-button>
+                  <el-button size="mini" type="text" @click="handleSetWallpapers(scope.row.device_id)">
+                    {{ $t('device.setWallpapers') }}
+                  </el-button>
                 </template>
               </el-table-column>
             </el-table>
@@ -116,7 +119,7 @@
       @refresh="fetchBindDevices(currentAgentId)" />
     <ManualAddDeviceDialog :visible.sync="manualAddDeviceDialogVisible" :agent-id="currentAgentId"
       @refresh="fetchBindDevices(currentAgentId)" />
-
+    <DeviceWallpaperDialog :visible.sync="wallpaperDialogVisible" :device-id="selectedDeviceId" />
   </div>
 </template>
 
@@ -125,12 +128,14 @@ import Api from '@/apis/api';
 import AddDeviceDialog from "@/components/AddDeviceDialog.vue";
 import HeaderBar from "@/components/HeaderBar.vue";
 import ManualAddDeviceDialog from "@/components/ManualAddDeviceDialog.vue";
+import DeviceWallpaperDialog from '@/components/DeviceWallpaperDialog.vue';
 
 export default {
   components: {
     HeaderBar,
     AddDeviceDialog,
-    ManualAddDeviceDialog
+    ManualAddDeviceDialog,
+    DeviceWallpaperDialog
   },
   data() {
     return {
@@ -274,6 +279,10 @@ export default {
     },
     handleManualAddDevice() {
       this.manualAddDeviceDialogVisible = true;
+    },
+    handleSetWallpapers(deviceId) {
+      this.selectedDeviceId = deviceId;
+      this.wallpaperDialogVisible = true;
     },
     submitRemark(row) {
       if (row._submitting) return;

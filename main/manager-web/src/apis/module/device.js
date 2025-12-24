@@ -102,4 +102,38 @@ export default {
                 });
             }).send();
     },
+    // 设置设备壁纸集
+    setDeviceWallpaperIds(deviceId, wallpaperIds, callback) {
+        RequestService.sendRequest()
+            .url(`${getServiceUrl()}/device/wallpapers/${deviceId}`)
+            .method('POST')
+            .data(wallpaperIds)
+            .success((res) => {
+                RequestService.clearRequestTime();
+                callback(res);
+            })
+            .networkFail((err) => {
+                console.error('设置设备壁纸集失败:', err);
+                RequestService.reAjaxFun(() => {
+                    this.setDeviceWallpaperIds(deviceId, wallpaperIds, callback);
+                });
+            }).send();
+    },
+    // 获取设备壁纸集
+    getDeviceWallpaperIds(deviceId, callback) {
+        RequestService.sendRequest()
+            .url(`${getServiceUrl()}/device/wallpapers/${deviceId}`)
+            .method('GET')
+            .success((res) => {
+                console.log('获得设备壁纸集: ', res);
+                RequestService.clearRequestTime();
+                callback(res);
+            })
+            .networkFail((err) => {
+                console.error('获取设备壁纸集失败:', err);
+                RequestService.reAjaxFun(() => {
+                    this.getDeviceWallpaperIds(deviceId, callback);
+                });
+            }).send();
+    },
 }

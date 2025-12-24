@@ -98,4 +98,15 @@ public interface DeviceService extends BaseService<DeviceEntity> {
      */
     void updateDeviceConnectionInfo(String agentId, String deviceId, String appVersion);
 
+    /**
+     * 获取这个设备的壁纸id集
+     * @param deviceId 设备ID
+     */
+    List<Integer> getDeviceWallpaperIds(String deviceId);
+
+    /**
+     * 设置这个设备的壁纸id集
+     * @param deviceId 设备ID
+     */
+    void setDeviceWallpaperIds(String deviceId, List<Integer> wallpaperIds);
 }

@@ -4,7 +4,9 @@ import java.nio.charset.StandardCharsets;
 import java.security.InvalidKeyException;
 import java.security.NoSuchAlgorithmException;
 import java.time.Instant;
+import java.util.Arrays;
 import java.util.Base64;
+import java.util.Collections;
 import java.util.Date;
 import java.util.HashMap;
 import java.util.List;
@@ -131,6 +133,7 @@ public class DeviceServiceImpl extends BaseServiceImpl<DeviceDao, DeviceEntity> 
         deviceEntity.setUpdater(user.getId());
         deviceEntity.setUpdateDate(currentTime);
         deviceEntity.setLastConnectedAt(currentTime);
+        deviceEntity.setWallpaperIds(Arrays.asList(1, 2, 3));
         deviceDao.insert(deviceEntity);
 
         // 清理redis缓存
@@ -597,5 +600,30 @@ public class DeviceServiceImpl extends BaseServiceImpl<DeviceDao, DeviceEntity> 
         mqtt.setSubscribe_topic("devices/p2p/" + deviceIdSafeStr);
 
         return mqtt;
+    }
+
+    @Override
+    public List<Integer> getDeviceWallpaperIds(String deviceId) {
+        DeviceEntity device = baseDao.selectById(deviceId);
+        if (device == null) {
+            return Collections.emptyList();
+        }
+        List<Integer> ids = device.getWallpaperIds();
+        return ids != null ? ids : Collections.emptyList();
+    }
+
+    @Override
+    public void setDeviceWallpaperIds(String deviceId, List<Integer> wallpaperIds) {
+        DeviceEntity device = baseDao.selectById(deviceId);
+        if (device == null) {
+            throw new RuntimeException("设备不存在: " + deviceId);
+        }
+
+        if (wallpaperIds == null) {
+            wallpaperIds = Collections.emptyList();
+        }
+
+        device.setWallpaperIds(wallpaperIds);
+        baseDao.updateById(device);
     }
 }

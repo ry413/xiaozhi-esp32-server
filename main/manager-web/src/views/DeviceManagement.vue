@@ -141,6 +141,7 @@ export default {
     return {
       addDeviceDialogVisible: false,
       manualAddDeviceDialogVisible: false,
+      wallpaperDialogVisible: false,
       selectedDeviceId: '',
       searchKeyword: "",
       activeSearchKeyword: "",

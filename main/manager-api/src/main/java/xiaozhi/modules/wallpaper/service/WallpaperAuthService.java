@@ -14,7 +14,7 @@ import lombok.extern.slf4j.Slf4j;
 @Service
 public class WallpaperAuthService {
 
-    private static final String SHARED_SECRET = "hellword";
+    private static final String SHARED_SECRET = "在努力之后仍然一事无成的感觉,已经付出一切可还是没有结果的空白,那才是少女要的空,那才是为预言献上的真正祭品";
 
     public boolean verify(String deviceMac, long ts, String clientSign) {
         long nowSec = System.currentTimeMillis() / 1000;

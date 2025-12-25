@@ -150,6 +150,7 @@ export default {
       addDeviceDialogVisible: false,
       manualAddDeviceDialogVisible: false,
       mcpToolCallDialogVisible: false,
+      wallpaperDialogVisible: false,
       selectedDeviceId: '',
       searchKeyword: "",
       activeSearchKeyword: "",

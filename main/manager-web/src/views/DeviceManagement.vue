@@ -67,6 +67,9 @@
                   <el-button size="mini" type="text" @click="handleSetWallpapers(scope.row.device_id)">
                     {{ $t('device.setWallpapers') }}
                   </el-button>
+                  <el-button v-if="scope.row.deviceStatus === 'online'" size="mini" type="text" @click="handleMcpToolCall(scope.row.device_id)">
+                    {{ $t('device.toolCall') }}
+                  </el-button>
                 </template>
               </el-table-column>
             </el-table>
@@ -120,6 +123,8 @@
     <ManualAddDeviceDialog :visible.sync="manualAddDeviceDialogVisible" :agent-id="currentAgentId"
       @refresh="fetchBindDevices(currentAgentId)" />
     <DeviceWallpaperDialog :visible.sync="wallpaperDialogVisible" :device-id="selectedDeviceId" />
+    <McpToolCallDialog :visible.sync="mcpToolCallDialogVisible" :device-id="selectedDeviceId" />
+
   </div>
 </template>
 
@@ -129,18 +134,22 @@ import AddDeviceDialog from "@/components/AddDeviceDialog.vue";
 import HeaderBar from "@/components/HeaderBar.vue";
 import ManualAddDeviceDialog from "@/components/ManualAddDeviceDialog.vue";
 import DeviceWallpaperDialog from '@/components/DeviceWallpaperDialog.vue';
+import McpToolCallDialog from '@/components/McpToolCallDialog.vue';
 
 export default {
   components: {
     HeaderBar,
     AddDeviceDialog,
     ManualAddDeviceDialog,
-    DeviceWallpaperDialog
+    DeviceWallpaperDialog,
+    McpToolCallDialog,
+
   },
   data() {
     return {
       addDeviceDialogVisible: false,
       manualAddDeviceDialogVisible: false,
+      mcpToolCallDialogVisible: false,
       selectedDeviceId: '',
       searchKeyword: "",
       activeSearchKeyword: "",
@@ -283,6 +292,10 @@ export default {
     handleSetWallpapers(deviceId) {
       this.selectedDeviceId = deviceId;
       this.wallpaperDialogVisible = true;
+    },
+    handleMcpToolCall(deviceId) {
+      this.selectedDeviceId = deviceId;
+      this.mcpToolCallDialogVisible = true;
     },
     submitRemark(row) {
       if (row._submitting) return;

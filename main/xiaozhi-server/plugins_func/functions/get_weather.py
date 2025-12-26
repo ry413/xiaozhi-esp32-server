@@ -1,8 +1,12 @@
+import time
+import jwt
 import requests
 from bs4 import BeautifulSoup
 from config.logger import setup_logging
 from plugins_func.register import register_function, ToolType, ActionResponse, Action
 from core.utils.util import get_ip_info
+from cryptography.hazmat.primitives.serialization import load_pem_private_key
+from cryptography.hazmat.primitives.asymmetric.ed25519 import Ed25519PrivateKey
 
 TAG = __name__
 logger = setup_logging()
@@ -25,7 +29,7 @@ GET_WEATHER_FUNCTION_DESC = {
                 },
                 "lang": {
                     "type": "string",
-                    "description": "返回用户使用的语言code，例如zh_CN/zh_HK/en_US/ja_JP等，默认zh_CN",
+                    "description": "返回用户使用的语言code，例如zh/zh-hant/en/ja等，默认zh",
                 },
             },
             "required": ["lang"],
@@ -107,9 +111,44 @@ WEATHER_CODE_MAP = {
 }
 
 
-def fetch_city_info(location, api_key, api_host):
-    url = f"https://{api_host}/geo/v2/city/lookup?key={api_key}&location={location}&lang=zh"
-    response = requests.get(url, headers=HEADERS).json()
+def generate_jwt_for_qweather(private_key , kid , sub , expires_in=600) :
+    """生成符合和风天气规范的JWT"""
+    if expires_in > 86400 :
+        raise ValueError("有效期不能超过24小时(86400秒)")
+    current_time = int(time.time())
+    payload = {
+        "sub" : sub ,
+        "iat" : current_time - 30 ,
+        "exp" : current_time + expires_in
+    }
+
+    headers = {"alg" : "EdDSA" , "kid" : kid}
+    private_key_pem = f"""-----BEGIN PRIVATE KEY-----{private_key}-----END PRIVATE KEY-----"""
+    private_key = load_pem_private_key(private_key_pem.encode() , password=None)
+
+    if not isinstance(private_key , Ed25519PrivateKey) :
+        raise TypeError("私钥必须为Ed25519格式")
+
+    return jwt.encode(
+            payload ,
+            private_key ,
+            algorithm="EdDSA" ,
+            headers=headers
+        )
+
+
+def fetch_city_info(location, jwt_token, api_host, lang):
+    url = f"https://{api_host}/geo/v2/city/lookup"
+    headers = {
+        **HEADERS,
+        "Authorization" : f"Bearer {jwt_token}"
+    }
+    params = {
+        "location": location,
+        "lang": lang
+    }
+    response = requests.get(url, headers=headers, params=params, timeout=5).json()
+
     if response.get("error") is not None:
         logger.bind(tag=TAG).error(
             f"获取天气失败，原因：{response.get('error', {}).get('detail')}"
@@ -155,13 +194,25 @@ def parse_weather_info(soup):
 
 
 @register_function("get_weather", GET_WEATHER_FUNCTION_DESC, ToolType.SYSTEM_CTL)
-def get_weather(conn, location: str = None, lang: str = "zh_CN"):
+def get_weather(conn, location: str = None, lang: str = "zh"):
+    if lang == "zh_CN":
+        lang = "zh"
+
     from core.utils.cache.manager import cache_manager, CacheType
 
-    weather_config = conn.config.get("plugins", {}).get("get_weather", {})
-    api_host = weather_config.get("api_host", "mj7p3y7naa.re.qweatherapi.com")
-    api_key = weather_config.get("api_key", "a861d0d5e7bf4ee1a83d9a9e4f96d4da")
-    default_location = weather_config.get("default_location", "广州")
+    api_host = conn.config["plugins"]["get_weather"].get(
+        "api_host", "nr67cdutyg.re.qweatherapi.com"
+    )
+    private_key = conn.config["plugins"]["get_weather"].get(
+        "private_key", "MC4CAQAwBQYDK2VwBCIEIMrCFcPheIkJCr9Qo4BzNVquE/3cOJFRdroRiDsxUB+f"
+    )
+    kid = conn.config["plugins"]["get_weather"].get(
+        "KID", "C7PT8R37GB"
+    )
+    sub = conn.config["plugins"]["get_weather"].get(
+        "SUB", "2DKTNQK56X"
+    )
+    default_location = conn.config["plugins"]["get_weather"]["default_location"]
     client_ip = conn.client_ip
 
     # 优先使用用户提供的location参数
@@ -177,7 +228,7 @@ def get_weather(conn, location: str = None, lang: str = "zh_CN"):
                 ip_info = get_ip_info(client_ip, logger)
                 if ip_info:
                     cache_manager.set(CacheType.IP_INFO, client_ip, ip_info)
-                    location = ip_info.get("city")
+                    location = ip_info.get("city") # type: ignore
 
             if not location:
                 location = default_location
@@ -190,8 +241,10 @@ def get_weather(conn, location: str = None, lang: str = "zh_CN"):
     if cached_weather_report:
         return ActionResponse(Action.REQLLM, cached_weather_report, None)
 
+    jwt_token = generate_jwt_for_qweather(private_key, kid, sub)
+
     # 缓存未命中，获取实时天气数据
-    city_info = fetch_city_info(location, api_key, api_host)
+    city_info = fetch_city_info(location, jwt_token, api_host, lang)
     if not city_info:
         return ActionResponse(
             Action.REQLLM, f"未找到相关的城市: {location}，请确认地点是否正确", None

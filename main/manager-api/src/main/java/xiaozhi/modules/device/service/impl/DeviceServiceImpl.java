@@ -493,6 +493,7 @@ public class DeviceServiceImpl extends BaseServiceImpl<DeviceDao, DeviceEntity> 
         entity.setCreator(userId);
         entity.setUpdater(userId);
         entity.setAutoUpdate(1);
+        entity.setWallpaperIds(Arrays.asList(1, 2, 3));
         baseDao.insert(entity);
 
         // 添加：清除智能体设备数量缓存

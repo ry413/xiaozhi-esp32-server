@@ -240,4 +240,7 @@ public interface ErrorCode {
     int RAG_ADAPTER_CACHE_ERROR = 10191; // 适配器缓存错误
     int RAG_ADAPTER_TYPE_NOT_FOUND = 10192; // 适配器类型未找到
 
+    // 微信小程序登录相关错误码
+    int WECHAT_CODE_INVALID = 10193; // 微信登录code无效
+    int WECHAT_SERVICE_ERROR = 10194; // 微信服务调用失败
 }

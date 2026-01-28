@@ -31,6 +31,7 @@ import xiaozhi.common.validator.AssertUtils;
 import xiaozhi.common.validator.ValidatorUtils;
 import xiaozhi.modules.security.dto.LoginDTO;
 import xiaozhi.modules.security.dto.SmsVerificationDTO;
+import xiaozhi.modules.security.dto.WechatLoginDTO;
 import xiaozhi.modules.security.password.PasswordUtils;
 import xiaozhi.modules.security.service.CaptchaService;
 import xiaozhi.modules.security.service.SysUserTokenService;
@@ -41,6 +42,7 @@ import xiaozhi.modules.sys.dto.SysUserDTO;
 import xiaozhi.modules.sys.service.SysDictDataService;
 import xiaozhi.modules.sys.service.SysParamsService;
 import xiaozhi.modules.sys.service.SysUserService;
+import xiaozhi.modules.sys.service.WechatAuthService;
 import xiaozhi.modules.sys.vo.SysDictDataItem;
 
 /**
@@ -57,6 +59,7 @@ public class LoginController {
     private final CaptchaService captchaService;
     private final SysParamsService sysParamsService;
     private final SysDictDataService sysDictDataService;
+    private final WechatAuthService wechatAuthService;
 
     @GetMapping("/captcha")
     @Operation(summary = "验证码")
@@ -243,5 +246,14 @@ public class LoginController {
         }
 
         return new Result<Map<String, Object>>().ok(config);
+    }
+
+    @PostMapping("/wechat/login")
+    @Operation(summary = "微信小程序登录或自动注册")
+    public Result<TokenDTO> wechatLogin(@RequestBody WechatLoginDTO dto) {
+        if (dto == null || dto.getCode() == null || dto.getCode().isBlank()) {
+            throw new RenException(ErrorCode.PARAM_VALUE_NULL);
+        }
+        return wechatAuthService.loginOrRegister(dto.getCode());
     }
 }

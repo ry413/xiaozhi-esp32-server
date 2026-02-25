@@ -1,10 +1,12 @@
 package xiaozhi.modules.sys.entity;
 
 import java.util.Date;
+import java.util.List;
 
 import com.baomidou.mybatisplus.annotation.FieldFill;
 import com.baomidou.mybatisplus.annotation.TableField;
 import com.baomidou.mybatisplus.annotation.TableName;
+import com.baomidou.mybatisplus.extension.handlers.JacksonTypeHandler;
 
 import lombok.Data;
 import lombok.EqualsAndHashCode;
@@ -15,7 +17,7 @@ import xiaozhi.common.entity.BaseEntity;
  */
 @Data
 @EqualsAndHashCode(callSuper = false)
-@TableName("sys_user")
+@TableName(value = "sys_user", autoResultMap = true)
 public class SysUserEntity extends BaseEntity {
     /**
      * 用户名
@@ -43,5 +45,10 @@ public class SysUserEntity extends BaseEntity {
      */
     @TableField(fill = FieldFill.INSERT_UPDATE)
     private Date updateDate;
+    /**
+     * 隐藏的内置壁纸id集
+     */
+    @TableField(typeHandler = JacksonTypeHandler.class)
+    private List<Integer> hiddenBuiltinWallpaperIds;
 
 }

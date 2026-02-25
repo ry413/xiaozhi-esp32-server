@@ -1,5 +1,6 @@
 package xiaozhi.modules.sys.service.impl;
 
+import java.util.Arrays;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -89,6 +90,9 @@ public class SysUserServiceImpl extends BaseServiceImpl<SysUserDao, SysUserEntit
             entity.setSuperAdmin(SuperAdminEnum.NO.value());
         }
         entity.setStatus(1);
+
+        // 默认不隐藏任何内置壁纸
+        entity.setHiddenBuiltinWallpaperIds(Arrays.asList());
 
         insert(entity);
     }

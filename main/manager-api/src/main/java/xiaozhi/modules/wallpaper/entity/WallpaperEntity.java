@@ -30,8 +30,8 @@ public class WallpaperEntity {
     @Schema(description = "是否为内置壁纸(0不是/1是)")
     private Integer isBuiltin;
 
-    @Schema(description = "壁纸访问URL")
-    private String url;
+    @Schema(description = "壁纸key")
+    private String fileKey;
 
     @Schema(description = "上传时间")
     @TableField(fill = FieldFill.INSERT)

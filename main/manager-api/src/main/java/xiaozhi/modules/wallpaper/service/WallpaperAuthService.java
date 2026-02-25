@@ -6,6 +6,7 @@ import java.security.MessageDigest;
 import javax.crypto.Mac;
 import javax.crypto.spec.SecretKeySpec;
 
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 
 import lombok.extern.slf4j.Slf4j;
@@ -14,7 +15,8 @@ import lombok.extern.slf4j.Slf4j;
 @Service
 public class WallpaperAuthService {
 
-    private static final String SHARED_SECRET = "在努力之后仍然一事无成的感觉,已经付出一切可还是没有结果的空白,那才是少女要的空,那才是为预言献上的真正祭品";
+    @Value("${wallpaper.shared-secret}")
+    private String sharedSecret;
 
     public boolean verify(String deviceMac, long ts, String clientSign) {
         long nowSec = System.currentTimeMillis() / 1000;
@@ -24,7 +26,7 @@ public class WallpaperAuthService {
 
         // 注意 payload 拼接，要和 esp32 一样
         String payload = deviceMac + ":" + ts;
-        String expected = hmacSha256Hex(payload, SHARED_SECRET);
+        String expected = hmacSha256Hex(payload, sharedSecret);
 
         // 固定时间比较，避免被侧信道搞
         return MessageDigest.isEqual(

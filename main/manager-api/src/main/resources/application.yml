@@ -43,6 +43,15 @@ renren:
     enabled: true
     exclude-urls:
 
+tencent:
+  cos:
+    secret-id:
+    secret-key:
+    region:
+    bucket:
+    base-url:
+    path-prefix: wallpaper/
+
 #mybatis
 mybatis-plus:
   mapper-locations: classpath*:/mapper/**/*.xml

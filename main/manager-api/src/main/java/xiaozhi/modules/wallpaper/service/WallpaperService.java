@@ -16,4 +16,6 @@ public interface WallpaperService extends BaseService<WallpaperEntity> {
     void deleteWallpaper(Integer id, Long currentUserId);
 
     Integer uploadWallpaper(MultipartFile file, Long currentUserId);
+
+    void clearHiddenBuiltinWallpapers(Long currentUserId);
 }

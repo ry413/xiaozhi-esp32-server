@@ -65,6 +65,7 @@ public class WallpaperController {
     @Operation(summary = "删除壁纸")
     @RequiresPermissions("sys:role:normal")
     public Result<Void> deleteWallpaper(@PathVariable Integer id) {
+        System.out.println("Deleting wallpaper with ID: " + id);
         UserDetail user = SecurityUser.getUser();
         wallpaperService.deleteWallpaper(id, user.getId());
         return new Result<>();
@@ -78,6 +79,15 @@ public class WallpaperController {
         UserDetail user = SecurityUser.getUser();
         Integer id = wallpaperService.uploadWallpaper(file, user.getId());
         return new Result<Integer>().ok(id);
+    }
+
+    @PostMapping("/builtin/hidden/clear")
+    @Operation(summary = "清空隐藏的内置壁纸")
+    @RequiresPermissions("sys:role:normal")
+    public Result<Void> clearHiddenBuiltinWallpapers() {
+        UserDetail user = SecurityUser.getUser();
+        wallpaperService.clearHiddenBuiltinWallpapers(user.getId());
+        return new Result<>();
     }
 
     @GetMapping("/device-batch")

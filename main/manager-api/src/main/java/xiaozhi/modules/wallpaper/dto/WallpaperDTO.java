@@ -14,8 +14,8 @@ public class WallpaperDTO {
     @Schema(description = "壁纸id")
     private Integer id;
 
-    @Schema(description = "壁纸url")
-    private String url;
+    @Schema(description = "壁纸key")
+    private String fileKey;
 
     @Schema(description = "是否为内置壁纸")
     @Max(1)

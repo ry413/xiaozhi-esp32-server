@@ -12,6 +12,6 @@ public class WallpaperSimpleDTO {
     @Schema(description = "壁纸id")
     private Integer id;
 
-    @Schema(description = "壁纸url")
-    private String url;
+    @Schema(description = "壁纸key")
+    private String fileKey;
 }

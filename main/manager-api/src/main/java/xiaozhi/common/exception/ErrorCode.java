@@ -245,4 +245,7 @@ public interface ErrorCode {
     int DEVICE_NOT_EXIST = 10194; // 设备不存在
     int OTA_UPLOAD_COUNT_EXCEED = 10195; // OTA上传次数超过限制
 
+    // 微信小程序登录相关错误码
+    int WECHAT_CODE_INVALID = 70193; // 微信登录code无效
+    int WECHAT_SERVICE_ERROR = 70194; // 微信服务调用失败
 }

@@ -13,6 +13,8 @@ import org.springframework.web.bind.annotation.RestController;
 
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
+import xiaozhi.common.exception.ErrorCode;
+import xiaozhi.common.exception.RenException;
 import xiaozhi.common.user.UserDetail;
 import xiaozhi.common.utils.Result;
 
@@ -75,7 +77,6 @@ public class WallpaperController {
     @Operation(summary = "上传壁纸")
     @RequiresPermissions("sys:role:normal")
     public Result<Integer> uploadWallpaper(@RequestParam("file") MultipartFile file) {
-        log.info("uploadWallpaper called");
         UserDetail user = SecurityUser.getUser();
         Integer id = wallpaperService.uploadWallpaper(file, user.getId());
         return new Result<Integer>().ok(id);
@@ -97,7 +98,7 @@ public class WallpaperController {
             @RequestHeader("X-Device-Ts") long ts,
             @RequestHeader("X-Device-Sign") String sign) {
         if (!wallpaperAuthService.verify(deviceMac, ts, sign)) {
-            throw new ResponseStatusException(HttpStatus.UNAUTHORIZED);
+            throw new RenException(ErrorCode.UNAUTHORIZED);
         }
 
         List<Integer> wallpaper_ids = deviceService.getDeviceWallpaperIds(deviceMac);

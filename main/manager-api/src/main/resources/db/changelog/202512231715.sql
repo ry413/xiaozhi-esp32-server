@@ -4,7 +4,7 @@ CREATE TABLE `sys_wallpapers` (
   `id` int unsigned NOT NULL AUTO_INCREMENT COMMENT '主键',
   `user_id` bigint DEFAULT NULL COMMENT '用户ID',
   `is_builtin` tinyint(1) NOT NULL DEFAULT '0' COMMENT '是否内置壁纸',
-  `url` text CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL COMMENT '壁纸URL',
+  `file_key` text CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL COMMENT '壁纸文件key',
   `create_date` datetime NOT NULL COMMENT '创建时间',
   PRIMARY KEY (`id`)
 ) ENGINE=InnoDB

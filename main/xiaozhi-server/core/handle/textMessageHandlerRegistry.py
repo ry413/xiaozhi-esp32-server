@@ -9,6 +9,7 @@ from core.handle.textMessageHandler import TextMessageHandler
 from core.handle.textHandler.serverMessageHandler import ServerTextMessageHandler
 from core.handle.textHandler.pingMessageHandler import PingMessageHandler
 from core.handle.textHandler.directChatMessageHandler import DirectChatTextMessageHandler
+from core.handle.textHandler.getWeatherMessageHandler import GetWeatherTextMessageHandler
 
 TAG = __name__
 
@@ -31,6 +32,7 @@ class TextMessageHandlerRegistry:
             ServerTextMessageHandler(),
             PingMessageHandler(),
             DirectChatTextMessageHandler(),
+            GetWeatherTextMessageHandler(),
         ]
 
         for handler in handlers:

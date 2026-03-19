@@ -11,3 +11,4 @@ class TextMessageType(Enum):
     SERVER = "server"
     PING = "ping"
     DIRECT_CHAT = "direct_chat"
+    GET_WEATHER = "get_weather"

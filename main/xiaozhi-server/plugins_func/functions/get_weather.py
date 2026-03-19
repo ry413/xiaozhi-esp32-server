@@ -151,7 +151,7 @@ def fetch_city_info(location, jwt_token, api_host, lang):
 
     if response.get("error") is not None:
         logger.bind(tag=TAG).error(
-            f"获取天气失败，原因：{response.get('error', {}).get('detail')}"
+            f"获取城市天气信息失败，原因：{response} - {response.get('error', {}).get('detail')}"
         )
         return None
     return response.get("location", [])[0] if response.get("location") else None
@@ -193,6 +193,26 @@ def parse_weather_info(soup):
     return city_name, current_abstract, current_basic, temps_list
 
 
+def fetch_now_weather(location, jwt_token, api_host, lang):
+    url = f"https://{api_host}/v7/weather/now"
+    headers = {
+        **HEADERS,
+        "Authorization" : f"Bearer {jwt_token}"
+    }
+    params = {
+        "location": location,
+        "lang": lang
+    }
+    response = requests.get(url, headers=headers, params=params, timeout=5).json()
+
+    if response.get("error") is not None:
+        logger.bind(tag=TAG).error(
+            f"获取实时天气失败，原因：{response} - {response.get('error', {}).get('detail')}"
+        )
+        return None
+    return response.get("now", []) if response.get("now") else None
+
+
 @register_function("get_weather", GET_WEATHER_FUNCTION_DESC, ToolType.SYSTEM_CTL)
 def get_weather(conn, location: str = None, lang: str = "zh"):
     if lang == "zh_CN":
@@ -200,18 +220,10 @@ def get_weather(conn, location: str = None, lang: str = "zh"):
 
     from core.utils.cache.manager import cache_manager, CacheType
 
-    api_host = conn.config["plugins"]["get_weather"].get(
-        "api_host", "nr67cdutyg.re.qweatherapi.com"
-    )
-    private_key = conn.config["plugins"]["get_weather"].get(
-        "private_key", "MC4CAQAwBQYDK2VwBCIEIMrCFcPheIkJCr9Qo4BzNVquE/3cOJFRdroRiDsxUB+f"
-    )
-    kid = conn.config["plugins"]["get_weather"].get(
-        "KID", "C7PT8R37GB"
-    )
-    sub = conn.config["plugins"]["get_weather"].get(
-        "SUB", "2DKTNQK56X"
-    )
+    api_host = conn.config["plugins"]["get_weather"].get("api_host", "nr67cdutyg.re.qweatherapi.com")
+    private_key = conn.config["plugins"]["get_weather"].get("private_key","MC4CAQAwBQYDK2VwBCIEIMzD3EyPR67q29b3bytnLkH3pyBq4AIrQcmVbBtAtTBB",)
+    kid = conn.config["plugins"]["get_weather"].get("kid", "KFB4P42CMW")
+    sub = conn.config["plugins"]["get_weather"].get("sub", "2DKTNQK56X")
     default_location = conn.config["plugins"]["get_weather"]["default_location"]
     client_ip = conn.client_ip
 

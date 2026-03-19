@@ -1,6 +1,7 @@
 package xiaozhi.modules.wallpaper.controller;
 
 import java.util.List;
+import java.util.Set;
 
 import org.apache.shiro.authz.annotation.RequiresPermissions;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -23,6 +24,7 @@ import org.springframework.web.multipart.MultipartFile;
 import org.springframework.web.server.ResponseStatusException;
 
 import lombok.extern.slf4j.Slf4j;
+import xiaozhi.modules.device.entity.DeviceEntity;
 import xiaozhi.modules.device.service.DeviceService;
 import xiaozhi.modules.security.user.SecurityUser;
 import xiaozhi.modules.wallpaper.dto.WallpaperDTO;
@@ -101,7 +103,30 @@ public class WallpaperController {
         }
 
         List<Integer> wallpaper_ids = deviceService.getDeviceWallpaperIds(deviceMac);
-        List<WallpaperDTO> list = wallpaperService.getWallpapersByIds(wallpaper_ids);
+        if (wallpaper_ids.isEmpty()) {
+            return new Result<List<WallpaperDTO>>().ok(List.of());
+        }
+
+        DeviceEntity device = deviceService.getDeviceByMacAddress(deviceMac);
+        if (device == null || device.getUserId() == null) {
+            List<WallpaperDTO> list = wallpaperService.getWallpapersByIds(wallpaper_ids);
+            return new Result<List<WallpaperDTO>>().ok(list);
+        }
+
+        Set<Integer> userOwnedWallpaperIds = wallpaperService.getWallpapersForUser(device.getUserId())
+                .stream()
+                .map(WallpaperDTO::getId)
+                .collect(java.util.stream.Collectors.toSet());
+
+        List<Integer> filteredWallpaperIds = wallpaper_ids.stream()
+                .filter(userOwnedWallpaperIds::contains)
+                .toList();
+
+        if (filteredWallpaperIds.size() != wallpaper_ids.size()) {
+            deviceService.setDeviceWallpaperIds(deviceMac, filteredWallpaperIds);
+        }
+
+        List<WallpaperDTO> list = wallpaperService.getWallpapersByIds(filteredWallpaperIds);
         return new Result<List<WallpaperDTO>>().ok(list);
     }
 }

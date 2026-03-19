@@ -1,5 +1,9 @@
 package xiaozhi.modules.wallpaper.service.impl;
 
+import java.awt.image.BufferedImage;
+import java.io.BufferedInputStream;
+import java.io.ByteArrayInputStream;
+import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.util.Collections;
@@ -7,6 +11,8 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
 import java.util.UUID;
+
+import javax.imageio.ImageIO;
 
 import org.springframework.stereotype.Service;
 import org.springframework.util.StringUtils;
@@ -19,6 +25,7 @@ import com.qcloud.cos.model.PutObjectRequest;
 
 import lombok.AllArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+
 import xiaozhi.common.service.impl.BaseServiceImpl;
 import xiaozhi.common.config.CosProperties;
 import xiaozhi.modules.device.dao.DeviceDao;
@@ -34,7 +41,7 @@ import xiaozhi.modules.wallpaper.service.WallpaperService;
 @Service
 @AllArgsConstructor
 public class WallpaperServiceImpl extends BaseServiceImpl<WallpaperDao, WallpaperEntity> implements WallpaperService {
-    
+
     private final WallpaperDao wallpaperDao;
     private final COSClient cosClient;
     private final CosProperties cosProperties;
@@ -48,8 +55,8 @@ public class WallpaperServiceImpl extends BaseServiceImpl<WallpaperDao, Wallpape
 
         QueryWrapper<WallpaperEntity> wrapper = new QueryWrapper<>();
         wrapper.eq("user_id", userId)
-               .or()
-               .eq("is_builtin", 1);
+                .or()
+                .eq("is_builtin", 1);
 
         List<WallpaperEntity> entities = baseDao.selectList(wrapper);
         if (!hiddenBuiltinIds.isEmpty()) {
@@ -63,7 +70,6 @@ public class WallpaperServiceImpl extends BaseServiceImpl<WallpaperDao, Wallpape
         }).toList();
     }
 
-    
     @Override
     public List<WallpaperDTO> getWallpapersByIds(List<Integer> ids) {
         if (ids == null || ids.isEmpty()) {
@@ -99,9 +105,7 @@ public class WallpaperServiceImpl extends BaseServiceImpl<WallpaperDao, Wallpape
 
     @Override
     public Integer uploadWallpaper(MultipartFile file, Long currentUserId) {
-        // 1. 校验文件类型/大小
-        // 2. 存储到对象存储/本地磁盘，得到 fileKey
-        String fileKey = uploadToStorage(file);
+        String fileKey = uploadToStorageAsPng(file);
 
         WallpaperEntity entity = new WallpaperEntity();
         entity.setFileKey(fileKey);
@@ -120,37 +124,52 @@ public class WallpaperServiceImpl extends BaseServiceImpl<WallpaperDao, Wallpape
         user.setHiddenBuiltinWallpaperIds(Collections.emptyList());
         sysUserDao.updateById(user);
     }
-    
-    private String uploadToStorage(MultipartFile file) {
-        String fileKey = buildFileKey(file);
+
+    private String uploadToStorageAsPng(MultipartFile file) {
+        String fileKey = UUID.randomUUID().toString().replace("-", "") + ".png";
         String objectKey = buildObjectKey(fileKey);
 
-        ObjectMetadata metadata = new ObjectMetadata();
-        metadata.setContentLength(file.getSize());
-        if (StringUtils.hasText(file.getContentType())) {
-            metadata.setContentType(file.getContentType());
+        // 解码
+        BufferedImage image;
+        try (InputStream in = new BufferedInputStream(file.getInputStream())) {
+            image = ImageIO.read(in);
+        } catch (IOException e) {
+            throw new RuntimeException("读取图片失败", e);
         }
 
-        try (InputStream inputStream = file.getInputStream()) {
-            PutObjectRequest request = new PutObjectRequest(cosProperties.getBucket(), objectKey, inputStream, metadata);
+        if (image == null) {
+            throw new RuntimeException("不支持的图片格式或图片已损坏");
+        }
+
+        // 固定编码为PNG
+        byte[] pngBytes;
+        try (ByteArrayOutputStream baos = new ByteArrayOutputStream()) {
+            boolean ok = ImageIO.write(image, "png", baos);
+            if (!ok) {
+                throw new RuntimeException("PNG 编码器不可用（ImageIO.write 返回 false）");
+            }
+            pngBytes = baos.toByteArray();
+        } catch (IOException e) {
+            throw new RuntimeException("PNG 编码失败", e);
+        }
+
+        // 上传COS
+        ObjectMetadata metadata = new ObjectMetadata();
+        metadata.setContentLength(pngBytes.length);
+        metadata.setContentType("image/png");
+
+        try (InputStream pngStream = new ByteArrayInputStream(pngBytes)) {
+            PutObjectRequest request = new PutObjectRequest(
+                    cosProperties.getBucket(),
+                    objectKey,
+                    pngStream,
+                    metadata);
             cosClient.putObject(request);
         } catch (IOException e) {
             throw new RuntimeException("上传壁纸到 COS 失败", e);
         }
 
         return fileKey;
-    }
-
-    private String buildFileKey(MultipartFile file) {
-        String originalFilename = file.getOriginalFilename();
-        String ext = "";
-        if (originalFilename != null) {
-            int dotIndex = originalFilename.lastIndexOf('.');
-            if (dotIndex >= 0) {
-                ext = originalFilename.substring(dotIndex);
-            }
-        }
-        return UUID.randomUUID().toString().replace("-", "") + ext;
     }
 
     private String buildObjectKey(String fileKey) {

@@ -80,6 +80,22 @@ public class SwaggerConfig {
     }
 
     @Bean
+    public GroupedOpenApi knowledgeApi() {
+        return GroupedOpenApi.builder()
+                .group("knowledge")
+                .pathsToMatch("/datasets/**")
+                .build();
+    }
+
+    @Bean
+    public GroupedOpenApi botApi() {
+        return GroupedOpenApi.builder()
+                .group("bot")
+                .pathsToMatch("/api/v1/**")
+                .build();
+    }
+
+    @Bean
     public GroupedOpenApi wallpaperApi() {
         return GroupedOpenApi.builder()
                 .group("wallpaper")

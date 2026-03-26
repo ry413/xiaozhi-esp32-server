@@ -882,13 +882,13 @@ class ConnectionHandler:
 
             # 对话历史截断：防止历史过长导致模型"偷懒模式"扩散
             # 当对话历史超过阈值时，保留最近的 10 轮对话
-            # max_dialogue_turns = 10
-            # if dialogue_length > max_dialogue_turns * 2:
-            #     removed = self.dialogue.trim_history(max_turns=max_dialogue_turns)
-            #     if removed > 0:
-            #         self.logger.bind(tag=TAG).info(
-            #             f"对话历史过长({dialogue_length}条)，已智能截断保留最近{max_dialogue_turns}轮，移除{removed}条消息"
-            #         )
+            max_dialogue_turns = 10
+            if dialogue_length > max_dialogue_turns * 2:
+                removed = self.dialogue.trim_history(max_turns=max_dialogue_turns)
+                if removed > 0:
+                    self.logger.bind(tag=TAG).info(
+                        f"对话历史过长({dialogue_length}条)，已智能截断保留最近{max_dialogue_turns}轮，移除{removed}条消息"
+                    )
 
         # Define intent functions
         functions = None

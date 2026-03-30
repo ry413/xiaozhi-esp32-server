@@ -329,6 +329,210 @@
                         </div>
                       </el-form-item>
                     </div>
+                    <div class="live-config-divider">
+                      <span>卖货直播配置</span>
+                    </div>
+                    <div class="model-row">
+                      <el-form-item label="直播间ID" class="model-item">
+                        <el-input
+                        v-model="form.live_id"
+                        class="form-input"
+                        maxlength="64"
+                      />
+                      </el-form-item>
+                    </div>
+                    <div class="model-row">
+                      <el-form-item label="定时播报启用" class="model-item">
+                        <el-switch v-model="form.broadcast_config.enable" />
+                      </el-form-item>
+                      <el-form-item label="定时播报间隔(秒)" class="model-item">
+                        <el-input-number
+                          v-model="form.broadcast_config.interval_seconds"
+                          :min="1"
+                          :step="1"
+                          controls-position="right"
+                          class="form-input"
+                        />
+                      </el-form-item>
+                    </div>
+                    <div class="model-row">
+                      <el-form-item label="定时播报模式" class="model-item">
+                        <el-select
+                          v-model="form.broadcast_config.mode"
+                          class="form-select"
+                        >
+                          <el-option label="随机" value="random" />
+                          <el-option label="顺序" value="sequential" />
+                        </el-select>
+                      </el-form-item>
+                    </div>
+                    <el-form-item label="定时播报提示词" class="model-item template-list-item">
+                      <div
+                        v-for="(item, index) in form.broadcast_config.templates"
+                        :key="`broadcast-template-${index}`"
+                        class="template-edit-row"
+                      >
+                        <el-input
+                          v-model="form.broadcast_config.templates[index]"
+                          type="textarea"
+                          :rows="2"
+                          resize="none"
+                          class="form-textarea"
+                        />
+                        <el-button
+                          type="danger"
+                          icon="el-icon-delete"
+                          circle
+                          @click="removeTemplate('broadcast_config', index)"
+                        />
+                      </div>
+                      <el-button
+                        type="primary"
+                        plain
+                        icon="el-icon-plus"
+                        @click="addTemplate('broadcast_config')"
+                      >
+                        新增定时播报模板
+                      </el-button>
+                    </el-form-item>
+                    <div class="model-row">
+                      <el-form-item label="防冷场话术启用" class="model-item">
+                        <el-switch v-model="form.awkward_silence_config.enable" />
+                      </el-form-item>
+                      <el-form-item label="冷场判断时长(秒)" class="model-item">
+                        <el-input-number
+                          v-model="form.awkward_silence_config.interval_seconds"
+                          :min="1"
+                          :step="1"
+                          controls-position="right"
+                          class="form-input"
+                        />
+                      </el-form-item>
+                    </div>
+                    <div class="model-row">
+                      <el-form-item label="防冷场话术模式" class="model-item">
+                        <el-select
+                          v-model="form.awkward_silence_config.mode"
+                          class="form-select"
+                        >
+                          <el-option label="随机" value="random" />
+                          <el-option label="顺序" value="sequential" />
+                        </el-select>
+                      </el-form-item>
+                    </div>
+                    <el-form-item label="防冷场话术提示词" class="model-item template-list-item">
+                      <div
+                        v-for="(item, index) in form.awkward_silence_config.templates"
+                        :key="`awkward-template-${index}`"
+                        class="template-edit-row"
+                      >
+                        <el-input
+                          v-model="form.awkward_silence_config.templates[index]"
+                          type="textarea"
+                          :rows="2"
+                          resize="none"
+                          class="form-textarea"
+                        />
+                        <el-button
+                          type="danger"
+                          icon="el-icon-delete"
+                          circle
+                          @click="removeTemplate('awkward_silence_config', index)"
+                        />
+                      </div>
+                      <el-button
+                        type="primary"
+                        plain
+                        icon="el-icon-plus"
+                        @click="addTemplate('awkward_silence_config')"
+                      >
+                        新增冷场话术模板
+                      </el-button>
+                    </el-form-item>
+                    <div class="model-row">
+                      <el-form-item label="一次性处理几条弹幕" class="model-item">
+                        <el-input-number
+                          v-model="form.prompt_flow_config.latest_chat_count"
+                          :min="1"
+                          :step="1"
+                          controls-position="right"
+                          class="form-input"
+                        />
+                      </el-form-item>
+                      <el-form-item label="合并弹幕的分隔符" class="model-item">
+                        <el-input
+                          v-model="form.prompt_flow_config.chat_joiner"
+                          class="form-input"
+                        />
+                      </el-form-item>
+                    </div>
+                    <div class="model-row">
+                      <el-form-item label="只处理最新几条进场消息" class="model-item">
+                        <el-input-number
+                          v-model="form.prompt_flow_config.source_latest_limits.member"
+                          :min="0"
+                          :step="1"
+                          controls-position="right"
+                          class="form-input"
+                        />
+                      </el-form-item>
+                      <el-form-item label="只处理最新几条弹幕消息" class="model-item">
+                        <el-input-number
+                          v-model="form.prompt_flow_config.source_latest_limits.chat"
+                          :min="0"
+                          :step="1"
+                          controls-position="right"
+                          class="form-input"
+                        />
+                      </el-form-item>
+                    </div>
+                    <div class="model-row">
+                      <el-form-item label="只处理最新几条关注消息" class="model-item">
+                        <el-input-number
+                          v-model="form.prompt_flow_config.source_latest_limits.social"
+                          :min="0"
+                          :step="1"
+                          controls-position="right"
+                          class="form-input"
+                        />
+                      </el-form-item>
+                      <el-form-item label="只处理最新几条送礼消息" class="model-item">
+                        <el-input-number
+                          v-model="form.prompt_flow_config.source_latest_limits.gift"
+                          :min="0"
+                          :step="1"
+                          controls-position="right"
+                          class="form-input"
+                        />
+                      </el-form-item>
+                    </div>
+                    <div class="model-row">
+                      <el-form-item label="只处理最新几条点赞消息" class="model-item">
+                        <el-input-number
+                          v-model="form.prompt_flow_config.source_latest_limits.like"
+                          :min="0"
+                          :step="1"
+                          controls-position="right"
+                          class="form-input"
+                        />
+                      </el-form-item>
+                    </div>
+                    <div class="model-row live-action-row">
+                      <div class="live-status-text">
+                        <span v-if="isLiveRunning">
+                          已直播时长(UTC+8): {{ liveDurationText }}
+                          <span v-if="liveStartedAtText">（开始于 {{ liveStartedAtText }}）</span>
+                        </span>
+                        <span v-else>当前未在直播</span>
+                      </div>
+                      <el-button
+                        type="primary"
+                        :loading="startLiveLoading"
+                        @click="handleLiveAction"
+                      >
+                        {{ isLiveRunning ? "停止直播" : "开始直播" }}
+                      </el-button>
+                    </div>
                   </div>
                 </div>
               </div>
@@ -403,6 +607,31 @@ export default {
           memModelId: "",
           intentModelId: "",
         },
+        // 卖货机配置
+        live_id: "",
+        broadcast_config: {
+          enable: false,
+          interval_seconds: 180,
+          mode: "random",
+          templates: ["今天直播间有哪些优惠给大家介绍下", "三二一上一下链接, 制造一下库存的紧张感"]
+        },
+        awkward_silence_config: {
+          enable: false,
+          interval_seconds: 5,
+          mode: "sequential",
+          templates: ["现在冷场了, 从你上次冷场聊的话题里选一个继续聊下去", "从刚才进入直播间的用户里选一个和他聊聊"]
+        },
+        prompt_flow_config: {
+          latest_chat_count: 3,
+          chat_joiner: " | ",
+          source_latest_limits: {
+            member: 5,
+            chat: 10,
+            social: 3,
+            gift: 6,
+            like: 3
+          }
+        }
       },
       models: [
         { label: this.$t("roleConfig.vad"), key: "vadModelId", type: "VAD" },
@@ -436,6 +665,13 @@ export default {
         vad: false, // 语言检测活动功能状态
         asr: false, // 语音识别功能状态
       },
+      firstDevice: null,
+      startLiveLoading: false,
+      isLiveRunning: false,
+      liveDurationText: "00:00:00",
+      liveStartedAtMs: null,
+      liveStartedAtText: "",
+      liveDurationTimer: null,
       dynamicTags: [],
       inputVisible: false,
       inputValue: ''
@@ -471,6 +707,10 @@ export default {
         langCode: this.form.langCode,
         language: this.form.language,
         sort: this.form.sort,
+        live_id: this.form.live_id,
+        broadcast_config: this.form.broadcast_config,
+        awkward_silence_config: this.form.awkward_silence_config,
+        prompt_flow_config: this.form.prompt_flow_config,
         functions: this.currentFunctions.map((item) => {
           return {
             pluginId: item.id,
@@ -531,6 +771,30 @@ export default {
               memModelId: "",
               intentModelId: "",
             },
+            live_id: "",
+            broadcast_config: {
+              enable: false,
+              interval_seconds: 180,
+              mode: "random",
+              templates: ["今天直播间有哪些优惠给大家介绍下", "三二一上一下链接, 制造一下库存的紧张感"]
+            },
+            awkward_silence_config: {
+              enable: false,
+              interval_seconds: 5,
+              mode: "sequential",
+              templates: ["现在冷场了, 从你上次冷场聊的话题里选一个继续聊下去", "从刚才进入直播间的用户里选一个和他聊聊"]
+            },
+            prompt_flow_config: {
+              latest_chat_count: 3,
+              chat_joiner: " | ",
+              source_latest_limits: {
+                member: 5,
+                chat: 10,
+                social: 3,
+                gift: 6,
+                like: 3
+              }
+            }
           };
           this.dynamicTags = [];
           this.currentFunctions = [];
@@ -605,6 +869,46 @@ export default {
               intentModelId: data.data.intentModelId,
             },
           };
+          this.form.broadcast_config = {
+            enable: false,
+            interval_seconds: 180,
+            mode: "random",
+            templates: [],
+            ...(data.data.broadcast_config || {}),
+          };
+          this.form.broadcast_config.templates = Array.isArray(this.form.broadcast_config.templates)
+            ? this.form.broadcast_config.templates
+            : [];
+          this.form.awkward_silence_config = {
+            enable: false,
+            interval_seconds: 5,
+            mode: "sequential",
+            templates: [],
+            ...(data.data.awkward_silence_config || {}),
+          };
+          this.form.awkward_silence_config.templates = Array.isArray(this.form.awkward_silence_config.templates)
+            ? this.form.awkward_silence_config.templates
+            : [];
+          this.form.prompt_flow_config = {
+            latest_chat_count: 3,
+            chat_joiner: " | ",
+            source_latest_limits: {
+              member: 5,
+              chat: 10,
+              social: 3,
+              gift: 6,
+              like: 3,
+            },
+            ...(data.data.prompt_flow_config || {}),
+          };
+          this.form.prompt_flow_config.source_latest_limits = {
+            member: 5,
+            chat: 10,
+            social: 3,
+            gift: 6,
+            like: 3,
+            ...((this.form.prompt_flow_config && this.form.prompt_flow_config.source_latest_limits) || {}),
+          };
 
           // 同步TTS设置到ttsSettings
           this.ttsSettings = {
@@ -648,6 +952,39 @@ export default {
           });
         } else {
           this.$message.error(data.msg || i18n.t("roleConfig.fetchConfigFailed"));
+        }
+      });
+    },
+    fetchFirstDevice(agentId) {
+      Api.device.getAgentBindDevices(agentId, ({ data }) => {
+        if (data.code === 0) {
+          const deviceList = data.data.map(device => {
+            return {
+              device_id: device.id,
+              model: device.board,
+              firmwareVersion: device.appVersion,
+              macAddress: device.macAddress,
+              bindTime: device.createDate,
+              lastConversation: device.lastConnectedAt,
+              remark: device.alias,
+              _originalRemark: device.alias,
+              isEdit: false,
+              _submitting: false,
+              otaSwitch: device.autoUpdate === 1,
+              rawBindTime: new Date(device.createDate).getTime(),
+              selected: false,
+              // 初始设置为离线状态
+              deviceStatus: 'offline'
+            };
+          }).sort((a, b) => a.rawBindTime - b.rawBindTime);
+          this.firstDevice = deviceList.length > 0 ? deviceList[0] : null;
+          if (this.firstDevice && this.firstDevice.device_id) {
+            this.queryLiveStatus();
+          } else {
+            this.resetLiveState();
+          }
+        } else {
+          this.$message.error(data.msg || this.$t('device.getListFailed'));
         }
       });
     },
@@ -1226,6 +1563,194 @@ export default {
           }
         });
       });
+    },
+    addTemplate(configKey) {
+      if (!this.form[configKey] || !Array.isArray(this.form[configKey].templates)) {
+        return;
+      }
+      this.form[configKey].templates.push("");
+    },
+    removeTemplate(configKey, index) {
+      if (!this.form[configKey] || !Array.isArray(this.form[configKey].templates)) {
+        return;
+      }
+      this.form[configKey].templates.splice(index, 1);
+    },
+    getAuthToken() {
+      const rawToken = this.$store?.getters?.getToken || localStorage.getItem("token") || "";
+      if (!rawToken) {
+        return "";
+      }
+      try {
+        const parsed = JSON.parse(rawToken);
+        return parsed?.token || "";
+      } catch (error) {
+        return "";
+      }
+    },
+    formatDuration(milliseconds) {
+      const totalSeconds = Math.max(0, Math.floor(milliseconds / 1000));
+      const hours = Math.floor(totalSeconds / 3600);
+      const minutes = Math.floor((totalSeconds % 3600) / 60);
+      const seconds = totalSeconds % 60;
+      return [hours, minutes, seconds].map((item) => String(item).padStart(2, "0")).join(":");
+    },
+    formatUtc8Time(dateMs) {
+      if (!dateMs) {
+        return "";
+      }
+      return new Intl.DateTimeFormat("zh-CN", {
+        timeZone: "Asia/Shanghai",
+        hour12: false,
+        year: "numeric",
+        month: "2-digit",
+        day: "2-digit",
+        hour: "2-digit",
+        minute: "2-digit",
+        second: "2-digit",
+      }).format(new Date(dateMs)).replace(/\//g, "-");
+    },
+    updateLiveDuration() {
+      if (!this.isLiveRunning || !this.liveStartedAtMs) {
+        this.liveDurationText = "00:00:00";
+        return;
+      }
+      const elapsed = Date.now() - this.liveStartedAtMs;
+      this.liveDurationText = this.formatDuration(elapsed);
+    },
+    startLiveDurationTimer() {
+      this.stopLiveDurationTimer();
+      this.liveDurationTimer = setInterval(() => {
+        this.updateLiveDuration();
+      }, 1000);
+    },
+    stopLiveDurationTimer() {
+      if (this.liveDurationTimer) {
+        clearInterval(this.liveDurationTimer);
+        this.liveDurationTimer = null;
+      }
+    },
+    resetLiveState() {
+      this.isLiveRunning = false;
+      this.liveStartedAtMs = null;
+      this.liveStartedAtText = "";
+      this.liveDurationText = "00:00:00";
+      this.stopLiveDurationTimer();
+    },
+    queryLiveStatus() {
+      const deviceId = this.firstDevice && this.firstDevice.device_id;
+      if (!deviceId) {
+        this.resetLiveState();
+        return;
+      }
+      Api.liveStreaming.getLiveStatus(deviceId, (res) => {
+        const data = (res && res.data) || {};
+        const statusList = Array.isArray(data.data) ? data.data : [];
+        const runningItem = statusList.find((item) => item && item.status === "running");
+
+        if (!runningItem) {
+          this.resetLiveState();
+          return;
+        }
+
+        const startAtRaw = runningItem.started_at || runningItem.created_at;
+        const startAtMs = startAtRaw ? new Date(startAtRaw).getTime() : null;
+        this.isLiveRunning = true;
+        this.liveStartedAtMs = startAtMs;
+        this.liveStartedAtText = this.formatUtc8Time(startAtMs);
+        this.updateLiveDuration();
+        this.startLiveDurationTimer();
+      });
+    },
+    handleLiveAction() {
+      if (this.isLiveRunning) {
+        this.stopLive();
+        return;
+      }
+      this.startLive();
+    },
+    startLive() {
+      if (!this.firstDevice || !this.firstDevice.device_id) {
+        this.$message.warning({
+          message: "未找到绑定设备，无法开始直播",
+          showClose: true,
+        });
+        return;
+      }
+
+      const mcpExecuteString = {
+        type: "mcp",
+        payload: {
+          jsonrpc: "2.0",
+          id: 1,
+          method: "tools/call",
+          params: {
+            name: "self.enter_chat_state",
+            arguments: {},
+          },
+        },
+      };
+      Api.device.sendDeviceCommand(this.firstDevice.device_id, mcpExecuteString, ({ data }) => {
+          if (data.code === 0) {
+            console.log("成功发送进入对话状态命令到设备");
+          } else {
+            console.error("发送进入对话状态命令失败:", data.msg);
+          }
+      });
+      
+      const params = {
+        live_id: this.form.live_id || "",
+        token: this.getAuthToken(),
+        device_id: this.firstDevice ? this.firstDevice.device_id : "",
+        broadcast_config: JSON.parse(JSON.stringify(this.form.broadcast_config || {})),
+        awkward_silence_config: JSON.parse(JSON.stringify(this.form.awkward_silence_config || {})),
+        prompt_flow_config: JSON.parse(JSON.stringify(this.form.prompt_flow_config || {})),
+      };
+
+      this.startLiveLoading = true;
+      Api.liveStreaming.startLive(params, (res) => {
+        this.startLiveLoading = false;
+        const data = (res && res.data) || {};
+        if (data.code === 0) {
+          this.$message.success({
+            message: "开始直播成功",
+            showClose: true,
+          });
+          this.queryLiveStatus();
+          return;
+        }
+        this.$message.error({
+          message: data.msg || "开始直播失败",
+          showClose: true,
+        });
+      });
+    },
+    stopLive() {
+      if (!this.firstDevice || !this.firstDevice.device_id) {
+        this.$message.warning({
+          message: "未找到绑定设备，无法停止直播",
+          showClose: true,
+        });
+        return;
+      }
+      this.startLiveLoading = true;
+      const deviceId = this.firstDevice.device_id;
+      Api.liveStreaming.stopLive(deviceId, (res) => {
+        this.startLiveLoading = false;
+        const data = (res && res.data) || {};
+        if (data.code === 0) {
+          this.$message.success({
+            message: "停止直播成功",
+            showClose: true,
+          });
+          this.resetLiveState();
+          return;
+        }
+        this.$message.error({
+          message: data.msg || "停止直播失败",
+          showClose: true,
+        });
+      });
     }
   },
   watch: {
@@ -1255,11 +1780,15 @@ export default {
       this.fetchAgentConfig(agentId);
       this.getAgentTags(agentId);
       this.fetchAllFunctions();
+      this.fetchFirstDevice(agentId);
     }
     this.fetchModelOptions();
     this.fetchTemplates();
     // 加载功能状态，确保featureManager已初始化
     await this.loadFeatureStatus();
+  },
+  beforeDestroy() {
+    this.stopLiveDurationTimer();
   },
 };
 </script>
@@ -1455,6 +1984,43 @@ export default {
 
 .form-textarea {
   width: 100%;
+}
+
+.template-list-item {
+  width: 100%;
+}
+
+.template-edit-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 8px;
+}
+
+.template-edit-row .form-textarea {
+  flex: 1;
+}
+
+.live-config-divider {
+  margin: 8px 0 10px;
+  padding-top: 10px;
+  border-top: 1px dashed #c8d6ff;
+  color: #5a6da8;
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.live-action-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  margin-top: 8px;
+}
+
+.live-status-text {
+  color: #606266;
+  font-size: 13px;
 }
 
 .voice-select-wrapper {

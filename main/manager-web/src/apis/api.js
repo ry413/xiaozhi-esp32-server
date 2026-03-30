@@ -11,6 +11,7 @@ import voiceClone from './module/voiceClone.js'
 import voiceResource from './module/voiceResource.js'
 import knowledgeBase from './module/knowledgeBase.js'
 import wallpaper from './module/wallpaper.js'
+import liveStreaming from './module/liveStreaming.js'
 
 
 /**
@@ -42,5 +43,6 @@ export default {
     voiceResource,
     voiceClone,
     knowledgeBase,
-    wallpaper
+    wallpaper,
+    liveStreaming
   }

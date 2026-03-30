@@ -345,6 +345,18 @@ public class AgentServiceImpl extends BaseServiceImpl<AgentDao, AgentEntity> imp
         if (dto.getSort() != null) {
             existingEntity.setSort(dto.getSort());
         }
+        if (dto.getLiveId() != null) {
+            existingEntity.setLiveId(dto.getLiveId());
+        }
+        if (dto.getBroadcastConfig() != null) {
+            existingEntity.setBroadcastConfig(dto.getBroadcastConfig());
+        }
+        if (dto.getAwkwardSilenceConfig() != null) {
+            existingEntity.setAwkwardSilenceConfig(dto.getAwkwardSilenceConfig());
+        }
+        if (dto.getPromptFlowConfig() != null) {
+            existingEntity.setPromptFlowConfig(dto.getPromptFlowConfig());
+        }
 
         // 更新函数插件信息
         List<AgentUpdateDTO.FunctionInfo> functions = dto.getFunctions();

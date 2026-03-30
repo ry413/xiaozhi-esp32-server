@@ -1,17 +1,21 @@
 package xiaozhi.modules.agent.entity;
 
-import java.math.BigDecimal;
 import java.util.Date;
+import java.util.Map;
 
+import com.baomidou.mybatisplus.annotation.TableField;
 import com.baomidou.mybatisplus.annotation.IdType;
 import com.baomidou.mybatisplus.annotation.TableId;
 import com.baomidou.mybatisplus.annotation.TableName;
+import com.baomidou.mybatisplus.extension.handlers.JacksonTypeHandler;
+import com.fasterxml.jackson.annotation.JsonAlias;
+import com.fasterxml.jackson.annotation.JsonProperty;
 
 import io.swagger.v3.oas.annotations.media.Schema;
 import lombok.Data;
 
 @Data
-@TableName("ai_agent")
+@TableName(value = "ai_agent", autoResultMap = true)
 @Schema(description = "智能体信息")
 public class AgentEntity {
 
@@ -82,6 +86,29 @@ public class AgentEntity {
 
     @Schema(description = "排序")
     private Integer sort;
+
+    @JsonProperty("live_id")
+    @JsonAlias("liveId")
+    @Schema(description = "直播间ID")
+    private String liveId;
+
+    @JsonProperty("broadcast_config")
+    @JsonAlias("broadcastConfig")
+    @Schema(description = "卖货播报配置")
+    @TableField(typeHandler = JacksonTypeHandler.class)
+    private Map<String, Object> broadcastConfig;
+
+    @JsonProperty("awkward_silence_config")
+    @JsonAlias("awkwardSilenceConfig")
+    @Schema(description = "冷场话术配置")
+    @TableField(typeHandler = JacksonTypeHandler.class)
+    private Map<String, Object> awkwardSilenceConfig;
+
+    @JsonProperty("prompt_flow_config")
+    @JsonAlias("promptFlowConfig")
+    @Schema(description = "提示词流程配置")
+    @TableField(typeHandler = JacksonTypeHandler.class)
+    private Map<String, Object> promptFlowConfig;
 
     @Schema(description = "创建者")
     private Long creator;

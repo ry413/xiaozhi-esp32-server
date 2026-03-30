@@ -1,0 +1,55 @@
+import RequestService from '../httpRequest';
+
+const liveStreamingApi = 'http://127.0.0.1:18080'
+
+export default {
+    // 开始直播
+    startLive(params, callback) {
+        RequestService.sendRequest()
+            .url(`${liveStreamingApi}/monitors`)
+            .method('POST')
+            .data(params)
+            .success((res) => {
+                RequestService.clearRequestTime();
+                callback(res);
+            })
+            .networkFail((err) => {
+                console.error('开始直播失败:', err);
+                RequestService.reAjaxFun(() => {
+                    this.startLive(params, callback);
+                });
+            }).send();
+    },
+    // 结束直播
+    stopLive(deviceID, callback) {
+        RequestService.sendRequest()
+            .url(`${liveStreamingApi}/monitors/device/${deviceID}`)
+            .method('DELETE')
+            .success((res) => {
+                RequestService.clearRequestTime();
+                callback(res);
+            })
+            .networkFail((err) => {
+                console.error('结束直播失败:', err);
+                RequestService.reAjaxFun(() => {
+                    this.stopLive(deviceID, callback);
+                });
+            }).send();
+    },
+    // 获取直播状态
+    getLiveStatus(deviceId, callback) {
+        RequestService.sendRequest()
+            .url(`${liveStreamingApi}/monitors/device/${deviceId}`)
+            .method('GET')
+            .success((res) => {
+                RequestService.clearRequestTime();
+                callback(res);
+            })
+            .networkFail((err) => {
+                console.error('获取直播状态失败:', err);
+                RequestService.reAjaxFun(() => {
+                    this.getLiveStatus(deviceId, callback);
+                });
+            }).send();
+    }
+}

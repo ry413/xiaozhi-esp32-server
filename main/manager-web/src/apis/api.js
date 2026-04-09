@@ -21,6 +21,7 @@ import activationCode from './module/activationCode.js'
  * 编译时自动读取使用.env.production文件
  */
 const DEV_API_SERVICE = process.env.VUE_APP_API_BASE_URL
+const LIVE_STREAMING_API_SERVICE = process.env.VUE_APP_LIVE_STREAMING_BASE_URL
 
 /**
  * 根据开发环境返回接口url
@@ -30,9 +31,14 @@ export function getServiceUrl() {
     return DEV_API_SERVICE
 }
 
+export function getLiveStreamingUrl() {
+    return LIVE_STREAMING_API_SERVICE
+}
+
 /** request服务封装 */
 export default {
     getServiceUrl,
+    getLiveStreamingUrl,
     user,
     admin,
     agent,

@@ -1,7 +1,7 @@
+import { getLiveStreamingUrl } from '../api';
 import RequestService from '../httpRequest';
 
-// const liveStreamingApi = 'http://43.136.35.154:18080'
-const liveStreamingApi = 'http://127.0.0.1:18080'
+const liveStreamingApi = getLiveStreamingUrl()
 
 export default {
     // 开始直播

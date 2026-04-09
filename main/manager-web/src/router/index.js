@@ -61,6 +61,20 @@ const routes = [
       return import('../views/DeviceManagement.vue')
     }
   },
+  {
+    path: '/maihuo-config',
+    name: 'MaihuoConfig',
+    component: function () {
+      return import('../views/MaihuoConfig.vue')
+    }
+  },
+  {
+    path: '/director-desk',
+    name: 'DirectorDesk',
+    component: function () {
+      return import('../views/DirectorDesk.vue')
+    }
+  },
   // 添加用户管理路由
   {
     path: '/user-management',

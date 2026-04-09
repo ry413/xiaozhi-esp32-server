@@ -25,6 +25,23 @@
           }" />
           <span class="nav-text">{{ $t("header.smartManagement") }}</span>
         </div>
+
+        <!-- 导播台 -->
+        <div class="equipment-management" :class="{
+          'active-tab':
+            $route.path === '/director-desk',
+        }" @click="goDirectorDesk">
+          <span class="nav-text">导播台</span>
+        </div>
+
+        <!-- 卖货配置 -->
+        <div class="equipment-management" :class="{
+          'active-tab':
+            $route.path === '/maihuo-config',
+        }" @click="goMaihuoConfig">
+          <span class="nav-text">卖货配置</span>
+        </div>
+        
         <!-- 普通用户显示音色克隆 -->
         <div v-if="!userInfo.superAdmin && featureStatus.voiceClone" class="equipment-management"
           :class="{ 'active-tab': $route.path === '/voice-clone-management' }" @click="goVoiceCloneManagement">
@@ -334,6 +351,14 @@ export default {
     goHome() {
       // 跳转到首页
       this.$router.push("/home");
+    },
+    goDirectorDesk() {
+      // 跳转到导播台页
+      this.$router.push("/director-desk");
+    },
+    goMaihuoConfig() {
+      // 跳转到卖货配置页
+      this.$router.push("/maihuo-config");
     },
     goUserManagement() {
       this.$router.push("/user-management");

@@ -32,13 +32,6 @@
         <result column="langCode" property="langCode"/>
         <result column="language" property="language"/>
         <result column="sort" property="sort"/>
-        <result column="liveId" property="liveId"/>
-        <result column="broadcastConfig" property="broadcastConfig"
-                typeHandler="com.baomidou.mybatisplus.extension.handlers.JacksonTypeHandler"/>
-        <result column="awkwardSilenceConfig" property="awkwardSilenceConfig"
-                typeHandler="com.baomidou.mybatisplus.extension.handlers.JacksonTypeHandler"/>
-        <result column="promptFlowConfig" property="promptFlowConfig"
-                typeHandler="com.baomidou.mybatisplus.extension.handlers.JacksonTypeHandler"/>
         <result column="creator" property="creator"/>
         <result column="createdAt" property="createdAt"/>
         <result column="updater" property="updater"/>
@@ -81,10 +74,6 @@
                a.lang_code         AS langCode,
                a.language          AS language,
                a.sort,
-               a.live_id           AS liveId,
-               a.broadcast_config  AS broadcastConfig,
-               a.awkward_silence_config AS awkwardSilenceConfig,
-               a.prompt_flow_config AS promptFlowConfig,
                a.creator,
                a.created_at        AS createdAt,
                a.updater,

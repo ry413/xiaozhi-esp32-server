@@ -104,6 +104,22 @@ public class SwaggerConfig {
     }
 
     @Bean
+    public GroupedOpenApi activationCodeApi() {
+        return GroupedOpenApi.builder()
+                .group("activation-code")
+                .pathsToMatch("/activation-code/**")
+                .build();
+    }
+
+    @Bean
+    public GroupedOpenApi livePlanApi() {
+        return GroupedOpenApi.builder()
+                .group("livePlan")
+                .pathsToMatch("/livePlan/**")
+                .build();
+    }
+
+    @Bean
     public OpenAPI customOpenAPI() {
         return new OpenAPI().info(new Info()
                 .title("xiaozhi-esp32-manager-api")

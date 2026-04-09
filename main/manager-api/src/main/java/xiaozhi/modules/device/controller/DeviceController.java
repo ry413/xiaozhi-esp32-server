@@ -242,4 +242,87 @@ public class DeviceController {
             return new Result<String>().error("发送指令失败: " + e.getMessage());
         }
     }
+
+    @PostMapping("/directChat/{deviceId}")
+    @Operation(summary = "设备直接对话接口")
+    public Result<String> directChat(@PathVariable String deviceId, @RequestBody String message) {
+        try {
+            String mqttGatewayUrl = sysParamsService.getValue("server.mqtt_manager_api", true);
+            if (StringUtils.isBlank(mqttGatewayUrl) || "null".equals(mqttGatewayUrl)) {
+                return new Result<String>().error("MQTT网关地址未配置");
+            }
+
+            DeviceEntity deviceById = deviceService.selectById(deviceId);
+            if (deviceById == null) {
+                return new Result<String>().error("设备不存在");
+            }
+
+            String macAddress = StringUtils.defaultIfBlank(deviceById.getMacAddress(), "unknown").replace(":", "_");
+            String groupId = StringUtils.defaultIfBlank(deviceById.getBoard(), "GID_default").replace(":", "_");
+            String mqttClientId = groupId + "@@@" + macAddress + "@@@" + macAddress;
+            String url = "http://" + mqttGatewayUrl + "/api/commands/" + mqttClientId;
+
+            HttpHeaders headers = new HttpHeaders();
+            headers.set("Content-Type", "application/json");
+
+            String dateStr = java.time.LocalDate.now()
+                    .format(java.time.format.DateTimeFormatter.ofPattern("yyyy-MM-dd"));
+            String signatureKey = sysParamsService.getValue("server.mqtt_signature_key", false);
+            if (StringUtils.isBlank(signatureKey)) {
+                return new Result<String>().error("MQTT签名密钥未配置");
+            }
+            String tokenContent = dateStr + signatureKey;
+            String token = org.apache.commons.codec.digest.DigestUtils.sha256Hex(tokenContent);
+            headers.set("Authorization", "Bearer " + token);
+
+            HttpEntity<String> requestEntity = new HttpEntity<>(message, headers);
+            ResponseEntity<String> response = restTemplate.exchange(url, HttpMethod.POST, requestEntity, String.class);
+
+            return new Result<String>().ok(response.getBody());
+        } catch (Exception e) {
+            return new Result<String>().error("发送指令失败: " + e.getMessage());
+        }
+    }
+
+    @GetMapping("/online/{deviceId}")
+    @Operation(summary = "直接查询设备在线状态")
+    public Result<String> getDeviceOnlineStatus(@PathVariable String deviceId) {
+        try {
+            String mqttGatewayUrl = sysParamsService.getValue("server.mqtt_manager_api", true);
+            if (StringUtils.isBlank(mqttGatewayUrl) || "null".equals(mqttGatewayUrl)) {
+                return new Result<String>().error("MQTT网关地址未配置");
+            }
+
+            DeviceEntity deviceById = deviceService.selectById(deviceId);
+            if (deviceById == null) {
+                return new Result<String>().error("设备不存在");
+            }
+
+            String macAddress = StringUtils.defaultIfBlank(deviceById.getMacAddress(), "unknown").replace(":", "_");
+            String groupId = StringUtils.defaultIfBlank(deviceById.getBoard(), "GID_default").replace(":", "_");
+            String mqttClientId = groupId + "@@@" + macAddress + "@@@" + macAddress;
+            String url = "http://" + mqttGatewayUrl + "/api/devices/status";
+
+            HttpHeaders headers = new HttpHeaders();
+            headers.set("Content-Type", "application/json");
+
+            String dateStr = java.time.LocalDate.now()
+                    .format(java.time.format.DateTimeFormatter.ofPattern("yyyy-MM-dd"));
+            String signatureKey = sysParamsService.getValue("server.mqtt_signature_key", false);
+            if (StringUtils.isBlank(signatureKey)) {
+                return new Result<String>().error("MQTT签名密钥未配置");
+            }
+            String tokenContent = dateStr + signatureKey;
+            String token = org.apache.commons.codec.digest.DigestUtils.sha256Hex(tokenContent);
+            headers.set("Authorization", "Bearer " + token);
+
+            HttpEntity<Map<String, List<String>>> requestEntity = new HttpEntity<>(
+                    Map.of("clientIds", List.of(mqttClientId)), headers);
+            ResponseEntity<String> response = restTemplate.exchange(url, HttpMethod.POST, requestEntity, String.class);
+
+            return new Result<String>().ok(response.getBody());
+        } catch (Exception e) {
+            return new Result<String>().error("查询在线状态失败: " + e.getMessage());
+        }
+    }
 }

@@ -1,12 +1,10 @@
 package xiaozhi.modules.agent.dto;
 
 import java.io.Serializable;
+import java.math.BigDecimal;
 import java.util.HashMap;
 import java.util.List;
-import java.util.Map;
 
-import com.fasterxml.jackson.annotation.JsonAlias;
-import com.fasterxml.jackson.annotation.JsonProperty;
 import io.swagger.v3.oas.annotations.media.Schema;
 import lombok.Data;
 
@@ -86,26 +84,6 @@ public class AgentUpdateDTO implements Serializable {
 
     @Schema(description = "上下文源配置", nullable = true)
     private List<ContextProviderDTO> contextProviders;
-
-    @JsonProperty("live_id")
-    @JsonAlias("liveId")
-    @Schema(description = "直播间ID", example = "123456", nullable = true)
-    private String liveId;
-
-    @JsonProperty("broadcast_config")
-    @JsonAlias("broadcastConfig")
-    @Schema(description = "卖货播报配置", nullable = true)
-    private Map<String, Object> broadcastConfig;
-
-    @JsonProperty("awkward_silence_config")
-    @JsonAlias("awkwardSilenceConfig")
-    @Schema(description = "冷场话术配置", nullable = true)
-    private Map<String, Object> awkwardSilenceConfig;
-
-    @JsonProperty("prompt_flow_config")
-    @JsonAlias("promptFlowConfig")
-    @Schema(description = "提示词流程配置", nullable = true)
-    private Map<String, Object> promptFlowConfig;
 
     @Data
     @Schema(description = "插件函数信息")

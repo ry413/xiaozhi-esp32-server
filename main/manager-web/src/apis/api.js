@@ -12,7 +12,8 @@ import voiceResource from './module/voiceResource.js'
 import knowledgeBase from './module/knowledgeBase.js'
 import wallpaper from './module/wallpaper.js'
 import liveStreaming from './module/liveStreaming.js'
-
+import livePlan from './module/livePlan.js'
+import activationCode from './module/activationCode.js'
 
 /**
  * 接口地址
@@ -44,5 +45,7 @@ export default {
     voiceClone,
     knowledgeBase,
     wallpaper,
-    liveStreaming
+    liveStreaming,
+    livePlan,
+    activationCode,
   }

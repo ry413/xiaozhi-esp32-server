@@ -1,6 +1,7 @@
 import RequestService from '../httpRequest';
 
-const liveStreamingApi = 'http://43.136.35.154:18080'
+// const liveStreamingApi = 'http://43.136.35.154:18080'
+const liveStreamingApi = 'http://127.0.0.1:18080'
 
 export default {
     // 开始直播
@@ -10,6 +11,10 @@ export default {
             .method('POST')
             .data(params)
             .success((res) => {
+                RequestService.clearRequestTime();
+                callback(res);
+            })
+            .fail((res) => {
                 RequestService.clearRequestTime();
                 callback(res);
             })
@@ -29,6 +34,10 @@ export default {
                 RequestService.clearRequestTime();
                 callback(res);
             })
+            .fail((res) => {
+                RequestService.clearRequestTime();
+                callback(res);
+            })
             .networkFail((err) => {
                 console.error('结束直播失败:', err);
                 RequestService.reAjaxFun(() => {
@@ -45,11 +54,40 @@ export default {
                 RequestService.clearRequestTime();
                 callback(res);
             })
+            .fail((res) => {
+                RequestService.clearRequestTime();
+                callback(res);
+            })
             .networkFail((err) => {
                 console.error('获取直播状态失败:', err);
                 RequestService.reAjaxFun(() => {
                     this.getLiveStatus(deviceId, callback);
                 });
             }).send();
-    }
+    },
+    // 获取已发送的消息列表
+    getSentMsg(deviceId, params, callback) {
+        const queryParams = new URLSearchParams({
+            after_id: params.afterId,
+            limit: params.limit,
+        }).toString();
+
+        RequestService.sendRequest()
+            .url(`${liveStreamingApi}/sent-prompts/device/${deviceId}?${queryParams}`)
+            .method('GET')
+            .success((res) => {
+                RequestService.clearRequestTime();
+                callback(res);
+            })
+            .fail((res) => {
+                RequestService.clearRequestTime();
+                callback(res);
+            })
+            .networkFail((err) => {
+                console.error('获取已发送消息列表失败:', err);
+                RequestService.reAjaxFun(() => {
+                    this.getSentMsg(deviceId, params, callback);
+                });
+            }).send();
+    },
 }

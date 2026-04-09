@@ -1,7 +1,6 @@
-import { getLiveStreamingUrl } from '../api';
 import RequestService from '../httpRequest';
 
-const liveStreamingApi = getLiveStreamingUrl()
+const liveStreamingApi = process.env.VUE_APP_LIVE_STREAMING_BASE_URL
 
 export default {
     // 开始直播

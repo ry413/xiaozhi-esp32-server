@@ -210,6 +210,17 @@ const routes = [
       title: '功能配置'
     }
   },
+  {
+    path: '/activation-code-management',
+    name: 'ActivationCodeManagement',
+    component: function () {
+      return import('../views/ActivationCodeManagement.vue')
+    },
+    meta: {
+      requiresAuth: true,
+      title: '激活码管理'
+    }
+  },
 ]
 const router = new VueRouter({
   base: process.env.VUE_APP_PUBLIC_PATH || '/',
@@ -231,7 +242,7 @@ VueRouter.prototype.push = function push(location) {
 }
 
 // 需要登录才能访问的路由
-const protectedRoutes = ['home', 'RoleConfig', 'DeviceManagement', 'UserManagement', 'ModelConfig', 'KnowledgeBaseManagement', 'KnowledgeFileUpload']
+const protectedRoutes = ['home', 'RoleConfig', 'DeviceManagement', 'UserManagement', 'ModelConfig', 'KnowledgeBaseManagement', 'KnowledgeFileUpload', 'ActivationCodeManagement']
 
 // 路由守卫
 router.beforeEach((to, from, next) => {

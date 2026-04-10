@@ -432,4 +432,22 @@ export default {
                 });
             }).send();
     },
+    generateAgentScript(inputPrompt, callback) {
+        RequestService.sendRequest()
+            .url(`${getServiceUrl()}/agent/generate-script`)
+            .method('POST')
+            .data({ prompt: inputPrompt })
+            .success((res) => {
+                RequestService.clearRequestTime();
+                callback(res);
+            })
+            .fail((err) => {
+                callback(err);
+            })
+            .networkFail(() => {
+                RequestService.reAjaxFun(() => {
+                    this.generateAgentScript(inputPrompt, callback);
+                });
+            }).send();
+    },
 }

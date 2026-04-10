@@ -107,7 +107,8 @@
             $route.path === '/agent-template-management' ||
             $route.path === '/ota-management' ||
             $route.path === '/user-management' ||
-            $route.path === '/feature-management',
+            $route.path === '/feature-management' ||
+            $route.path === '/activation-code-management',
         }" @visible-change="handleParamDropdownVisibleChange">
           <span class="el-dropdown-link">
             <img loading="lazy" alt="" src="@/assets/header/param_management.png" :style="{
@@ -119,7 +120,8 @@
                   $route.path === '/agent-template-management' ||
                   $route.path === '/ota-management' ||
                   $route.path === '/user-management' ||
-                  $route.path === '/feature-management'
+                  $route.path === '/feature-management' ||
+                  $route.path === '/activation-code-management'
                   ? 'brightness(0) invert(1)'
                   : 'None',
             }" />
@@ -150,7 +152,10 @@
             </el-dropdown-item>
             <el-dropdown-item @click.native="goFeatureManagement">
                 {{ $t("header.featureManagement") }}
-              </el-dropdown-item>
+            </el-dropdown-item>
+            <el-dropdown-item @click.native="goActivationCodeManagement">
+              激活码管理
+            </el-dropdown-item>
           </el-dropdown-menu>
         </el-dropdown>
       </div>
@@ -399,6 +404,9 @@ export default {
     // 跳转到功能管理
     goFeatureManagement() {
       this.$router.push("/feature-management");
+    },
+    goActivationCodeManagement() {
+      this.$router.push("/activation-code-management");
     },
     // 加载功能状态
     async loadFeatureStatus() {

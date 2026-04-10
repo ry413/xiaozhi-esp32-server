@@ -1,7 +1,7 @@
 import RequestService from '../httpRequest';
 
 const liveStreamingApi = process.env.VUE_APP_LIVE_STREAMING_BASE_URL
-// const liveStreamingApi = "http://localhost:18080"
+// const liveStreamingApi = "http://localhost:18080" // 开发用, 生产环境得改成上面那个
 
 export default {
     // 开始直播

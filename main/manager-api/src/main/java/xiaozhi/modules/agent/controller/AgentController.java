@@ -3,10 +3,14 @@ package xiaozhi.modules.agent.controller;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
+import java.util.HashMap;
 
 import org.apache.commons.lang3.StringUtils;
 import org.apache.shiro.authz.annotation.RequiresPermissions;
+import org.springframework.beans.factory.annotation.Value;
+import org.springframework.http.HttpEntity;
 import org.springframework.http.HttpHeaders;
+import org.springframework.http.HttpMethod;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.DeleteMapping;
@@ -18,15 +22,19 @@ import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.client.RestTemplate;
 
 import com.baomidou.mybatisplus.core.conditions.query.QueryWrapper;
 
+import cn.hutool.json.JSONArray;
+import cn.hutool.json.JSONObject;
+import cn.hutool.json.JSONUtil;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.Parameters;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
-import lombok.AllArgsConstructor;
+import lombok.RequiredArgsConstructor;
 import xiaozhi.common.constant.Constant;
 import xiaozhi.common.page.PageData;
 import xiaozhi.common.redis.RedisKeys;
@@ -39,6 +47,7 @@ import xiaozhi.modules.agent.dto.AgentChatSessionDTO;
 import xiaozhi.modules.agent.dto.AgentCreateDTO;
 import xiaozhi.modules.agent.dto.AgentDTO;
 import xiaozhi.modules.agent.dto.AgentMemoryDTO;
+import xiaozhi.modules.agent.dto.AgentLlmReplyDTO;
 import xiaozhi.modules.agent.dto.AgentUpdateDTO;
 import xiaozhi.modules.agent.entity.AgentEntity;
 import xiaozhi.modules.agent.entity.AgentTemplateEntity;
@@ -59,7 +68,7 @@ import xiaozhi.modules.device.service.DeviceService;
 import xiaozhi.modules.security.user.SecurityUser;
 
 @Tag(name = "智能体管理")
-@AllArgsConstructor
+@RequiredArgsConstructor
 @RestController
 @RequestMapping("/agent")
 public class AgentController {
@@ -73,6 +82,19 @@ public class AgentController {
     private final AgentChatSummaryService agentChatSummaryService;
     private final RedisUtils redisUtils;
     private final AgentTagService agentTagService;
+    private final RestTemplate restTemplate;
+
+    @Value("${agent.llm.api-url}")
+    private String agentLlmApiUrl;
+
+    @Value("${agent.llm.api-key:}")
+    private String agentLlmApiKey;
+
+    @Value("${agent.llm.model:deepseek-chat}")
+    private String agentLlmModel;
+
+    @Value("${agent.llm.system-prompt:You are a helpful assistant.}")
+    private String agentLlmSystemPrompt;
 
     @GetMapping("/list")
     @Operation(summary = "获取用户智能体列表")
@@ -106,6 +128,60 @@ public class AgentController {
     public Result<AgentInfoVO> getAgentById(@PathVariable("id") String id) {
         AgentInfoVO agent = agentService.getAgentById(id);
         return ResultUtils.success(agent);
+    }
+
+    @PostMapping("/generate-script")
+    @Operation(summary = "调用环境变量配置的LLM并返回文本回复")
+    @RequiresPermissions("sys:role:normal")
+    public Result<String> getLlmReply(@RequestBody @Valid AgentLlmReplyDTO dto) {
+        if (StringUtils.isBlank(agentLlmApiKey)) {
+            return new Result<String>().error("未配置agent.llm.api-key");
+        }
+
+        try {
+            Map<String, Object> systemMessage = new HashMap<>();
+            systemMessage.put("role", "system");
+            systemMessage.put("content", agentLlmSystemPrompt);
+
+            Map<String, Object> userMessage = new HashMap<>();
+            userMessage.put("role", "user");
+            userMessage.put("content", dto.getPrompt());
+
+            Map<String, Object> requestBody = new HashMap<>();
+            requestBody.put("model", agentLlmModel);
+            requestBody.put("messages", List.of(systemMessage, userMessage));
+            requestBody.put("stream", false);
+            requestBody.put("temperature", 1.5);
+
+            HttpHeaders headers = new HttpHeaders();
+            headers.setContentType(MediaType.APPLICATION_JSON);
+            headers.setBearerAuth(agentLlmApiKey);
+
+            HttpEntity<Map<String, Object>> requestEntity = new HttpEntity<>(requestBody, headers);
+            ResponseEntity<String> response = restTemplate.exchange(agentLlmApiUrl, HttpMethod.POST, requestEntity,
+                    String.class);
+
+            if (!response.getStatusCode().is2xxSuccessful() || StringUtils.isBlank(response.getBody())) {
+                return new Result<String>().error("LLM调用失败");
+            }
+
+            JSONObject responseJson = JSONUtil.parseObj(response.getBody());
+            JSONArray choices = responseJson.getJSONArray("choices");
+            if (choices == null || choices.isEmpty()) {
+                return new Result<String>().error("LLM响应中没有choices");
+            }
+
+            JSONObject firstChoice = choices.getJSONObject(0);
+            JSONObject message = firstChoice.getJSONObject("message");
+            String content = message == null ? null : message.getStr("content");
+            if (StringUtils.isBlank(content)) {
+                return new Result<String>().error("LLM响应中没有文本内容");
+            }
+
+            return new Result<String>().ok(content);
+        } catch (Exception e) {
+            return new Result<String>().error("LLM调用失败: " + e.getMessage());
+        }
     }
 
     @PostMapping

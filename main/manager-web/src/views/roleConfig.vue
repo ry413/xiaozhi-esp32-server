@@ -105,6 +105,12 @@
                         show-word-limit
                         class="form-textarea"
                       />
+                      <el-button
+                        class="smart-script-btn"
+                        @click="handleGenerateScript"
+                      >
+                        智能话术
+                      </el-button>
                     </el-form-item>
 
                     <el-form-item :label="$t('roleConfig.memoryHis') + '：'">
@@ -504,6 +510,54 @@ export default {
         }
       });
       
+    },
+    handleGenerateScript() {
+      this.$prompt("请输入你希望生成的话术要求", "智能话术", {
+        confirmButtonText: "生成",
+        cancelButtonText: "取消",
+        inputType: "textarea",
+        inputPlaceholder: "例如：我是一个卖猫粮的温柔主播，帮我生成一段亲切、自然、带一点促单感的话术",
+        inputValidator: (value) => {
+          if (!value || !value.trim()) {
+            return "请输入生成要求";
+          }
+          return true;
+        },
+        beforeClose: (action, instance, done) => {
+          if (action !== "confirm") {
+            done();
+            return;
+          }
+
+          const inputPrompt = (instance.inputValue || "").trim();
+          if (!inputPrompt) {
+            return;
+          }
+
+          instance.confirmButtonLoading = true;
+          instance.confirmButtonText = "生成中...";
+
+          Api.agent.generateAgentScript(inputPrompt, ({ data }) => {
+            instance.confirmButtonLoading = false;
+            instance.confirmButtonText = "生成";
+
+            if (data && data.code === 0) {
+              this.form.systemPrompt = data.data || "";
+              done();
+              this.$message.success({
+                message: "智能话术已生成",
+                showClose: true,
+              });
+              return;
+            }
+
+            this.$message.error({
+              message: (data && data.msg) || "智能话术生成失败",
+              showClose: true,
+            });
+          });
+        },
+      }).catch(() => {});
     },
     resetConfig() {
       this.$confirm(i18n.t("roleConfig.confirmReset"), i18n.t("message.info"), {
@@ -1600,6 +1654,26 @@ export default {
 .edit-function-btn.active-btn {
   background: #5778ff;
   color: white;
+}
+
+.smart-script-btn {
+  margin-top: 10px;
+  min-width: 96px;
+  height: 34px;
+  padding: 0 16px;
+  border-radius: 10px;
+  border: 1px solid #adbdff;
+  background: linear-gradient(180deg, #f7f9ff 0%, #ecf1ff 100%);
+  color: #5778ff;
+  font-weight: 600;
+  transition: all 0.2s ease;
+}
+
+.smart-script-btn:hover,
+.smart-script-btn:focus {
+  color: #4668f0;
+  border-color: #8ea4ff;
+  background: linear-gradient(180deg, #f2f5ff 0%, #e3ebff 100%);
 }
 
 .chat-history-options {

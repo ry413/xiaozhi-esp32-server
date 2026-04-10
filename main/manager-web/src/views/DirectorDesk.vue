@@ -874,7 +874,7 @@ export default {
             },
           },
         };
-        Api.device.sendDeviceCommand(this.firstDevice.device_id, mcpExecuteString, ({ data }) => {
+        Api.device.sendDeviceCommand(this.selectedRobotId, mcpExecuteString, ({ data }) => {
             if (data.code === 0) {
               console.log("成功发送进入对话状态命令到设备");
             } else {

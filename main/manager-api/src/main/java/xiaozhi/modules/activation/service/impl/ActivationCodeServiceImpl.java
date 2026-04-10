@@ -36,6 +36,7 @@ import xiaozhi.modules.activation.dao.UserMembershipLogDao;
 import xiaozhi.modules.activation.dto.ActivationCodeBatchCreateDTO;
 import xiaozhi.modules.activation.dto.ActivationCodeBatchPageDTO;
 import xiaozhi.modules.activation.dto.ActivationCodePageDTO;
+import xiaozhi.modules.activation.dto.UserBalanceConsumeDTO;
 import xiaozhi.modules.activation.dto.UserBenefitLogPageDTO;
 import xiaozhi.modules.activation.entity.ActivationCodeBatchEntity;
 import xiaozhi.modules.activation.entity.ActivationCodeEntity;
@@ -250,6 +251,57 @@ public class ActivationCodeServiceImpl extends BaseServiceImpl<ActivationCodeDao
         vo.setMembershipStartAt(membership.getStartAt());
         vo.setMembershipEndAt(membership.getEndAt());
         return vo;
+    }
+
+    @Override
+    @Transactional(rollbackFor = Exception.class)
+    public void consumeUserBalance(Long userId, UserBalanceConsumeDTO dto) {
+        if (userId == null) {
+            throw new RenException("用户不存在");
+        }
+        if (dto == null || dto.getSeconds() == null || dto.getSeconds() <= 0) {
+            throw new RenException("消费秒数必须大于0");
+        }
+
+        int delta = dto.getSeconds();
+        Date now = new Date();
+        UserBalanceAccountEntity account = userBalanceAccountDao.selectOne(
+                new QueryWrapper<UserBalanceAccountEntity>().eq("user_id", userId).last("limit 1"));
+
+        if (account == null || !Integer.valueOf(1).equals(account.getStatus())) {
+            throw new RenException("点卡余额账户不存在");
+        }
+
+        int before = safeInt(account.getBalanceMinutes());
+        if (before <= 0) {
+            throw new RenException("点卡余额不足");
+        }
+
+        int actualDelta = Math.min(before, delta);
+        int after = before - actualDelta;
+        int updated = userBalanceAccountDao.update(null, new UpdateWrapper<UserBalanceAccountEntity>()
+                .eq("id", account.getId())
+                .eq("status", 1)
+                .ge("balance_minutes", actualDelta)
+                .set("balance_minutes", after)
+                .set("total_consumed_minutes", safeInt(account.getTotalConsumedMinutes()) + actualDelta)
+                .set("updated_at", now));
+        if (updated <= 0) {
+            throw new RenException("点卡余额扣减失败");
+        }
+
+        UserBalanceLogEntity logEntity = new UserBalanceLogEntity();
+        logEntity.setUserId(userId);
+        logEntity.setAccountId(account.getId());
+        logEntity.setChangeType("consume");
+        logEntity.setDeltaMinutes(-actualDelta);
+        logEntity.setBalanceBefore(before);
+        logEntity.setBalanceAfter(after);
+        logEntity.setSourceType(StringUtils.defaultIfBlank(dto.getSourceType(), "device"));
+        logEntity.setSourceId(dto.getSourceId());
+        logEntity.setRemark(StringUtils.defaultIfBlank(dto.getRemark(), "点卡余额消费"));
+        logEntity.setCreatedAt(now);
+        userBalanceLogDao.insert(logEntity);
     }
 
     @Override

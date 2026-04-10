@@ -216,6 +216,9 @@ export default {
       mqttServiceAvailable: false,
       benefitLabel: "有效期",
       benefitValue: "-",
+      canStartLiveByBenefits: false,
+      benefitMembershipActive: false,
+      benefitMembershipEndAt: "",
       redeemCode: "",
       redeemLoading: false,
       startLiveLoading: false,
@@ -292,18 +295,28 @@ export default {
       Api.activationCode.getMyBenefits(({ data }) => {
         if (data && data.code === 0) {
           const benefit = data.data || {};
+          this.benefitMembershipActive = benefit.membershipActive === true;
+          this.benefitMembershipEndAt = benefit.membershipEndAt || "";
+
           if (benefit.membershipActive === true && benefit.membershipEndAt) {
             this.benefitLabel = "有效期";
             this.benefitValue = this.formatAbsoluteTime(benefit.membershipEndAt);
+            this.canStartLiveByBenefits = true;
             return;
           }
+
+          const balanceSeconds = Number(benefit.balanceSeconds) || 0;
           this.benefitLabel = "剩余可用时长";
-          this.benefitValue = this.formatDurationSeconds(benefit.balanceSeconds);
+          this.benefitValue = this.formatDurationSeconds(balanceSeconds);
+          this.canStartLiveByBenefits = balanceSeconds > 0;
           return;
         }
 
+        this.benefitMembershipActive = false;
+        this.benefitMembershipEndAt = "";
         this.benefitLabel = "有效期";
         this.benefitValue = "-";
+        this.canStartLiveByBenefits = false;
       });
     },
     handleRedeem() {
@@ -743,6 +756,16 @@ export default {
             liveData.current_viewer_count !== undefined && liveData.current_viewer_count !== null
               ? String(liveData.current_viewer_count)
               : "-";
+          if (!this.benefitMembershipActive && liveData.benefit_balance_seconds !== undefined) {
+            const balanceSeconds = Number(liveData.benefit_balance_seconds) || 0;
+            this.benefitLabel = "剩余可用时长";
+            this.benefitValue = this.formatDurationSeconds(balanceSeconds);
+            this.canStartLiveByBenefits = balanceSeconds > 0;
+          } else if (this.benefitMembershipActive && this.benefitMembershipEndAt) {
+            this.benefitLabel = "有效期";
+            this.benefitValue = this.formatAbsoluteTime(this.benefitMembershipEndAt);
+            this.canStartLiveByBenefits = true;
+          }
           this.deviceOnline =
             typeof liveData.device_online === "boolean" ? liveData.device_online : null;
           this.deviceOfflineDurationSeconds =
@@ -811,6 +834,11 @@ export default {
           return;
         }
 
+        if (!this.isLiveRunning && !this.canStartLiveByBenefits) {
+          this.$message.warning("当前账户没有可用权益，无法启动导播");
+          return;
+        }
+
         if (this.startLiveLoading) {
           return;
         }
@@ -834,6 +862,27 @@ export default {
 
         this.startLiveLoading = true;
 
+        const mcpExecuteString = {
+          type: "mcp",
+          payload: {
+            jsonrpc: "2.0",
+            id: 1,
+            method: "tools/call",
+            params: {
+              name: "self.enter_chat_state",
+              arguments: {},
+            },
+          },
+        };
+        Api.device.sendDeviceCommand(this.firstDevice.device_id, mcpExecuteString, ({ data }) => {
+            if (data.code === 0) {
+              console.log("成功发送进入对话状态命令到设备");
+            } else {
+              console.error("机器人进入对话状态失败:", data.msg);
+              return;
+            }
+        });
+        
         Api.livePlan.getLivePlanDetail(this.selectedPlanNo, ({ data }) => {
           if (data && data.code === 0) {
             const plan = data.data || {};

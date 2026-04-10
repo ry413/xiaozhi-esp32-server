@@ -8,60 +8,31 @@
           <el-card class="scheme-sidebar" shadow="never">
             <div class="panel-title">方案列表</div>
 
-            <el-input
-              v-model.trim="newSchemeRoomId"
-              class="room-input"
-              placeholder="输入直播间 ID 后点添加"
-              clearable
-              @keyup.enter.native="handleAddScheme"
-            >
+            <el-input v-model.trim="newSchemeRoomId" class="room-input" placeholder="输入直播间 ID 后点添加" clearable
+              @keyup.enter.native="handleAddScheme">
               <i slot="prefix" class="el-icon-plus"></i>
             </el-input>
 
             <el-radio-group v-model="activePlatform" size="medium" class="platform-switch">
-              <el-radio-button
-                v-for="item in platformOptions"
-                :key="item.value"
-                :label="item.value"
-              >
+              <el-radio-button v-for="item in platformOptions" :key="item.value" :label="item.value">
                 {{ item.label }}
               </el-radio-button>
             </el-radio-group>
 
-            <el-button
-              type="primary"
-              class="sidebar-add-btn"
-              :loading="addPlanLoading"
-              @click="handleAddScheme"
-            >
+            <el-button type="primary" class="sidebar-add-btn" :loading="addPlanLoading" @click="handleAddScheme">
               添加方案
             </el-button>
 
             <div v-if="schemes.length" class="scheme-list">
-              <div
-                v-for="scheme in schemes"
-                :key="scheme.id"
-                class="scheme-item"
-                :class="{ active: selectedSchemeId === scheme.id }"
-                @click="selectScheme(scheme.id)"
-              >
+              <div v-for="scheme in schemes" :key="scheme.id" class="scheme-item"
+                :class="{ active: selectedSchemeId === scheme.id }" @click="selectScheme(scheme.id)">
                 <div class="scheme-item__header">
                   <div class="scheme-item__id">{{ scheme.roomId }}</div>
                   <div class="scheme-item__actions">
-                    <button
-                      type="button"
-                      class="icon-btn"
-                      title="复制方案"
-                      @click.stop="duplicateScheme(scheme.id)"
-                    >
+                    <button type="button" class="icon-btn" title="复制方案" @click.stop="duplicateScheme(scheme.id)">
                       <i class="el-icon-document-copy"></i>
                     </button>
-                    <button
-                      type="button"
-                      class="icon-btn danger"
-                      title="删除方案"
-                      @click.stop="removeScheme(scheme.id)"
-                    >
+                    <button type="button" class="icon-btn danger" title="删除方案" @click.stop="removeScheme(scheme.id)">
                       <i class="el-icon-delete"></i>
                     </button>
                   </div>
@@ -88,24 +59,12 @@
                     <el-tag effect="plain" class="platform-tag">{{ selectedScheme.platform }}</el-tag>
                     <template v-if="editingField === 'name'">
                       <div class="summary-name-editor">
-                        <el-input
-                          ref="schemeNameInput"
-                          v-model="selectedScheme.name"
-                          class="summary-edit summary-name-input"
-                          @keyup.enter.native="finishEdit"
-                        ></el-input>
-                        <el-button
-                          type="success"
-                          icon="el-icon-check"
-                          class="summary-action-btn"
-                          @click="finishEdit"
-                        ></el-button>
-                        <el-button
-                          type="danger"
-                          icon="el-icon-close"
-                          class="summary-action-btn"
-                          @click="cancelEdit"
-                        ></el-button>
+                        <el-input ref="schemeNameInput" v-model="selectedScheme.name"
+                          class="summary-edit summary-name-input" @keyup.enter.native="finishEdit"></el-input>
+                        <el-button type="success" icon="el-icon-check" class="summary-action-btn"
+                          @click="finishEdit"></el-button>
+                        <el-button type="danger" icon="el-icon-close" class="summary-action-btn"
+                          @click="cancelEdit"></el-button>
                       </div>
                     </template>
                     <template v-else>
@@ -114,7 +73,7 @@
                         <i class="el-icon-edit-outline"></i>
                       </button>
                     </template>
-                  <el-button type="success" plain class="summary-ai-btn">
+                    <el-button type="success" plain class="summary-ai-btn">
                       智能话术
                     </el-button>
                     <el-button plain class="summary-side-btn" @click="handleImportConfig">
@@ -127,24 +86,12 @@
                   <div class="scheme-summary__bottom">
                     <template v-if="editingField === 'roomId'">
                       <div class="summary-room-editor">
-                        <el-input
-                          ref="schemeRoomInput"
-                          v-model="selectedScheme.roomId"
-                          class="summary-edit summary-room-input"
-                          @keyup.enter.native="finishEdit"
-                        ></el-input>
-                        <el-button
-                          type="success"
-                          icon="el-icon-check"
-                          class="summary-action-btn"
-                          @click="finishEdit"
-                        ></el-button>
-                        <el-button
-                          type="danger"
-                          icon="el-icon-close"
-                          class="summary-action-btn"
-                          @click="cancelEdit"
-                        ></el-button>
+                        <el-input ref="schemeRoomInput" v-model="selectedScheme.roomId"
+                          class="summary-edit summary-room-input" @keyup.enter.native="finishEdit"></el-input>
+                        <el-button type="success" icon="el-icon-check" class="summary-action-btn"
+                          @click="finishEdit"></el-button>
+                        <el-button type="danger" icon="el-icon-close" class="summary-action-btn"
+                          @click="cancelEdit"></el-button>
                       </div>
                     </template>
                     <template v-else>
@@ -163,12 +110,7 @@
                 </div>
 
                 <el-tabs v-model="activeTab" class="config-tabs">
-                  <el-tab-pane
-                    v-for="tab in tabs"
-                    :key="tab.name"
-                    :label="tab.label"
-                    :name="tab.name"
-                  >
+                  <el-tab-pane v-for="tab in tabs" :key="tab.name" :label="tab.label" :name="tab.name">
                     <div class="tab-body">
                       <template v-if="tab.name === 'timed'">
                         <div class="form-section">
@@ -179,25 +121,16 @@
                         <div class="form-section compact-section">
                           <div class="field-label">间隔时长（秒）</div>
                           <div class="number-stepper">
-                            <input
-                              :value="selectedScheme.panels.timed.interval"
-                              type="text"
+                            <input :value="selectedScheme.panels.timed.interval" type="text"
                               class="number-stepper__input"
-                              @input="updateNumberField(selectedScheme.panels.timed, 'interval', $event.target.value)"
-                            />
+                              @input="updateNumberField(selectedScheme.panels.timed, 'interval', $event.target.value)" />
                             <div class="number-stepper__actions">
-                              <button
-                                type="button"
-                                class="number-stepper__btn"
-                                @click="stepNumberField(selectedScheme.panels.timed, 'interval', -10)"
-                              >
+                              <button type="button" class="number-stepper__btn"
+                                @click="stepNumberField(selectedScheme.panels.timed, 'interval', -10)">
                                 <i class="el-icon-minus"></i>
                               </button>
-                              <button
-                                type="button"
-                                class="number-stepper__btn"
-                                @click="stepNumberField(selectedScheme.panels.timed, 'interval', 10)"
-                              >
+                              <button type="button" class="number-stepper__btn"
+                                @click="stepNumberField(selectedScheme.panels.timed, 'interval', 10)">
                                 <i class="el-icon-plus"></i>
                               </button>
                             </div>
@@ -212,25 +145,16 @@
                         <div class="form-section">
                           <div class="field-label">随机模板</div>
                           <div class="dynamic-list">
-                            <div
-                              v-for="(item, index) in selectedScheme.panels.timed.templates"
-                              :key="`timed-${index}`"
-                              class="dynamic-row"
-                            >
+                            <div v-for="(item, index) in selectedScheme.panels.timed.templates" :key="`timed-${index}`"
+                              class="dynamic-row">
                               <el-input v-model="selectedScheme.panels.timed.templates[index]"></el-input>
                               <div class="row-actions">
-                                <button
-                                  type="button"
-                                  class="step-btn"
-                                  @click="removeListItem(selectedScheme.panels.timed.templates, index)"
-                                >
+                                <button type="button" class="step-btn"
+                                  @click="removeListItem(selectedScheme.panels.timed.templates, index)">
                                   <i class="el-icon-minus"></i>
                                 </button>
-                                <button
-                                  type="button"
-                                  class="step-btn"
-                                  @click="addTextListItem(selectedScheme.panels.timed.templates, '新增定时强制话术')"
-                                >
+                                <button type="button" class="step-btn"
+                                  @click="addTextListItem(selectedScheme.panels.timed.templates, '新增定时强制话术')">
                                   <i class="el-icon-plus"></i>
                                 </button>
                               </div>
@@ -248,25 +172,16 @@
                         <div class="form-section compact-section">
                           <div class="field-label">冷场判断时长（秒）</div>
                           <div class="number-stepper">
-                            <input
-                              :value="selectedScheme.panels.awkward.interval"
-                              type="text"
+                            <input :value="selectedScheme.panels.awkward.interval" type="text"
                               class="number-stepper__input"
-                              @input="updateNumberField(selectedScheme.panels.awkward, 'interval', $event.target.value)"
-                            />
+                              @input="updateNumberField(selectedScheme.panels.awkward, 'interval', $event.target.value)" />
                             <div class="number-stepper__actions">
-                              <button
-                                type="button"
-                                class="number-stepper__btn"
-                                @click="stepNumberField(selectedScheme.panels.awkward, 'interval', -10)"
-                              >
+                              <button type="button" class="number-stepper__btn"
+                                @click="stepNumberField(selectedScheme.panels.awkward, 'interval', -10)">
                                 <i class="el-icon-minus"></i>
                               </button>
-                              <button
-                                type="button"
-                                class="number-stepper__btn"
-                                @click="stepNumberField(selectedScheme.panels.awkward, 'interval', 10)"
-                              >
+                              <button type="button" class="number-stepper__btn"
+                                @click="stepNumberField(selectedScheme.panels.awkward, 'interval', 10)">
                                 <i class="el-icon-plus"></i>
                               </button>
                             </div>
@@ -286,25 +201,16 @@
                         <div class="form-section">
                           <div class="field-label">随机模板</div>
                           <div class="dynamic-list">
-                            <div
-                              v-for="(item, index) in selectedScheme.panels.awkward.templates"
-                              :key="`awkward-${index}`"
-                              class="dynamic-row"
-                            >
+                            <div v-for="(item, index) in selectedScheme.panels.awkward.templates"
+                              :key="`awkward-${index}`" class="dynamic-row">
                               <el-input v-model="selectedScheme.panels.awkward.templates[index]"></el-input>
                               <div class="row-actions">
-                                <button
-                                  type="button"
-                                  class="step-btn"
-                                  @click="removeListItem(selectedScheme.panels.awkward.templates, index)"
-                                >
+                                <button type="button" class="step-btn"
+                                  @click="removeListItem(selectedScheme.panels.awkward.templates, index)">
                                   <i class="el-icon-minus"></i>
                                 </button>
-                                <button
-                                  type="button"
-                                  class="step-btn"
-                                  @click="addTextListItem(selectedScheme.panels.awkward.templates, '新增防冷场话术')"
-                                >
+                                <button type="button" class="step-btn"
+                                  @click="addTextListItem(selectedScheme.panels.awkward.templates, '新增防冷场话术')">
                                   <i class="el-icon-plus"></i>
                                 </button>
                               </div>
@@ -317,25 +223,16 @@
                         <div class="form-section compact-section">
                           <div class="field-label">只处理最新的几条消息</div>
                           <div class="number-stepper">
-                            <input
-                              :value="selectedScheme.panels.manual.latestCount"
-                              type="text"
+                            <input :value="selectedScheme.panels.manual.latestCount" type="text"
                               class="number-stepper__input"
-                              @input="updateNumberField(selectedScheme.panels.manual, 'latestCount', $event.target.value)"
-                            />
+                              @input="updateNumberField(selectedScheme.panels.manual, 'latestCount', $event.target.value)" />
                             <div class="number-stepper__actions">
-                              <button
-                                type="button"
-                                class="number-stepper__btn"
-                                @click="stepNumberField(selectedScheme.panels.manual, 'latestCount', -1)"
-                              >
+                              <button type="button" class="number-stepper__btn"
+                                @click="stepNumberField(selectedScheme.panels.manual, 'latestCount', -1)">
                                 <i class="el-icon-minus"></i>
                               </button>
-                              <button
-                                type="button"
-                                class="number-stepper__btn"
-                                @click="stepNumberField(selectedScheme.panels.manual, 'latestCount', 1)"
-                              >
+                              <button type="button" class="number-stepper__btn"
+                                @click="stepNumberField(selectedScheme.panels.manual, 'latestCount', 1)">
                                 <i class="el-icon-plus"></i>
                               </button>
                             </div>
@@ -364,25 +261,16 @@
                         <div class="form-section compact-section">
                           <div class="field-label">只处理最新的几条消息</div>
                           <div class="number-stepper">
-                            <input
-                              :value="selectedScheme.panels.danmu.latestCount"
-                              type="text"
+                            <input :value="selectedScheme.panels.danmu.latestCount" type="text"
                               class="number-stepper__input"
-                              @input="updateNumberField(selectedScheme.panels.danmu, 'latestCount', $event.target.value)"
-                            />
+                              @input="updateNumberField(selectedScheme.panels.danmu, 'latestCount', $event.target.value)" />
                             <div class="number-stepper__actions">
-                              <button
-                                type="button"
-                                class="number-stepper__btn"
-                                @click="stepNumberField(selectedScheme.panels.danmu, 'latestCount', -1)"
-                              >
+                              <button type="button" class="number-stepper__btn"
+                                @click="stepNumberField(selectedScheme.panels.danmu, 'latestCount', -1)">
                                 <i class="el-icon-minus"></i>
                               </button>
-                              <button
-                                type="button"
-                                class="number-stepper__btn"
-                                @click="stepNumberField(selectedScheme.panels.danmu, 'latestCount', 1)"
-                              >
+                              <button type="button" class="number-stepper__btn"
+                                @click="stepNumberField(selectedScheme.panels.danmu, 'latestCount', 1)">
                                 <i class="el-icon-plus"></i>
                               </button>
                             </div>
@@ -397,30 +285,15 @@
                         <div class="form-section">
                           <div class="field-label">关键词回复</div>
                           <div class="dynamic-list">
-                            <div
-                              v-for="(item, index) in selectedScheme.panels.danmu.keywordReplies"
-                              :key="`keyword-${index}`"
-                              class="dynamic-row pair-row"
-                            >
-                              <el-input
-                                v-model="item.keyword"
-                                class="pair-keyword"
-                                placeholder="关键词"
-                              ></el-input>
+                            <div v-for="(item, index) in selectedScheme.panels.danmu.keywordReplies"
+                              :key="`keyword-${index}`" class="dynamic-row pair-row">
+                              <el-input v-model="item.keyword" class="pair-keyword" placeholder="关键词"></el-input>
                               <el-input v-model="item.reply" placeholder="回复内容"></el-input>
                               <div class="row-actions">
-                                <button
-                                  type="button"
-                                  class="step-btn"
-                                  @click="removeKeywordReply(index)"
-                                >
+                                <button type="button" class="step-btn" @click="removeKeywordReply(index)">
                                   <i class="el-icon-minus"></i>
                                 </button>
-                                <button
-                                  type="button"
-                                  class="step-btn"
-                                  @click="addKeywordReply"
-                                >
+                                <button type="button" class="step-btn" @click="addKeywordReply">
                                   <i class="el-icon-plus"></i>
                                 </button>
                               </div>
@@ -431,25 +304,16 @@
                         <div class="form-section">
                           <div class="field-label">屏蔽词跳过</div>
                           <div class="dynamic-list">
-                            <div
-                              v-for="(item, index) in selectedScheme.panels.danmu.blockedKeywords"
-                              :key="`block-${index}`"
-                              class="dynamic-row"
-                            >
+                            <div v-for="(item, index) in selectedScheme.panels.danmu.blockedKeywords"
+                              :key="`block-${index}`" class="dynamic-row">
                               <el-input v-model="selectedScheme.panels.danmu.blockedKeywords[index]"></el-input>
                               <div class="row-actions">
-                                <button
-                                  type="button"
-                                  class="step-btn"
-                                  @click="removeListItem(selectedScheme.panels.danmu.blockedKeywords, index)"
-                                >
+                                <button type="button" class="step-btn"
+                                  @click="removeListItem(selectedScheme.panels.danmu.blockedKeywords, index)">
                                   <i class="el-icon-minus"></i>
                                 </button>
-                                <button
-                                  type="button"
-                                  class="step-btn"
-                                  @click="addTextListItem(selectedScheme.panels.danmu.blockedKeywords, '新增屏蔽词')"
-                                >
+                                <button type="button" class="step-btn"
+                                  @click="addTextListItem(selectedScheme.panels.danmu.blockedKeywords, '新增屏蔽词')">
                                   <i class="el-icon-plus"></i>
                                 </button>
                               </div>
@@ -458,33 +322,22 @@
                         </div>
                       </template>
 
-                      <template
-                        v-else-if="
-                          ['welcome', 'like', 'follow', 'gift'].includes(tab.name)
-                        "
-                      >
+                      <template v-else-if="
+                        ['welcome', 'like', 'follow', 'gift'].includes(tab.name)
+                      ">
                         <div class="form-section compact-section">
                           <div class="field-label">只处理最新的几条消息</div>
                           <div class="number-stepper">
-                            <input
-                              :value="selectedScheme.panels[tab.name].latestCount"
-                              type="text"
+                            <input :value="selectedScheme.panels[tab.name].latestCount" type="text"
                               class="number-stepper__input"
-                              @input="updateNumberField(selectedScheme.panels[tab.name], 'latestCount', $event.target.value)"
-                            />
+                              @input="updateNumberField(selectedScheme.panels[tab.name], 'latestCount', $event.target.value)" />
                             <div class="number-stepper__actions">
-                              <button
-                                type="button"
-                                class="number-stepper__btn"
-                                @click="stepNumberField(selectedScheme.panels[tab.name], 'latestCount', -1)"
-                              >
+                              <button type="button" class="number-stepper__btn"
+                                @click="stepNumberField(selectedScheme.panels[tab.name], 'latestCount', -1)">
                                 <i class="el-icon-minus"></i>
                               </button>
-                              <button
-                                type="button"
-                                class="number-stepper__btn"
-                                @click="stepNumberField(selectedScheme.panels[tab.name], 'latestCount', 1)"
-                              >
+                              <button type="button" class="number-stepper__btn"
+                                @click="stepNumberField(selectedScheme.panels[tab.name], 'latestCount', 1)">
                                 <i class="el-icon-plus"></i>
                               </button>
                             </div>
@@ -496,25 +349,16 @@
                             {{ tab.name === "welcome" ? "固定模板" : "随机模板" }}
                           </div>
                           <div class="dynamic-list">
-                            <div
-                              v-for="(item, index) in selectedScheme.panels[tab.name].templates"
-                              :key="`${tab.name}-${index}`"
-                              class="dynamic-row"
-                            >
+                            <div v-for="(item, index) in selectedScheme.panels[tab.name].templates"
+                              :key="`${tab.name}-${index}`" class="dynamic-row">
                               <el-input v-model="selectedScheme.panels[tab.name].templates[index]"></el-input>
                               <div class="row-actions">
-                                <button
-                                  type="button"
-                                  class="step-btn"
-                                  @click="removeListItem(selectedScheme.panels[tab.name].templates, index)"
-                                >
+                                <button type="button" class="step-btn"
+                                  @click="removeListItem(selectedScheme.panels[tab.name].templates, index)">
                                   <i class="el-icon-minus"></i>
                                 </button>
-                                <button
-                                  type="button"
-                                  class="step-btn"
-                                  @click="addTextListItem(selectedScheme.panels[tab.name].templates, getTemplatePlaceholder(tab.name))"
-                                >
+                                <button type="button" class="step-btn"
+                                  @click="addTextListItem(selectedScheme.panels[tab.name].templates, getTemplatePlaceholder(tab.name))">
                                   <i class="el-icon-plus"></i>
                                 </button>
                               </div>
@@ -564,12 +408,12 @@ const createFeedbackPanel = (latestCount, templates) => ({
 const createDanmuPanel = () => ({
   latestCount: 5,
   fixedTemplate:
-    '📢 "{name}" 说:"{text}"。你回答问题的时候记得优先称呼他的简称，如果 "{name}" 超过 3 个字，就从 "{name}" 里提取关键词缩写成两三个字作为简称。',
+    "【弹幕】{name} 说: [{text}]",
   keywordReplies: [
     { keyword: "合作", reply: "{name} 想合作，你让他私信主播联系" },
     { keyword: "价格", reply: "{name} 问价格，你可以告诉他今天的优惠" },
   ],
-  blockedKeywords: ["垃圾", "100遍", "伊斯兰教", "基督教"],
+  blockedKeywords: ["垃圾", "100遍", "伊斯兰教", "基督教", "佛教", "股票", "风水", "算命", "比特币", "区块链", "主席", "书记", "习大大", "习近平", "毛泽东", "邓小平", "江泽民", "胡锦涛", "你妈", "傻逼", "举报", "共产党", "违规", "无人", "少羽", "音乐", "运营", "管理员", "开发者", "音量", "退款", "无聊"],
 });
 
 const createDefaultPanels = () => ({
@@ -578,7 +422,7 @@ const createDefaultPanels = () => ({
     interval: 180,
     sequential: false,
     templates: [
-      "321上一下链接，制造一下库存的紧张感",
+      "三二一上一下链接，制造一下库存的紧张感",
       "说3个让用户非买不可的理由",
       "今天直播间有哪些优惠给大家介绍下",
     ],
@@ -589,24 +433,24 @@ const createDefaultPanels = () => ({
     sequential: false,
     interruptEnabled: false,
     templates: [
-      "提醒大家可以把想看的商品打在公屏上",
-      "强调一下直播间福利和限时活动",
-      "主动问一下大家更关注价格还是功能",
+      "现在冷场了，从你上次冷场聊的话题从找一个点接着聊。你可以这样开头'刚才我们聊到...'",
+      "随便强调一下直播间福利和限时活动",
+      "问观众还有什么问题或者想看的内容，调动一下氛围",
     ],
   },
   manual: {
     latestCount: 10,
-    fixedTemplate: "📢 老板 说: {text}",
+    fixedTemplate: "【Admin】{text}",
   },
   basic: {
     ignoreNumericName: true,
     ignoreMaskedName: true,
   },
-  welcome: createFeedbackPanel(10, ['🎉 欢迎 {name} 来到直播间']),
+  welcome: createFeedbackPanel(3, ['【进场】{name} 进入直播间']),
   danmu: createDanmuPanel(),
-  like: createFeedbackPanel(3, ["👍 感谢 {name} 点赞支持，欢迎继续互动"]),
-  follow: createFeedbackPanel(3, ["⭐ {name} 关注你了，分析下他的网名"]),
-  gift: createFeedbackPanel(3, ["🎁 感谢 {name} 送来的 {giftName}，热情回应一下"]),
+  like: createFeedbackPanel(3, ["【点赞】{name} 给你点了 {count} 个赞"]),
+  follow: createFeedbackPanel(3, ["【关注】{name} 关注了你"]),
+  gift: createFeedbackPanel(3, ["【送礼】{name} 给你送了 {count} 个 {giftName}"]),
 });
 
 const createScheme = (roomId, platform, index = 0) => ({
@@ -691,9 +535,9 @@ const normalizePanels = (rawPanels = {}) => {
         : defaults.danmu.fixedTemplate;
     merged.danmu.keywordReplies = Array.isArray(rawPanels.danmu.keywordReplies)
       ? rawPanels.danmu.keywordReplies.map((item) => ({
-          keyword: item && item.keyword ? String(item.keyword) : "",
-          reply: item && item.reply ? String(item.reply) : "",
-        }))
+        keyword: item && item.keyword ? String(item.keyword) : "",
+        reply: item && item.reply ? String(item.reply) : "",
+      }))
       : defaults.danmu.keywordReplies;
     merged.danmu.blockedKeywords = Array.isArray(rawPanels.danmu.blockedKeywords)
       ? rawPanels.danmu.blockedKeywords.map((item) => String(item))
@@ -764,8 +608,8 @@ export default {
       editSnapshot: "",
       platformOptions: [
         { label: "抖音", value: "抖音" },
-        { label: "TikTok", value: "TikTok" },
-        { label: "视频号", value: "视频号" },
+        // { label: "TikTok", value: "TikTok" },
+        // { label: "视频号", value: "视频号" },
       ],
       tabs: [
         { label: "定时强制", name: "timed" },
@@ -967,7 +811,7 @@ export default {
             this.$message.error((data && data.msg) || "方案删除失败");
           });
         })
-        .catch(() => {});
+        .catch(() => { });
     },
     addTextListItem(list, value) {
       list.push(value);
@@ -1171,7 +1015,7 @@ export default {
   border-radius: 0 10px 10px 0;
 }
 
-.platform-switch /deep/ .el-radio-button__orig-radio:checked + .el-radio-button__inner {
+.platform-switch /deep/ .el-radio-button__orig-radio:checked+.el-radio-button__inner {
   background: #edf8f1;
   border-color: #67c587;
   color: #2f9f59;
@@ -1200,7 +1044,7 @@ export default {
   transition: all 0.2s ease;
 }
 
-.scheme-item + .scheme-item {
+.scheme-item+.scheme-item {
   margin-top: 14px;
 }
 
@@ -1507,7 +1351,7 @@ export default {
   cursor: pointer;
 }
 
-.number-stepper__btn + .number-stepper__btn {
+.number-stepper__btn+.number-stepper__btn {
   border-left: 1px solid #d0d5dd;
 }
 
@@ -1558,7 +1402,7 @@ export default {
   font-size: 15px;
 }
 
-.step-btn + .step-btn {
+.step-btn+.step-btn {
   border-left: 1px solid #d8e1ee;
 }
 

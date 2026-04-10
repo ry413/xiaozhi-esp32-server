@@ -14,17 +14,22 @@ import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.Parameters;
 import io.swagger.v3.oas.annotations.tags.Tag;
+import jakarta.validation.Valid;
 import lombok.AllArgsConstructor;
 import xiaozhi.common.constant.Constant;
 import xiaozhi.common.page.PageData;
+import xiaozhi.common.exception.ErrorCode;
 import xiaozhi.common.utils.Result;
 import xiaozhi.common.validator.ValidatorUtils;
 import xiaozhi.modules.activation.dto.ActivationCodeRedeemDTO;
+import xiaozhi.modules.activation.dto.UserBalanceConsumeDTO;
 import xiaozhi.modules.activation.dto.UserBenefitLogPageDTO;
 import xiaozhi.modules.activation.entity.UserBalanceLogEntity;
 import xiaozhi.modules.activation.entity.UserMembershipEntity;
 import xiaozhi.modules.activation.service.ActivationCodeService;
 import xiaozhi.modules.activation.vo.UserBenefitVO;
+import xiaozhi.modules.device.entity.DeviceEntity;
+import xiaozhi.modules.device.service.DeviceService;
 import xiaozhi.modules.security.user.SecurityUser;
 
 @AllArgsConstructor
@@ -34,6 +39,7 @@ import xiaozhi.modules.security.user.SecurityUser;
 public class ActivationCodeController {
 
     private final ActivationCodeService activationCodeService;
+    private final DeviceService deviceService;
 
     @PostMapping("/redeem")
     @Operation(summary = "兑换激活码")
@@ -49,6 +55,30 @@ public class ActivationCodeController {
     @RequiresPermissions("sys:role:normal")
     public Result<UserBenefitVO> getMyBenefit() {
         return new Result<UserBenefitVO>().ok(activationCodeService.getUserBenefit(SecurityUser.getUserId()));
+    }
+
+    @GetMapping("/device/{deviceId}/benefits")
+    @Operation(summary = "按设备查询所属用户权益摘要")
+    public Result<UserBenefitVO> getDeviceOwnerBenefit(@org.springframework.web.bind.annotation.PathVariable String deviceId) {
+        DeviceEntity device = deviceService.selectById(deviceId);
+        if (device == null || device.getUserId() == null) {
+            return new Result<UserBenefitVO>().error(ErrorCode.DEVICE_NOT_EXIST);
+        }
+
+        return new Result<UserBenefitVO>().ok(activationCodeService.getUserBenefit(device.getUserId()));
+    }
+
+    @PostMapping("/device/{deviceId}/balance/consume")
+    @Operation(summary = "按设备扣减所属用户点卡余额")
+    public Result<Void> consumeDeviceOwnerBalance(@org.springframework.web.bind.annotation.PathVariable String deviceId,
+            @Valid @RequestBody UserBalanceConsumeDTO dto) {
+        DeviceEntity device = deviceService.selectById(deviceId);
+        if (device == null || device.getUserId() == null) {
+            return new Result<Void>().error(ErrorCode.DEVICE_NOT_EXIST);
+        }
+
+        activationCodeService.consumeUserBalance(device.getUserId(), dto);
+        return new Result<>();
     }
 
     @GetMapping("/me/balance/logs")

@@ -5,6 +5,7 @@ import xiaozhi.common.service.BaseService;
 import xiaozhi.modules.activation.dto.ActivationCodeBatchCreateDTO;
 import xiaozhi.modules.activation.dto.ActivationCodeBatchPageDTO;
 import xiaozhi.modules.activation.dto.ActivationCodePageDTO;
+import xiaozhi.modules.activation.dto.UserBalanceConsumeDTO;
 import xiaozhi.modules.activation.dto.UserBenefitLogPageDTO;
 import xiaozhi.modules.activation.entity.ActivationCodeEntity;
 import xiaozhi.modules.activation.entity.UserBalanceLogEntity;
@@ -28,6 +29,8 @@ public interface ActivationCodeService extends BaseService<ActivationCodeEntity>
     void redeemCode(Long userId, String code);
 
     UserBenefitVO getUserBenefit(Long userId);
+
+    void consumeUserBalance(Long userId, UserBalanceConsumeDTO dto);
 
     PageData<UserBalanceLogEntity> pageUserBalanceLog(Long userId, UserBenefitLogPageDTO dto);
 

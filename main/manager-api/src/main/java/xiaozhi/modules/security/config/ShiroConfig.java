@@ -89,6 +89,7 @@ public class ShiroConfig {
         filterMap.put("/user/wechat/login", "anon");
         // 将config路径使用server服务过滤器
         filterMap.put("/config/**", "server");
+        filterMap.put("/activation-code/device/**", "server");
         filterMap.put("/device/directChat/**", "server");
         filterMap.put("/device/online/**", "server");
         filterMap.put("/agent/chat-history/report", "server");

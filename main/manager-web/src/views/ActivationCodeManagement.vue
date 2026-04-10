@@ -216,10 +216,10 @@
         <el-button type="danger" :loading="voidLoading" @click="submitVoidCode">确认作废</el-button>
       </span>
     </el-dialog>
-
+<!-- 
     <el-footer>
       <VersionFooter />
-    </el-footer>
+    </el-footer> -->
   </div>
 </template>
 

@@ -516,7 +516,7 @@ export default {
         confirmButtonText: "生成",
         cancelButtonText: "取消",
         inputType: "textarea",
-        inputPlaceholder: "例如：我是一个卖猫粮的温柔主播，帮我生成一段亲切、自然、带一点促单感的话术",
+        inputPlaceholder: "请输入你的产品名称, 产品特点, 产品价格等信息, 例如: 我是卖土豆的, 土豆很便宜, 两块钱一袋, 一袋五十个, 特点是特别圆, 口感细腻, 如同吃鸽子蛋.",
         inputValidator: (value) => {
           if (!value || !value.trim()) {
             return "请输入生成要求";

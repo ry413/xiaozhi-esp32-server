@@ -325,4 +325,15 @@ public class DeviceController {
             return new Result<String>().error("查询在线状态失败: " + e.getMessage());
         }
     }
+
+    @GetMapping("/user/{deviceId}")
+    @Operation(summary = "按设备查询所属用户ID")
+    public Result<Long> getDeviceUserId(@PathVariable String deviceId) {
+        DeviceEntity deviceById = deviceService.selectById(deviceId);
+        if (deviceById == null || deviceById.getUserId() == null) {
+            return new Result<Long>().error(ErrorCode.DEVICE_NOT_EXIST);
+        }
+
+        return new Result<Long>().ok(deviceById.getUserId());
+    }
 }

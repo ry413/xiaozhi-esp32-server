@@ -92,6 +92,7 @@ public class ShiroConfig {
         filterMap.put("/activation-code/device/**", "server");
         filterMap.put("/device/directChat/**", "server");
         filterMap.put("/device/online/**", "server");
+        filterMap.put("/device/user/**", "server");
         filterMap.put("/agent/chat-history/report", "server");
         filterMap.put("/agent/chat-history/download/**", "anon");
         filterMap.put("/agent/chat-summary/**", "server");

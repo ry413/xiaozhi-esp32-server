@@ -8,7 +8,7 @@
           <el-card class="scheme-sidebar" shadow="never">
             <div class="panel-title">方案列表</div>
 
-            <el-input v-model.trim="newSchemeRoomId" class="room-input" placeholder="输入直播间 ID 后点添加" clearable
+            <el-input v-model.trim="newSchemeRoomId" class="room-input" placeholder="输入直播间 ID 或 分享链接 后点添加" clearable
               @keyup.enter.native="handleAddScheme">
               <i slot="prefix" class="el-icon-plus"></i>
             </el-input>
@@ -95,7 +95,7 @@
                       </div>
                     </template>
                     <template v-else>
-                      <div class="summary-room-text">{{ selectedScheme.roomId }}</div>
+                      <div class="summary-room-text">直播间id: {{ selectedScheme.roomId }}</div>
                       <button type="button" class="edit-trigger" @click="startEdit('roomId')">
                         <i class="el-icon-edit-outline"></i>
                       </button>
@@ -721,9 +721,9 @@ export default {
         this.$message.error(error.message || "导入失败，请确认剪切板内容为合法 JSON");
       }
     },
-    handleAddScheme() {
+    async handleAddScheme() {
       if (!this.newSchemeRoomId) {
-        this.$message.warning("请输入直播间 ID");
+        this.$message.warning("请输入直播间 ID 或分享链接");
         return;
       }
 
@@ -731,7 +731,12 @@ export default {
         return;
       }
 
-      const roomId = this.newSchemeRoomId;
+      const roomId = await this.getDouyinRoomId(this.newSchemeRoomId);
+      if (!roomId) {
+        this.$message.warning("未能解析出直播间 ID");
+        return;
+      }
+
       const payload = this.buildLivePlanPayload(roomId);
       this.addPlanLoading = true;
 
@@ -922,6 +927,30 @@ export default {
         this.$message.error((data && data.msg) || "方案保存失败");
       });
     },
+    async getDouyinRoomId(input) {
+      if (!input) return null;
+
+      const trimmedInput = input.trim();
+      if (/^\d{6,}$/.test(trimmedInput)) {
+        return trimmedInput;
+      }
+
+      const directMatch = trimmedInput.match(/live\.douyin\.com\/(\d+)/);
+      if (directMatch) {
+        return directMatch[1];
+      }
+
+      return new Promise((resolve) => {
+        Api.livePlan.getDouyinRoomId(trimmedInput, ({ data }) => {
+          if (data && data.code === 0 && data.data) {
+            resolve(data.data);
+            return;
+          }
+
+          resolve(null);
+        });
+      });
+    }
   },
 };
 </script>

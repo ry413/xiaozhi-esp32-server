@@ -521,12 +521,15 @@ export default {
     formatDurationSeconds(value) {
       const totalSeconds = Number(value);
       if (!Number.isFinite(totalSeconds) || totalSeconds <= 0) {
-        return "0分0秒";
+        return "0分";
       }
 
+      const hours = Math.floor(totalSeconds / 3600);
       const minutes = Math.floor(totalSeconds / 60);
-      const seconds = totalSeconds % 60;
-      return `${minutes}分${seconds}秒`;
+      if (hours > 0) {
+        return `${hours}小时${minutes % 60}分`;
+      }
+      return `${minutes}分`;
     },
     startRobotNameEdit() {
       if (!this.selectedRobot) {
@@ -808,7 +811,14 @@ export default {
       if (!this.pendingMessage) {
         return;
       }
-      this.addConsoleMessage(`🧭 导播指令: ${this.pendingMessage}`);
+      // this.addConsoleMessage(`🧭 导播指令: ${this.pendingMessage}`);
+      Api.liveStreaming.sendManualMsg(this.selectedRobot.mac, { message: this.pendingMessage }, ({ data }) => {
+        if (data && data.code === 0) {
+          this.$message.success("消息已发送");
+          return;
+        }
+        this.$message.error((data && data.msg) || "消息发送失败");
+      });
       this.pendingMessage = "";
     },
     scrollConsoleToBottom() {

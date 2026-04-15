@@ -1,7 +1,14 @@
 package xiaozhi.modules.liveplan.controller;
 
+import java.net.URI;
+import java.net.http.HttpClient;
+import java.net.http.HttpRequest;
+import java.net.http.HttpResponse;
 import java.util.Map;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
+import org.apache.commons.lang3.StringUtils;
 import org.apache.shiro.authz.annotation.RequiresPermissions;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -37,6 +44,11 @@ public class LivePlanController {
 
     private final LivePlanService livePlanService;
 
+    private static final Pattern LIVE_ROOM_ID_PATTERN = Pattern.compile("live\\.douyin\\.com/(\\d+)");
+    private static final Pattern WEB_RID_PATTERN = Pattern.compile("\"webRid\":\"(\\d+)\"");
+    private static final Pattern WEB_RID_ESCAPED_PATTERN = Pattern.compile("\\\\\"webRid\\\\\":\\\\\"(\\d+)\\\\\"");
+    private static final Pattern SHORT_URL_PATTERN = Pattern.compile("https?://v\\.douyin\\.com/[A-Za-z0-9_]+/?");
+
     @GetMapping("/livePlan")
     @Operation(summary = "我的直播方案分页")
     @RequiresPermissions("sys:role:normal")
@@ -67,6 +79,74 @@ public class LivePlanController {
     @RequiresPermissions("sys:role:normal")
     public Result<LivePlanEntity> getMineById(@PathVariable String planNo) {
         return new Result<LivePlanEntity>().ok(livePlanService.getMineByPlanNo(SecurityUser.getUserId(), planNo));
+    }
+
+    @GetMapping("/livePlan/douyinRoomId")
+    @Operation(summary = "解析抖音分享链接中的直播间ID")
+    @RequiresPermissions("sys:role:normal")
+    public Result<String> getDouyinRoomId(@RequestParam String input) {
+        if (StringUtils.isBlank(input)) {
+            return new Result<String>().error("输入不能为空");
+        }
+
+        String trimmedInput = input.trim();
+        if (trimmedInput.matches("^\\d{6,}$")) {
+            return new Result<String>().ok(trimmedInput);
+        }
+
+        Matcher liveMatcher = LIVE_ROOM_ID_PATTERN.matcher(trimmedInput);
+        if (liveMatcher.find()) {
+            return new Result<String>().ok(liveMatcher.group(1));
+        }
+
+        Matcher shortUrlMatcher = SHORT_URL_PATTERN.matcher(trimmedInput);
+        if (!shortUrlMatcher.find()) {
+            return new Result<String>().error("未能解析出直播间ID");
+        }
+
+        try {
+            HttpClient client = HttpClient.newBuilder()
+                    .followRedirects(HttpClient.Redirect.ALWAYS)
+                    .build();
+            HttpRequest request = HttpRequest.newBuilder(URI.create(shortUrlMatcher.group()))
+                    .header("User-Agent", "Mozilla/5.0")
+                    .GET()
+                    .build();
+            HttpResponse<String> response = client.send(request, HttpResponse.BodyHandlers.ofString());
+
+            String body = response.body();
+            if (StringUtils.isBlank(body)) {
+                return new Result<String>().error("未能解析出直播间ID");
+            }
+
+            String webRid = extractFirstNumericMatch(body, WEB_RID_PATTERN);
+            if (StringUtils.isBlank(webRid)) {
+                webRid = extractFirstNumericMatch(body, WEB_RID_ESCAPED_PATTERN);
+            }
+            if (StringUtils.isNotBlank(webRid)) {
+                return new Result<String>().ok(webRid);
+            }
+
+            Matcher fallbackLiveMatcher = LIVE_ROOM_ID_PATTERN.matcher(body);
+            if (fallbackLiveMatcher.find()) {
+                return new Result<String>().ok(fallbackLiveMatcher.group(1));
+            }
+
+            return new Result<String>().error("未能解析出直播间ID");
+        } catch (Exception e) {
+            return new Result<String>().error("解析抖音链接失败");
+        }
+    }
+
+    private String extractFirstNumericMatch(String text, Pattern pattern) {
+        Matcher matcher = pattern.matcher(text);
+        while (matcher.find()) {
+            String value = matcher.group(1);
+            if (StringUtils.isNotBlank(value)) {
+                return value;
+            }
+        }
+        return null;
     }
 
     @PostMapping("/livePlan")

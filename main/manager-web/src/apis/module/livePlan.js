@@ -2,6 +2,29 @@ import { getServiceUrl } from '../api';
 import RequestService from '../httpRequest';
 
 export default {
+    getDouyinRoomId(input, callback) {
+        const queryParams = new URLSearchParams({
+            input,
+        }).toString();
+
+        RequestService.sendRequest()
+            .url(`${getServiceUrl()}/livePlan/douyinRoomId?${queryParams}`)
+            .method('GET')
+            .success((res) => {
+                RequestService.clearRequestTime()
+                callback(res)
+            })
+            .fail((res) => {
+                RequestService.clearRequestTime()
+                callback(res)
+            })
+            .networkFail((err) => {
+                console.error('请求失败:', err)
+                RequestService.reAjaxFun(() => {
+                    this.getDouyinRoomId(input, callback)
+                })
+            }).send()
+    },
     getLivePlanList(params, callback) {
         const queryParams = new URLSearchParams({
             page: params.page,

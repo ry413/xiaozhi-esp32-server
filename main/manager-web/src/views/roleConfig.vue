@@ -444,7 +444,8 @@ export default {
       },
       dynamicTags: [],
       inputVisible: false,
-      inputValue: ''
+      inputValue: '',
+      generateScriptDraft: ''
     };
   },
   methods: {
@@ -516,6 +517,7 @@ export default {
         confirmButtonText: "生成",
         cancelButtonText: "取消",
         inputType: "textarea",
+        inputValue: this.generateScriptDraft,
         inputPlaceholder: "请输入你的产品名称, 产品特点, 产品价格等信息, 例如: 我是卖土豆的, 土豆很便宜, 两块钱一袋, 一袋五十个, 特点是特别圆, 口感细腻, 如同吃鸽子蛋.",
         inputValidator: (value) => {
           if (!value || !value.trim()) {
@@ -524,6 +526,8 @@ export default {
           return true;
         },
         beforeClose: (action, instance, done) => {
+          this.generateScriptDraft = instance.inputValue || "";
+
           if (action !== "confirm") {
             done();
             return;
@@ -543,6 +547,7 @@ export default {
 
             if (data && data.code === 0) {
               this.form.systemPrompt = data.data || "";
+              this.generateScriptDraft = "";
               done();
               this.$message.success({
                 message: "智能话术已生成",

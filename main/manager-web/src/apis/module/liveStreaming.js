@@ -90,4 +90,25 @@ export default {
                 });
             }).send();
     },
+    // 发送手动指挥消息
+    sendManualMsg(deviceId, params, callback) {
+        RequestService.sendRequest()
+            .url(`${liveStreamingApi}/monitors/manual/${deviceId}`)
+            .method('POST')
+            .data(params)
+            .success((res) => {
+                RequestService.clearRequestTime();
+                callback(res);
+            })
+            .fail((res) => {
+                RequestService.clearRequestTime();
+                callback(res);
+            })
+            .networkFail((err) => {
+                console.error('发送手动消息失败:', err);
+                RequestService.reAjaxFun(() => {
+                    this.sendManualMsg(deviceId, params, callback);
+                });
+            }).send();
+    }
 }

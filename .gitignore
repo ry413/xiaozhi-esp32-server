@@ -190,3 +190,23 @@ uploadfile
 !main/xiaozhi-server/**/*.json
 
 application-local.yml
+
+# manager-mobile
+main/manager-mobile/node_modules/
+main/manager-mobile/dist/
+main/manager-mobile/.hbuilderx/
+main/manager-mobile/.stylelintcache
+main/manager-mobile/.eslintcache
+main/manager-mobile/docs/.vitepress/dist/
+main/manager-mobile/docs/.vitepress/cache/
+main/manager-mobile/src/types/
+main/manager-mobile/env/.env.local
+main/manager-mobile/env/.env.development.local
+main/manager-mobile/env/.env.production.local
+main/manager-mobile/env/.env.test.local
+
+# manager-web local env overrides
+main/manager-web/.env.local
+main/manager-web/.env.development.local
+main/manager-web/.env.production.local
+main/manager-web/.env.test.local

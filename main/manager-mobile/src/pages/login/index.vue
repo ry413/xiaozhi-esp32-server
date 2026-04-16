@@ -388,11 +388,11 @@ onMounted(async () => {
             </text>
           </view>
 
-          <view class="forgot-password">
+          <!-- <view class="forgot-password">
             <text class="forgot-text" @click="goToForgotPassword">
               {{ t('login.forgotPassword') }}
             </text>
-          </view>
+          </view> -->
         </view>
 
         <view class="policy-links">

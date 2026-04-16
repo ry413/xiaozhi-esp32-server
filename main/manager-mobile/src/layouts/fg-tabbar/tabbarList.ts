@@ -37,6 +37,22 @@ export const tabbarList: FgTabBarItem[] = [
     iconType: 'uiLib',
   },
   {
+    iconPath: 'static/tabbar/device.png',
+    selectedIconPath: 'static/tabbar/device_activate.png',
+    pagePath: 'pages/director-desk/index',
+    text: '导播',
+    icon: 'i-carbon-video',
+    iconType: 'uiLib',
+  },
+  {
+    iconPath: 'static/tabbar/example.png',
+    selectedIconPath: 'static/tabbar/exampleHL.png',
+    pagePath: 'pages/maihuo-config/index',
+    text: '方案',
+    icon: 'i-carbon-store',
+    iconType: 'uiLib',
+  },
+  {
     iconPath: 'static/tabbar/network.png',
     selectedIconPath: 'static/tabbar/network_activate.png',
     pagePath: 'pages/device-config/index',

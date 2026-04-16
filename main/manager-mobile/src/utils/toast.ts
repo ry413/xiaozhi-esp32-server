@@ -49,7 +49,7 @@ export function showToast(options: ToastOptions | string) {
     duration: mergedOptions.duration,
     position: positionMap[mergedOptions.position],
     icon: mergedOptions.icon || iconMap[mergedOptions.type],
-    mask: true,
+    mask: false,
   })
 }
 

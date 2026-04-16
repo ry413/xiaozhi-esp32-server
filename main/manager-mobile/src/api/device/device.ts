@@ -69,3 +69,24 @@ export function unbindDevice(deviceId: string) {
     deviceId,
   })
 }
+
+export function getDeviceStatus(agentId: string) {
+  return http.Post(`/device/bind/${agentId}`, {}, {
+    meta: {
+      ignoreAuth: false,
+      toast: false,
+    },
+    cacheFor: {
+      expire: 0,
+    },
+  })
+}
+
+export function sendDeviceCommand(deviceId: string, data: Record<string, any>) {
+  return http.Post(`/device/commands/${deviceId}`, data, {
+    meta: {
+      ignoreAuth: false,
+      toast: false,
+    },
+  })
+}

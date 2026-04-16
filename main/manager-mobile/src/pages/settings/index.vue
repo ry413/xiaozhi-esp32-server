@@ -11,7 +11,7 @@
 <script lang="ts" setup>
 import type { Language } from '@/store/lang'
 import { computed, onMounted, reactive, ref } from 'vue'
-import { useToast } from 'wot-design-uni'
+import { useMessage, useToast } from 'wot-design-uni'
 import { changeLanguage, getCurrentLanguage, getSupportedLanguages, t } from '@/i18n'
 import { useConfigStore } from '@/store'
 import { clearServerBaseUrlOverride, getEnvBaseUrl, getServerBaseUrlOverride, setServerBaseUrlOverride } from '@/utils'
@@ -22,6 +22,7 @@ defineOptions({
 })
 
 const toast = useToast()
+const message = useMessage()
 
 // 缓存信息
 const cacheInfo = reactive({
@@ -272,6 +273,18 @@ function showAbout() {
   })
 }
 
+function handleLogout() {
+  message.confirm({
+    title: '退出登录',
+    msg: '确定退出当前账号吗？',
+    confirmButtonText: '退出',
+    cancelButtonText: '取消',
+  }).then(() => {
+    uni.removeStorageSync('token')
+    uni.reLaunch({ url: '/pages/login/index' })
+  }).catch(() => {})
+}
+
 onMounted(async () => {
   // 仅在非小程序环境加载服务端地址设置
   if (!isMp) {
@@ -476,6 +489,16 @@ onMounted(async () => {
           </scroll-view>
         </view>
       </wd-action-sheet>
+
+      <view class="mt-[16rpx] mb-[32rpx]">
+        <wd-button
+          type="default"
+          custom-class="w-full h-[88rpx] rounded-[20rpx] text-[28rpx] font-semibold bg-white border-[#ffd8d8] text-[#e95b5b] active:bg-[#fff5f5]"
+          @click="handleLogout"
+        >
+          退出登录
+        </wd-button>
+      </view>
 
       <!-- 底部安全距离 -->
       <!-- 底部安全距离 -->

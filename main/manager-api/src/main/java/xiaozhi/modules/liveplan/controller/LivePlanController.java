@@ -4,6 +4,7 @@ import java.net.URI;
 import java.net.http.HttpClient;
 import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
+import java.util.List;
 import java.util.Map;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
@@ -47,7 +48,8 @@ public class LivePlanController {
     private static final Pattern LIVE_ROOM_ID_PATTERN = Pattern.compile("live\\.douyin\\.com/(\\d+)");
     private static final Pattern WEB_RID_PATTERN = Pattern.compile("\"webRid\":\"(\\d+)\"");
     private static final Pattern WEB_RID_ESCAPED_PATTERN = Pattern.compile("\\\\\"webRid\\\\\":\\\\\"(\\d+)\\\\\"");
-    private static final Pattern SHORT_URL_PATTERN = Pattern.compile("https?://v\\.douyin\\.com/[A-Za-z0-9_]+/?");
+    private static final Pattern WEB_RID_FLEXIBLE_PATTERN = Pattern.compile("webRid\\\\?\"\\s*:\\s*\\\\?\"(\\d+)");
+    private static final Pattern SHORT_URL_PATTERN = Pattern.compile("https?://v\\.douyin\\.com/[A-Za-z0-9_-]+/?");
 
     @GetMapping("/livePlan")
     @Operation(summary = "我的直播方案分页")
@@ -106,13 +108,15 @@ public class LivePlanController {
 
         try {
             HttpClient client = HttpClient.newBuilder()
-                    .followRedirects(HttpClient.Redirect.ALWAYS)
+                    .followRedirects(HttpClient.Redirect.NEVER)
                     .build();
-            HttpRequest request = HttpRequest.newBuilder(URI.create(shortUrlMatcher.group()))
-                    .header("User-Agent", "Mozilla/5.0")
-                    .GET()
-                    .build();
-            HttpResponse<String> response = client.send(request, HttpResponse.BodyHandlers.ofString());
+            HttpResponse<String> response = sendWithManualRedirects(client, URI.create(shortUrlMatcher.group()));
+
+            String finalUri = response.uri().toString();
+            String roomIdFromUri = extractFirstNumericMatch(finalUri, LIVE_ROOM_ID_PATTERN);
+            if (StringUtils.isNotBlank(roomIdFromUri)) {
+                return new Result<String>().ok(roomIdFromUri);
+            }
 
             String body = response.body();
             if (StringUtils.isBlank(body)) {
@@ -122,6 +126,9 @@ public class LivePlanController {
             String webRid = extractFirstNumericMatch(body, WEB_RID_PATTERN);
             if (StringUtils.isBlank(webRid)) {
                 webRid = extractFirstNumericMatch(body, WEB_RID_ESCAPED_PATTERN);
+            }
+            if (StringUtils.isBlank(webRid)) {
+                webRid = extractFirstNumericMatch(body, WEB_RID_FLEXIBLE_PATTERN);
             }
             if (StringUtils.isNotBlank(webRid)) {
                 return new Result<String>().ok(webRid);
@@ -147,6 +154,52 @@ public class LivePlanController {
             }
         }
         return null;
+    }
+
+    private HttpResponse<String> sendWithManualRedirects(HttpClient client, URI uri) throws Exception {
+        URI currentUri = uri;
+        for (int i = 0; i < 5; i++) {
+            HttpRequest request = HttpRequest.newBuilder(currentUri)
+                    .header("User-Agent", "Mozilla/5.0")
+                    .GET()
+                    .build();
+            HttpResponse<String> response = client.send(request, HttpResponse.BodyHandlers.ofString());
+            if (!isRedirect(response.statusCode())) {
+                return response;
+            }
+
+            String redirectLocation = getFirstHeaderValue(response, "location");
+            if (StringUtils.isBlank(redirectLocation)) {
+                return response;
+            }
+            currentUri = currentUri.resolve(sanitizeRedirectLocation(redirectLocation));
+        }
+
+        HttpRequest request = HttpRequest.newBuilder(currentUri)
+                .header("User-Agent", "Mozilla/5.0")
+                .GET()
+                .build();
+        return client.send(request, HttpResponse.BodyHandlers.ofString());
+    }
+
+    private boolean isRedirect(int statusCode) {
+        return statusCode >= 300 && statusCode < 400;
+    }
+
+    private String getFirstHeaderValue(HttpResponse<?> response, String headerName) {
+        List<String> values = response.headers().allValues(headerName);
+        if (values.isEmpty()) {
+            return null;
+        }
+        return values.get(0);
+    }
+
+    private String sanitizeRedirectLocation(String location) {
+        return location
+                .replace("{", "%7B")
+                .replace("}", "%7D")
+                .replace("\"", "%22")
+                .replace(" ", "%20");
     }
 
     @PostMapping("/livePlan")

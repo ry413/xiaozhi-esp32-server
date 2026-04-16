@@ -754,7 +754,7 @@ onMounted(async () => {
         </view>
       </view>
 
-      <view class="mb-[24rpx] last:mb-0">
+      <!-- <view class="mb-[24rpx] last:mb-0">
         <text class="mb-[12rpx] block text-[28rpx] text-[#232338] font-medium">
           {{ t('agent.contextProvider') }}
         </text>
@@ -769,7 +769,7 @@ onMounted(async () => {
             {{ t('agent.editContextProvider') }}
           </wd-button>
         </view>
-      </view>
+      </view> -->
 
       <view class="mb-[24rpx] last:mb-0">
         <text class="mb-[12rpx] block text-[28rpx] text-[#232338] font-medium">

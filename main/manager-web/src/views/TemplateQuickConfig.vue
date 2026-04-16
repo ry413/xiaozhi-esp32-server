@@ -64,11 +64,11 @@ import agentApi from '@/apis/module/agent';
 const DEFAULT_MODEL_CONFIG = {
   ttsModelId: "TTS_EdgeTTS",
   vadModelId: "VAD_SileroVAD",
-  asrModelId: "ASR_FunASR",
-  llmModelId: "LLM_ChatGLMLLM",
+  asrModelId: "ASR_AliyunStreamASR",
+  llmModelId: "LLM_DeepSeekLLM",
   vllmModelId: "VLLM_ChatGLMVLLM",
   memModelId: "Memory_nomem",
-  intentModelId: "Intent_function_call"
+  intentModelId: "Intent_nointent"
 };
 
 export default {

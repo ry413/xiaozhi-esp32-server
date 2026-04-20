@@ -18,8 +18,8 @@
                         <el-table ref="paramsTable" :data="voiceCloneList" class="transparent-table" v-loading="loading"
                             element-loading-text="Loading" element-loading-spinner="el-icon-loading"
                             element-loading-background="rgba(255, 255, 255, 0.7)">
-                            <el-table-column :label="$t('voiceClone.voiceId')" prop="voiceId"
-                                align="center"></el-table-column>
+                            <!-- <el-table-column :label="$t('voiceClone.voiceId')" prop="voiceId"
+                                align="center"></el-table-column> -->
                             <el-table-column :label="$t('voiceClone.name')" align="center">
                                 <template #default="{ row }">
                                     <el-input v-show="row.isEdit" v-model="row.name" size="mini" maxlength="64"

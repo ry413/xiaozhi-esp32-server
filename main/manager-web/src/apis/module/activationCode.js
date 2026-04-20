@@ -152,4 +152,80 @@ export default {
                 });
             }).send();
     },
+    pageUserBenefits(params, callback) {
+        RequestService.sendRequest()
+            .url(`${getServiceUrl()}/activation-code/admin/users/benefits${buildQuery(params)}`)
+            .method('GET')
+            .success((res) => {
+                RequestService.clearRequestTime();
+                callback(res);
+            })
+            .fail((res) => {
+                RequestService.clearRequestTime();
+                callback(res);
+            })
+            .networkFail((err) => {
+                console.error('获取用户权益摘要失败:', err);
+                RequestService.reAjaxFun(() => {
+                    this.pageUserBenefits(params, callback);
+                });
+            }).send();
+    },
+    pageUserBalanceLogs(params, callback) {
+        RequestService.sendRequest()
+            .url(`${getServiceUrl()}/activation-code/admin/users/balance-logs${buildQuery(params)}`)
+            .method('GET')
+            .success((res) => {
+                RequestService.clearRequestTime();
+                callback(res);
+            })
+            .fail((res) => {
+                RequestService.clearRequestTime();
+                callback(res);
+            })
+            .networkFail((err) => {
+                console.error('获取用户点卡流水失败:', err);
+                RequestService.reAjaxFun(() => {
+                    this.pageUserBalanceLogs(params, callback);
+                });
+            }).send();
+    },
+    pageUserMemberships(params, callback) {
+        RequestService.sendRequest()
+            .url(`${getServiceUrl()}/activation-code/admin/users/memberships${buildQuery(params)}`)
+            .method('GET')
+            .success((res) => {
+                RequestService.clearRequestTime();
+                callback(res);
+            })
+            .fail((res) => {
+                RequestService.clearRequestTime();
+                callback(res);
+            })
+            .networkFail((err) => {
+                console.error('获取用户月卡权益失败:', err);
+                RequestService.reAjaxFun(() => {
+                    this.pageUserMemberships(params, callback);
+                });
+            }).send();
+    },
+    pageUserMembershipLogs(params, callback) {
+        RequestService.sendRequest()
+            .url(`${getServiceUrl()}/activation-code/admin/users/membership-logs${buildQuery(params)}`)
+            .method('GET')
+            .success((res) => {
+                RequestService.clearRequestTime();
+                callback(res);
+            })
+            .fail((res) => {
+                RequestService.clearRequestTime();
+                callback(res);
+            })
+            .networkFail((err) => {
+                console.error('获取用户月卡流水失败:', err);
+                RequestService.reAjaxFun(() => {
+                    this.pageUserMembershipLogs(params, callback);
+                });
+            }).send();
+    },
 }

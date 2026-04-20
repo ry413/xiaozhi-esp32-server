@@ -110,5 +110,25 @@ export default {
                     this.sendManualMsg(deviceId, params, callback);
                 });
             }).send();
+    },
+    // 获取全部直播实例的信息
+    getAllLiveInfo(callback) {
+        RequestService.sendRequest()
+            .url(`${liveStreamingApi}/monitors`)
+            .method('GET')
+            .success((res) => {
+                RequestService.clearRequestTime();
+                callback(res);
+            })
+            .fail((res) => {
+                RequestService.clearRequestTime();
+                callback(res);
+            })
+            .networkFail((err) => {
+                console.error('获取全部直播实例信息失败:', err);
+                RequestService.reAjaxFun(() => {
+                    this.getAllLiveInfo(callback);
+                });
+            }).send();
     }
 }

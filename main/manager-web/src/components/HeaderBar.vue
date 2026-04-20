@@ -121,7 +121,9 @@
                   $route.path === '/ota-management' ||
                   $route.path === '/user-management' ||
                   $route.path === '/feature-management' ||
-                  $route.path === '/activation-code-management'
+                  $route.path === '/activation-code-management' ||
+                  $route.path === '/user-benefit-management' ||
+                  $route.path === '/live-monitor-management'
                   ? 'brightness(0) invert(1)'
                   : 'None',
             }" />
@@ -155,6 +157,12 @@
             </el-dropdown-item>
             <el-dropdown-item @click.native="goActivationCodeManagement">
               激活码管理
+            </el-dropdown-item>
+            <el-dropdown-item @click.native="goUserBenefitManagement">
+              用户权益管理
+            </el-dropdown-item>
+            <el-dropdown-item @click.native="goLiveMonitorManagement">
+              直播实例管理
             </el-dropdown-item>
           </el-dropdown-menu>
         </el-dropdown>
@@ -407,6 +415,12 @@ export default {
     },
     goActivationCodeManagement() {
       this.$router.push("/activation-code-management");
+    },
+    goUserBenefitManagement() {
+      this.$router.push("/user-benefit-management");
+    },
+    goLiveMonitorManagement() {
+      this.$router.push("/live-monitor-management");
     },
     // 加载功能状态
     async loadFeatureStatus() {

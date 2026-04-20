@@ -25,7 +25,13 @@ import xiaozhi.modules.activation.dto.ActivationCodeBatchCreateDTO;
 import xiaozhi.modules.activation.dto.ActivationCodeBatchPageDTO;
 import xiaozhi.modules.activation.dto.ActivationCodePageDTO;
 import xiaozhi.modules.activation.dto.ActivationCodeVoidDTO;
+import xiaozhi.modules.activation.dto.AdminUserBenefitPageDTO;
+import xiaozhi.modules.activation.dto.AdminUserBenefitRecordPageDTO;
 import xiaozhi.modules.activation.service.ActivationCodeService;
+import xiaozhi.modules.activation.vo.AdminUserBalanceLogVO;
+import xiaozhi.modules.activation.vo.AdminUserBenefitVO;
+import xiaozhi.modules.activation.vo.AdminUserMembershipLogVO;
+import xiaozhi.modules.activation.vo.AdminUserMembershipVO;
 import xiaozhi.modules.activation.vo.ActivationCodeBatchVO;
 import xiaozhi.modules.activation.vo.ActivationCodeVO;
 
@@ -117,5 +123,64 @@ public class ActivationCodeAdminController {
         ValidatorUtils.validateEntity(dto);
         activationCodeService.voidCode(code, dto.getReason());
         return new Result<>();
+    }
+
+    @GetMapping("/users/benefits")
+    @Operation(summary = "分页查询用户权益摘要")
+    @RequiresPermissions("sys:role:superAdmin")
+    public Result<PageData<AdminUserBenefitVO>> pageUserBenefits(
+            @Parameter(hidden = true) @RequestParam Map<String, Object> params) {
+        AdminUserBenefitPageDTO dto = new AdminUserBenefitPageDTO();
+        dto.setKeyword((String) params.get("keyword"));
+        dto.setPage((String) params.get(Constant.PAGE));
+        dto.setLimit((String) params.get(Constant.LIMIT));
+        ValidatorUtils.validateEntity(dto);
+        return new Result<PageData<AdminUserBenefitVO>>().ok(activationCodeService.pageAdminUserBenefit(dto));
+    }
+
+    @GetMapping("/users/balance-logs")
+    @Operation(summary = "分页查询用户点卡流水")
+    @RequiresPermissions("sys:role:superAdmin")
+    public Result<PageData<AdminUserBalanceLogVO>> pageUserBalanceLogs(
+            @Parameter(hidden = true) @RequestParam Map<String, Object> params) {
+        AdminUserBenefitRecordPageDTO dto = buildAdminRecordPageDTO(params);
+        return new Result<PageData<AdminUserBalanceLogVO>>().ok(activationCodeService.pageAdminUserBalanceLog(dto));
+    }
+
+    @GetMapping("/users/memberships")
+    @Operation(summary = "分页查询用户月卡权益")
+    @RequiresPermissions("sys:role:superAdmin")
+    public Result<PageData<AdminUserMembershipVO>> pageUserMemberships(
+            @Parameter(hidden = true) @RequestParam Map<String, Object> params) {
+        AdminUserBenefitRecordPageDTO dto = buildAdminRecordPageDTO(params);
+        return new Result<PageData<AdminUserMembershipVO>>().ok(activationCodeService.pageAdminUserMembership(dto));
+    }
+
+    @GetMapping("/users/membership-logs")
+    @Operation(summary = "分页查询用户月卡流水")
+    @RequiresPermissions("sys:role:superAdmin")
+    public Result<PageData<AdminUserMembershipLogVO>> pageUserMembershipLogs(
+            @Parameter(hidden = true) @RequestParam Map<String, Object> params) {
+        AdminUserBenefitRecordPageDTO dto = buildAdminRecordPageDTO(params);
+        return new Result<PageData<AdminUserMembershipLogVO>>().ok(activationCodeService.pageAdminUserMembershipLog(dto));
+    }
+
+    private AdminUserBenefitRecordPageDTO buildAdminRecordPageDTO(Map<String, Object> params) {
+        AdminUserBenefitRecordPageDTO dto = new AdminUserBenefitRecordPageDTO();
+        dto.setKeyword((String) params.get("keyword"));
+        dto.setPage((String) params.get(Constant.PAGE));
+        dto.setLimit((String) params.get(Constant.LIMIT));
+        dto.setChangeType((String) params.get("changeType"));
+        dto.setSourceType((String) params.get("sourceType"));
+        Object userId = params.get("userId");
+        if (userId != null && !userId.toString().isBlank()) {
+            dto.setUserId(Long.parseLong(userId.toString()));
+        }
+        Object status = params.get("status");
+        if (status != null && !status.toString().isBlank()) {
+            dto.setStatus(Integer.parseInt(status.toString()));
+        }
+        ValidatorUtils.validateEntity(dto);
+        return dto;
     }
 }

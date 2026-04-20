@@ -5,11 +5,17 @@ import xiaozhi.common.service.BaseService;
 import xiaozhi.modules.activation.dto.ActivationCodeBatchCreateDTO;
 import xiaozhi.modules.activation.dto.ActivationCodeBatchPageDTO;
 import xiaozhi.modules.activation.dto.ActivationCodePageDTO;
+import xiaozhi.modules.activation.dto.AdminUserBenefitPageDTO;
+import xiaozhi.modules.activation.dto.AdminUserBenefitRecordPageDTO;
 import xiaozhi.modules.activation.dto.UserBalanceConsumeDTO;
 import xiaozhi.modules.activation.dto.UserBenefitLogPageDTO;
 import xiaozhi.modules.activation.entity.ActivationCodeEntity;
 import xiaozhi.modules.activation.entity.UserBalanceLogEntity;
 import xiaozhi.modules.activation.entity.UserMembershipEntity;
+import xiaozhi.modules.activation.vo.AdminUserBalanceLogVO;
+import xiaozhi.modules.activation.vo.AdminUserBenefitVO;
+import xiaozhi.modules.activation.vo.AdminUserMembershipLogVO;
+import xiaozhi.modules.activation.vo.AdminUserMembershipVO;
 import xiaozhi.modules.activation.vo.ActivationCodeBatchVO;
 import xiaozhi.modules.activation.vo.ActivationCodeVO;
 import xiaozhi.modules.activation.vo.UserBenefitVO;
@@ -35,4 +41,12 @@ public interface ActivationCodeService extends BaseService<ActivationCodeEntity>
     PageData<UserBalanceLogEntity> pageUserBalanceLog(Long userId, UserBenefitLogPageDTO dto);
 
     PageData<UserMembershipEntity> pageUserMembership(Long userId, UserBenefitLogPageDTO dto);
+
+    PageData<AdminUserBenefitVO> pageAdminUserBenefit(AdminUserBenefitPageDTO dto);
+
+    PageData<AdminUserBalanceLogVO> pageAdminUserBalanceLog(AdminUserBenefitRecordPageDTO dto);
+
+    PageData<AdminUserMembershipVO> pageAdminUserMembership(AdminUserBenefitRecordPageDTO dto);
+
+    PageData<AdminUserMembershipLogVO> pageAdminUserMembershipLog(AdminUserBenefitRecordPageDTO dto);
 }

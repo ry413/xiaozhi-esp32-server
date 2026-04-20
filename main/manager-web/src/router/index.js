@@ -221,6 +221,28 @@ const routes = [
       title: '激活码管理'
     }
   },
+  {
+    path: '/user-benefit-management',
+    name: 'UserBenefitManagement',
+    component: function () {
+      return import('../views/UserBenefitManagement.vue')
+    },
+    meta: {
+      requiresAuth: true,
+      title: '用户权益管理'
+    }
+  },
+  {
+    path: '/live-monitor-management',
+    name: 'LiveMonitorManagement',
+    component: function () {
+      return import('../views/LiveMonitorManagement.vue')
+    },
+    meta: {
+      requiresAuth: true,
+      title: '直播实例管理'
+    }
+  },
 ]
 const router = new VueRouter({
   base: process.env.VUE_APP_PUBLIC_PATH || '/',
@@ -242,7 +264,7 @@ VueRouter.prototype.push = function push(location) {
 }
 
 // 需要登录才能访问的路由
-const protectedRoutes = ['home', 'RoleConfig', 'DeviceManagement', 'UserManagement', 'ModelConfig', 'KnowledgeBaseManagement', 'KnowledgeFileUpload', 'ActivationCodeManagement']
+const protectedRoutes = ['home', 'RoleConfig', 'DeviceManagement', 'UserManagement', 'ModelConfig', 'KnowledgeBaseManagement', 'KnowledgeFileUpload', 'ActivationCodeManagement', 'UserBenefitManagement', 'LiveMonitorManagement']
 
 // 路由守卫
 router.beforeEach((to, from, next) => {

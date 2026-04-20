@@ -7,6 +7,7 @@ import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.Set;
 import java.util.stream.Collectors;
 
@@ -36,6 +37,8 @@ import xiaozhi.modules.activation.dao.UserMembershipLogDao;
 import xiaozhi.modules.activation.dto.ActivationCodeBatchCreateDTO;
 import xiaozhi.modules.activation.dto.ActivationCodeBatchPageDTO;
 import xiaozhi.modules.activation.dto.ActivationCodePageDTO;
+import xiaozhi.modules.activation.dto.AdminUserBenefitPageDTO;
+import xiaozhi.modules.activation.dto.AdminUserBenefitRecordPageDTO;
 import xiaozhi.modules.activation.dto.UserBalanceConsumeDTO;
 import xiaozhi.modules.activation.dto.UserBenefitLogPageDTO;
 import xiaozhi.modules.activation.entity.ActivationCodeBatchEntity;
@@ -45,9 +48,15 @@ import xiaozhi.modules.activation.entity.UserBalanceLogEntity;
 import xiaozhi.modules.activation.entity.UserMembershipEntity;
 import xiaozhi.modules.activation.entity.UserMembershipLogEntity;
 import xiaozhi.modules.activation.service.ActivationCodeService;
+import xiaozhi.modules.activation.vo.AdminUserBalanceLogVO;
+import xiaozhi.modules.activation.vo.AdminUserBenefitVO;
+import xiaozhi.modules.activation.vo.AdminUserMembershipLogVO;
+import xiaozhi.modules.activation.vo.AdminUserMembershipVO;
 import xiaozhi.modules.activation.vo.ActivationCodeBatchVO;
 import xiaozhi.modules.activation.vo.ActivationCodeVO;
 import xiaozhi.modules.activation.vo.UserBenefitVO;
+import xiaozhi.modules.sys.dao.SysUserDao;
+import xiaozhi.modules.sys.entity.SysUserEntity;
 
 @Service
 @AllArgsConstructor
@@ -63,6 +72,7 @@ public class ActivationCodeServiceImpl extends BaseServiceImpl<ActivationCodeDao
     private final UserBalanceLogDao userBalanceLogDao;
     private final UserMembershipDao userMembershipDao;
     private final UserMembershipLogDao userMembershipLogDao;
+    private final SysUserDao sysUserDao;
 
     @Override
     public PageData<ActivationCodeBatchVO> pageBatch(ActivationCodeBatchPageDTO dto) {
@@ -328,6 +338,88 @@ public class ActivationCodeServiceImpl extends BaseServiceImpl<ActivationCodeDao
         return getPageData(page, UserMembershipEntity.class);
     }
 
+    @Override
+    public PageData<AdminUserBenefitVO> pageAdminUserBenefit(AdminUserBenefitPageDTO dto) {
+        IPage<SysUserEntity> pageInfo = buildPage(dto.getPage(), dto.getLimit(), "id");
+        IPage<SysUserEntity> page = sysUserDao.selectPage(pageInfo, buildSysUserKeywordQuery(dto.getKeyword()));
+
+        List<SysUserEntity> users = page.getRecords();
+        List<Long> userIds = users.stream().map(SysUserEntity::getId).collect(Collectors.toList());
+
+        Map<Long, UserBalanceAccountEntity> accountMap = buildUserBalanceAccountMap(userIds);
+        Map<Long, UserMembershipEntity> activeMembershipMap = buildActiveMembershipMap(userIds);
+
+        List<AdminUserBenefitVO> records = new ArrayList<>();
+        for (SysUserEntity user : users) {
+            AdminUserBenefitVO vo = new AdminUserBenefitVO();
+            vo.setUserId(user.getId());
+            vo.setUsername(user.getUsername());
+            vo.setUserStatus(user.getStatus());
+
+            UserBalanceAccountEntity account = accountMap.get(user.getId());
+            vo.setBalanceSeconds(account == null ? 0 : safeInt(account.getBalanceMinutes()));
+            vo.setTotalRechargedSeconds(account == null ? 0 : safeInt(account.getTotalRechargedMinutes()));
+            vo.setTotalConsumedSeconds(account == null ? 0 : safeInt(account.getTotalConsumedMinutes()));
+            vo.setAccountStatus(account == null ? null : account.getStatus());
+
+            UserMembershipEntity membership = activeMembershipMap.get(user.getId());
+            vo.setMembershipActive(membership != null);
+            vo.setMembershipStatus(membership == null ? null : membership.getStatus());
+            vo.setMembershipStartAt(membership == null ? null : membership.getStartAt());
+            vo.setMembershipEndAt(membership == null ? null : membership.getEndAt());
+            records.add(vo);
+        }
+        return new PageData<>(records, page.getTotal());
+    }
+
+    @Override
+    public PageData<AdminUserBalanceLogVO> pageAdminUserBalanceLog(AdminUserBenefitRecordPageDTO dto) {
+        IPage<UserBalanceLogEntity> pageInfo = buildPage(dto.getPage(), dto.getLimit(), "id");
+        QueryWrapper<UserBalanceLogEntity> query = new QueryWrapper<UserBalanceLogEntity>()
+                .eq(dto.getUserId() != null, "user_id", dto.getUserId())
+                .eq(StringUtils.isNotBlank(dto.getChangeType()), "change_type", dto.getChangeType())
+                .eq(StringUtils.isNotBlank(dto.getSourceType()), "source_type", dto.getSourceType());
+        appendUserKeywordFilter(query, dto.getKeyword(), "user_id");
+
+        IPage<UserBalanceLogEntity> page = userBalanceLogDao.selectPage(pageInfo, query);
+        List<AdminUserBalanceLogVO> records = ConvertUtils.sourceToTarget(page.getRecords(), AdminUserBalanceLogVO.class);
+        fillUsernames(records, records.stream().map(AdminUserBalanceLogVO::getUserId).collect(Collectors.toSet()),
+                (item, username) -> item.setUsername(username));
+        return new PageData<>(records, page.getTotal());
+    }
+
+    @Override
+    public PageData<AdminUserMembershipVO> pageAdminUserMembership(AdminUserBenefitRecordPageDTO dto) {
+        IPage<UserMembershipEntity> pageInfo = buildPage(dto.getPage(), dto.getLimit(), "end_at");
+        QueryWrapper<UserMembershipEntity> query = new QueryWrapper<UserMembershipEntity>()
+                .eq(dto.getUserId() != null, "user_id", dto.getUserId())
+                .eq(dto.getStatus() != null, "status", dto.getStatus())
+                .eq(StringUtils.isNotBlank(dto.getSourceType()), "source_type", dto.getSourceType());
+        appendUserKeywordFilter(query, dto.getKeyword(), "user_id");
+
+        IPage<UserMembershipEntity> page = userMembershipDao.selectPage(pageInfo, query);
+        List<AdminUserMembershipVO> records = ConvertUtils.sourceToTarget(page.getRecords(), AdminUserMembershipVO.class);
+        fillUsernames(records, records.stream().map(AdminUserMembershipVO::getUserId).collect(Collectors.toSet()),
+                (item, username) -> item.setUsername(username));
+        return new PageData<>(records, page.getTotal());
+    }
+
+    @Override
+    public PageData<AdminUserMembershipLogVO> pageAdminUserMembershipLog(AdminUserBenefitRecordPageDTO dto) {
+        IPage<UserMembershipLogEntity> pageInfo = buildPage(dto.getPage(), dto.getLimit(), "id");
+        QueryWrapper<UserMembershipLogEntity> query = new QueryWrapper<UserMembershipLogEntity>()
+                .eq(dto.getUserId() != null, "user_id", dto.getUserId())
+                .eq(StringUtils.isNotBlank(dto.getChangeType()), "change_type", dto.getChangeType())
+                .eq(StringUtils.isNotBlank(dto.getSourceType()), "source_type", dto.getSourceType());
+        appendUserKeywordFilter(query, dto.getKeyword(), "user_id");
+
+        IPage<UserMembershipLogEntity> page = userMembershipLogDao.selectPage(pageInfo, query);
+        List<AdminUserMembershipLogVO> records = ConvertUtils.sourceToTarget(page.getRecords(), AdminUserMembershipLogVO.class);
+        fillUsernames(records, records.stream().map(AdminUserMembershipLogVO::getUserId).collect(Collectors.toSet()),
+                (item, username) -> item.setUsername(username));
+        return new PageData<>(records, page.getTotal());
+    }
+
     private void validateBatchCreateDTO(ActivationCodeBatchCreateDTO dto) {
         if (!CARD_TYPE_POINT.equalsIgnoreCase(dto.getCardType()) && !CARD_TYPE_MONTH.equalsIgnoreCase(dto.getCardType())) {
             throw new RenException("cardType仅支持point/month");
@@ -420,6 +512,107 @@ public class ActivationCodeServiceImpl extends BaseServiceImpl<ActivationCodeDao
             record.setCardType(batch.getCardType());
             record.setFaceValue(batch.getFaceValue());
         }
+    }
+
+    private QueryWrapper<SysUserEntity> buildSysUserKeywordQuery(String keyword) {
+        QueryWrapper<SysUserEntity> query = new QueryWrapper<>();
+        if (StringUtils.isBlank(keyword)) {
+            return query;
+        }
+        String trimmed = keyword.trim();
+        query.and(wrapper -> wrapper.like("username", trimmed));
+        if (StringUtils.isNumeric(trimmed)) {
+            query.or().eq("id", Long.parseLong(trimmed));
+        }
+        return query;
+    }
+
+    private void appendUserKeywordFilter(QueryWrapper<?> query, String keyword, String userIdColumn) {
+        if (StringUtils.isBlank(keyword)) {
+            return;
+        }
+        List<Long> matchedUserIds = queryUserIdsByKeyword(keyword);
+        if (matchedUserIds.isEmpty()) {
+            query.apply("1 = 0");
+            return;
+        }
+        query.in(userIdColumn, matchedUserIds);
+    }
+
+    private List<Long> queryUserIdsByKeyword(String keyword) {
+        String trimmed = keyword == null ? "" : keyword.trim();
+        if (trimmed.isEmpty()) {
+            return List.of();
+        }
+        QueryWrapper<SysUserEntity> query = new QueryWrapper<SysUserEntity>().like("username", trimmed);
+        if (StringUtils.isNumeric(trimmed)) {
+            query.or().eq("id", Long.parseLong(trimmed));
+        }
+        return sysUserDao.selectList(query).stream().map(SysUserEntity::getId).collect(Collectors.toList());
+    }
+
+    private Map<Long, UserBalanceAccountEntity> buildUserBalanceAccountMap(List<Long> userIds) {
+        if (userIds == null || userIds.isEmpty()) {
+            return Map.of();
+        }
+        List<UserBalanceAccountEntity> accounts = userBalanceAccountDao.selectList(
+                new QueryWrapper<UserBalanceAccountEntity>().in("user_id", userIds));
+        Map<Long, UserBalanceAccountEntity> result = new HashMap<>();
+        for (UserBalanceAccountEntity account : accounts) {
+            result.put(account.getUserId(), account);
+        }
+        return result;
+    }
+
+    private Map<Long, UserMembershipEntity> buildActiveMembershipMap(List<Long> userIds) {
+        if (userIds == null || userIds.isEmpty()) {
+            return Map.of();
+        }
+        Date now = new Date();
+        List<UserMembershipEntity> memberships = userMembershipDao.selectList(
+                new QueryWrapper<UserMembershipEntity>()
+                        .in("user_id", userIds)
+                        .eq("status", 1)
+                        .ge("end_at", now)
+                        .orderByDesc("end_at"));
+        Map<Long, UserMembershipEntity> result = new HashMap<>();
+        for (UserMembershipEntity membership : memberships) {
+            result.putIfAbsent(membership.getUserId(), membership);
+        }
+        return result;
+    }
+
+    private <T> void fillUsernames(List<T> records, Set<Long> userIds, BiUserNameSetter<T> setter) {
+        if (records == null || records.isEmpty() || userIds == null || userIds.isEmpty()) {
+            return;
+        }
+        Map<Long, String> usernameMap = sysUserDao.selectBatchIds(userIds).stream()
+                .filter(Objects::nonNull)
+                .collect(Collectors.toMap(SysUserEntity::getId, SysUserEntity::getUsername, (a, b) -> a));
+        for (T record : records) {
+            Long userId = extractUserId(record);
+            if (userId != null) {
+                setter.accept(record, usernameMap.get(userId));
+            }
+        }
+    }
+
+    private Long extractUserId(Object record) {
+        if (record instanceof AdminUserBalanceLogVO item) {
+            return item.getUserId();
+        }
+        if (record instanceof AdminUserMembershipVO item) {
+            return item.getUserId();
+        }
+        if (record instanceof AdminUserMembershipLogVO item) {
+            return item.getUserId();
+        }
+        return null;
+    }
+
+    @FunctionalInterface
+    private interface BiUserNameSetter<T> {
+        void accept(T target, String username);
     }
 
     private void validateCodeUsable(ActivationCodeEntity codeEntity, Date now) {

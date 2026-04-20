@@ -41,7 +41,6 @@ import xiaozhi.modules.model.entity.ModelConfigEntity;
 import xiaozhi.modules.model.service.ModelConfigService;
 import xiaozhi.modules.sys.dao.SysUserDao;
 import xiaozhi.modules.sys.entity.SysUserEntity;
-import xiaozhi.modules.sys.service.SysUserService;
 import xiaozhi.modules.voiceclone.dao.VoiceCloneDao;
 import xiaozhi.modules.voiceclone.dto.VoiceCloneDTO;
 import xiaozhi.modules.voiceclone.dto.VoiceCloneResponseDTO;
@@ -62,7 +61,6 @@ public class VoiceCloneServiceImpl extends BaseServiceImpl<VoiceCloneDao, VoiceC
     private static final long COSYVOICE_POLL_INTERVAL_MS = 2000L;
 
     private final ModelConfigService modelConfigService;
-    private final SysUserService sysUserService;
     private final SysUserDao sysUserDao;
     private final ObjectMapper objectMapper;
     private final COSClient cosClient;
@@ -202,7 +200,10 @@ public class VoiceCloneServiceImpl extends BaseServiceImpl<VoiceCloneDao, VoiceC
 
         // 设置用户名称
         if (entity.getUserId() != null) {
-            dto.setUserName(sysUserService.getByUserId(entity.getUserId()).getUsername());
+            SysUserEntity user = sysUserDao.selectById(entity.getUserId());
+            if (user != null) {
+                dto.setUserName(user.getUsername());
+            }
         }
         
         // 确保trainStatus字段被正确设置，前端需要这个字段来判断是否为克隆音频
@@ -330,6 +331,36 @@ public class VoiceCloneServiceImpl extends BaseServiceImpl<VoiceCloneDao, VoiceC
         entity.setTrainError("");
         baseDao.updateById(entity);
         ((VoiceCloneServiceImpl) AopContext.currentProxy()).processCloneAudioAsync(cloneId);
+    }
+
+    @Override
+    @Transactional(rollbackFor = Exception.class)
+    public void grantInitialVoiceResource(Long userId) {
+        if (userId == null) {
+            return;
+        }
+
+        QueryWrapper<VoiceCloneEntity> existingWrapper = new QueryWrapper<>();
+        existingWrapper.eq("user_id", userId);
+        if (baseDao.selectCount(existingWrapper) > 0) {
+            return;
+        }
+
+        ModelConfigEntity modelConfig = findInitialCosyVoiceModel();
+        if (modelConfig == null) {
+            log.warn("未找到可用的 cosyvoice_clone_stream TTS 模型，跳过发放初始音色资源, userId={}", userId);
+            return;
+        }
+
+        VoiceCloneEntity entity = new VoiceCloneEntity();
+        entity.setModelId(modelConfig.getId());
+        entity.setVoiceId(buildInitialSlotVoiceId(userId));
+        entity.setName(DateUtils.format(new Date(), "MMddHHmm") + "_1");
+        entity.setUserId(userId);
+        entity.setLanguages("全部");
+        entity.setTrainStatus(0);
+        entity.setTrainError("");
+        insert(entity);
     }
 
     @Async("taskExecutor")
@@ -602,6 +633,28 @@ public class VoiceCloneServiceImpl extends BaseServiceImpl<VoiceCloneDao, VoiceC
 
     private boolean isCosyvoiceRealVoiceId(String voiceId) {
         return StringUtils.isNotBlank(voiceId) && voiceId.startsWith(COSYVOICE_REAL_VOICE_PREFIX);
+    }
+
+    private ModelConfigEntity findInitialCosyVoiceModel() {
+        List<ModelConfigEntity> models = modelConfigService.getEnabledModelsByType("TTS");
+        if (ToolUtil.isEmpty(models)) {
+            return null;
+        }
+
+        for (ModelConfigEntity model : models) {
+            if (model == null || model.getConfigJson() == null) {
+                continue;
+            }
+            Object type = model.getConfigJson().get("type");
+            if (COSYVOICE_CLONE_STREAM.equals(type)) {
+                return model;
+            }
+        }
+        return null;
+    }
+
+    private String buildInitialSlotVoiceId(Long userId) {
+        return "CV_SLOT_" + userId + "_" + UUID.randomUUID().toString().replace("-", "").substring(0, 8).toUpperCase(Locale.ROOT);
     }
 
     private String buildCosyvoicePrefix(VoiceCloneEntity entity, Map<String, Object> config) {

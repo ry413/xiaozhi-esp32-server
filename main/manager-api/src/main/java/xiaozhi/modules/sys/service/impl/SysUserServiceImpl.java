@@ -34,6 +34,7 @@ import xiaozhi.modules.sys.enums.SuperAdminEnum;
 import xiaozhi.modules.sys.service.SysParamsService;
 import xiaozhi.modules.sys.service.SysUserService;
 import xiaozhi.modules.sys.vo.AdminPageUserVO;
+import xiaozhi.modules.voiceclone.service.VoiceCloneService;
 
 /**
  * 系统用户
@@ -48,6 +49,8 @@ public class SysUserServiceImpl extends BaseServiceImpl<SysUserDao, SysUserEntit
     private final AgentService agentService;
 
     private final SysParamsService sysParamsService;
+
+    private final VoiceCloneService voiceCloneService;
 
     @Override
     public SysUserDTO getByUsername(String username) {
@@ -95,6 +98,7 @@ public class SysUserServiceImpl extends BaseServiceImpl<SysUserDao, SysUserEntit
         entity.setHiddenBuiltinWallpaperIds(Arrays.asList());
 
         insert(entity);
+        voiceCloneService.grantInitialVoiceResource(entity.getId());
     }
 
     @Override

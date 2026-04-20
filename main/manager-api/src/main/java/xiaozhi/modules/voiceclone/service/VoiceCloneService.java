@@ -75,4 +75,11 @@ public interface VoiceCloneService extends BaseService<VoiceCloneEntity> {
      * @param cloneId 语音克隆记录ID
      */
     void cloneAudio(String cloneId);
+
+    /**
+     * 为新用户发放初始音色资源
+     *
+     * @param userId 用户ID
+     */
+    void grantInitialVoiceResource(Long userId);
 }

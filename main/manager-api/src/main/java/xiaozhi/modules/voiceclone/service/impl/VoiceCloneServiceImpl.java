@@ -1,5 +1,6 @@
 package xiaozhi.modules.voiceclone.service.impl;
 
+import java.io.ByteArrayInputStream;
 import java.net.URI;
 import java.net.http.HttpClient;
 import java.net.http.HttpRequest;
@@ -8,17 +9,26 @@ import java.util.*;
 import java.util.stream.Collectors;
 
 import org.apache.commons.lang3.StringUtils;
+import org.springframework.aop.framework.AopContext;
+import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.multipart.MultipartFile;
 
+import com.alibaba.dashscope.audio.ttsv2.enrollment.Voice;
+import com.alibaba.dashscope.audio.ttsv2.enrollment.VoiceEnrollmentParam;
+import com.alibaba.dashscope.audio.ttsv2.enrollment.VoiceEnrollmentService;
 import com.baomidou.mybatisplus.core.conditions.query.QueryWrapper;
 import com.baomidou.mybatisplus.core.metadata.IPage;
+import com.qcloud.cos.COSClient;
+import com.qcloud.cos.model.ObjectMetadata;
+import com.qcloud.cos.model.PutObjectRequest;
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
 
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import xiaozhi.common.config.CosProperties;
 import xiaozhi.common.constant.Constant;
 import xiaozhi.common.exception.ErrorCode;
 import xiaozhi.common.exception.RenException;
@@ -43,11 +53,20 @@ import xiaozhi.modules.voiceclone.service.VoiceCloneService;
 @RequiredArgsConstructor
 public class VoiceCloneServiceImpl extends BaseServiceImpl<VoiceCloneDao, VoiceCloneEntity>
         implements VoiceCloneService {
+    private static final String COSYVOICE_CLONE_STREAM = "cosyvoice_clone_stream";
+    private static final String COSYVOICE_REAL_VOICE_PREFIX = "cosyvoice-";
+    private static final String COSYVOICE_CLONE_MODEL_NAME = "voice-enrollment";
+    private static final String COSYVOICE_STATUS_OK = "OK";
+    private static final String COSYVOICE_STATUS_UNDEPLOYED = "UNDEPLOYED";
+    private static final int COSYVOICE_POLL_MAX_ATTEMPTS = 30;
+    private static final long COSYVOICE_POLL_INTERVAL_MS = 2000L;
 
     private final ModelConfigService modelConfigService;
     private final SysUserService sysUserService;
     private final SysUserDao sysUserDao;
     private final ObjectMapper objectMapper;
+    private final COSClient cosClient;
+    private final CosProperties cosProperties;
 
     @Override
     public PageData<VoiceCloneEntity> page(Map<String, Object> params) {
@@ -127,6 +146,22 @@ public class VoiceCloneServiceImpl extends BaseServiceImpl<VoiceCloneDao, VoiceC
 
     @Override
     public void delete(String[] ids) {
+        if (ids == null || ids.length == 0) {
+            return;
+        }
+
+        List<VoiceCloneEntity> entities = baseDao.selectBatchIds(Arrays.asList(ids));
+        for (VoiceCloneEntity entity : entities) {
+            deleteRemoteCloneVoice(entity);
+            String objectKey = resolveCloneSampleObjectKey(entity.getVoiceSourceUrl());
+            if (StringUtils.isNotBlank(objectKey)) {
+                try {
+                    cosClient.deleteObject(cosProperties.getBucket(), objectKey);
+                } catch (Exception e) {
+                    log.warn("删除音色样本 COS 文件失败, id={}, objectKey={}", entity.getId(), objectKey, e);
+                }
+            }
+        }
         baseDao.deleteBatchIds(Arrays.asList(ids));
     }
 
@@ -232,13 +267,23 @@ public class VoiceCloneServiceImpl extends BaseServiceImpl<VoiceCloneDao, VoiceC
             throw new RenException(ErrorCode.VOICE_CLONE_RECORD_NOT_EXIST);
         }
 
+        ModelConfigEntity modelConfig = modelConfigService.getModelByIdFromCache(entity.getModelId());
+        if (modelConfig == null || modelConfig.getConfigJson() == null) {
+            throw new RenException(ErrorCode.VOICE_CLONE_MODEL_CONFIG_NOT_FOUND);
+        }
+        String type = String.valueOf(modelConfig.getConfigJson().get("type"));
+
         // 读取音频文件并转为字节数组
         byte[] voiceData = voiceFile.getBytes();
 
         // 更新voice字段
         entity.setVoice(voiceData);
+        if (COSYVOICE_CLONE_STREAM.equals(type)) {
+            entity.setVoiceSourceUrl(uploadCloneSampleToCos(voiceData, voiceFile.getOriginalFilename()));
+        }
         // 更新训练状态为待训练
         entity.setTrainStatus(0);
+        entity.setTrainError("");
 
         // 保存到数据库
         baseDao.updateById(entity);
@@ -277,9 +322,34 @@ public class VoiceCloneServiceImpl extends BaseServiceImpl<VoiceCloneDao, VoiceC
         if (entity.getVoice() == null || entity.getVoice().length == 0) {
             throw new RenException(ErrorCode.VOICE_CLONE_AUDIO_NOT_UPLOADED);
         }
+        if (Objects.equals(entity.getTrainStatus(), 1)) {
+            throw new RenException("当前音色正在复刻中，请稍后查看结果");
+        }
 
+        entity.setTrainStatus(1);
+        entity.setTrainError("");
+        baseDao.updateById(entity);
+        ((VoiceCloneServiceImpl) AopContext.currentProxy()).processCloneAudioAsync(cloneId);
+    }
+
+    @Async("taskExecutor")
+    public void processCloneAudioAsync(String cloneId) {
         try {
+            processCloneAudio(cloneId);
+        } catch (Exception e) {
+            log.error("异步执行音色复刻失败, cloneId={}", cloneId, e);
+        }
+    }
 
+    public void processCloneAudio(String cloneId) {
+        VoiceCloneEntity entity = baseDao.selectById(cloneId);
+        if (entity == null) {
+            throw new RenException(ErrorCode.VOICE_CLONE_RECORD_NOT_EXIST);
+        }
+        if (entity.getVoice() == null || entity.getVoice().length == 0) {
+            throw new RenException(ErrorCode.VOICE_CLONE_AUDIO_NOT_UPLOADED);
+        }
+        try {
             ModelConfigEntity modelConfig = modelConfigService.getModelByIdFromCache(entity.getModelId());
             if (modelConfig == null || modelConfig.getConfigJson() == null) {
                 throw new RenException(ErrorCode.VOICE_CLONE_MODEL_CONFIG_NOT_FOUND);
@@ -291,6 +361,10 @@ public class VoiceCloneServiceImpl extends BaseServiceImpl<VoiceCloneDao, VoiceC
             }
             if (Constant.VOICE_CLONE_HUOSHAN_DOUBLE_STREAM.equals(type)) {
                 huoshanClone(config, entity);
+            } else if (COSYVOICE_CLONE_STREAM.equals(type)) {
+                cosyvoiceClone(config, entity);
+            } else {
+                throw new RenException("暂不支持该音色克隆类型: " + type);
             }
         } catch (RenException re) {
             entity.setTrainStatus(3);
@@ -304,6 +378,283 @@ public class VoiceCloneServiceImpl extends BaseServiceImpl<VoiceCloneDao, VoiceC
             baseDao.updateById(entity);
             throw new RenException(ErrorCode.VOICE_CLONE_TRAINING_FAILED, e.getMessage());
         }
+    }
+
+    private void cosyvoiceClone(Map<String, Object> config, VoiceCloneEntity entity) throws Exception {
+        String apiKey = getConfigString(config, "api_key");
+        String targetModel = getConfigString(config, "model");
+        String publicAudioUrl = entity.getVoiceSourceUrl();
+        String cloneModelName = getConfigString(config, "clone_model_name");
+
+        if (StringUtils.isAnyBlank(apiKey, targetModel, publicAudioUrl)) {
+            throw new RenException("CosyVoice克隆配置不完整，请补充api_key、model");
+        }
+
+        entity.setTrainStatus(1);
+        entity.setTrainError("");
+        baseDao.updateById(entity);
+
+        VoiceEnrollmentService service = StringUtils.isNotBlank(cloneModelName)
+                ? new VoiceEnrollmentService(apiKey, cloneModelName)
+                : new VoiceEnrollmentService(apiKey);
+
+        VoiceEnrollmentParam customParam = buildCosyvoiceEnrollmentParam(config);
+        String currentVoiceId = entity.getVoiceId();
+
+        if (isCosyvoiceRealVoiceId(currentVoiceId)) {
+            service.updateVoice(currentVoiceId, publicAudioUrl, customParam);
+            pollCosyvoiceStatus(service, currentVoiceId, entity);
+            return;
+        }
+
+        String prefix = buildCosyvoicePrefix(entity, config);
+        Voice createdVoice = service.createVoice(targetModel, prefix, publicAudioUrl, customParam);
+        if (createdVoice == null || StringUtils.isBlank(createdVoice.getVoiceId())) {
+            throw new RenException("CosyVoice创建音色失败，未返回voiceId");
+        }
+
+        entity.setVoiceId(createdVoice.getVoiceId());
+        entity.setTrainError("");
+        baseDao.updateById(entity);
+        pollCosyvoiceStatus(service, createdVoice.getVoiceId(), entity);
+    }
+
+    private VoiceEnrollmentParam buildCosyvoiceEnrollmentParam(Map<String, Object> config) {
+        VoiceEnrollmentParam.VoiceEnrollmentParamBuilder<?, ?> builder = VoiceEnrollmentParam.builder();
+
+        String cloneModelName = getConfigString(config, "clone_model_name");
+        builder.model(StringUtils.defaultIfBlank(cloneModelName, COSYVOICE_CLONE_MODEL_NAME));
+
+        List<String> languageHints = getLanguageHints(config.get("language_hints"));
+        if (!languageHints.isEmpty()) {
+            builder.languageHints(languageHints);
+        }
+
+        Number maxPromptAudioLength = getConfigNumber(config.get("max_prompt_audio_length"));
+        if (maxPromptAudioLength != null) {
+            builder.maxPromptAudioLength(maxPromptAudioLength.floatValue());
+        }
+
+        Map<String, Object> parameters = new HashMap<>();
+        Object enablePreprocess = config.get("enable_preprocess");
+        if (enablePreprocess != null) {
+            parameters.put("enable_preprocess", enablePreprocess);
+        }
+        if (!parameters.isEmpty()) {
+            builder.parameters(parameters);
+        }
+
+        return builder.build();
+    }
+
+    private void pollCosyvoiceStatus(VoiceEnrollmentService service, String voiceId, VoiceCloneEntity entity)
+            throws Exception {
+        for (int i = 0; i < COSYVOICE_POLL_MAX_ATTEMPTS; i++) {
+            Voice voice = service.queryVoice(voiceId);
+            if (voice == null || StringUtils.isBlank(voice.getStatus())) {
+                throw new RenException("CosyVoice查询音色状态失败");
+            }
+
+            String status = voice.getStatus();
+            if (COSYVOICE_STATUS_OK.equalsIgnoreCase(status)) {
+                entity.setTrainStatus(2);
+                entity.setTrainError("");
+                baseDao.updateById(entity);
+                return;
+            }
+            if (COSYVOICE_STATUS_UNDEPLOYED.equalsIgnoreCase(status)) {
+                throw new RenException("CosyVoice音色审核未通过");
+            }
+
+            Thread.sleep(COSYVOICE_POLL_INTERVAL_MS);
+        }
+
+        throw new RenException("CosyVoice音色仍在部署中，请稍后重试");
+    }
+
+    private void deleteRemoteCloneVoice(VoiceCloneEntity entity) {
+        if (entity == null || !isCosyvoiceRealVoiceId(entity.getVoiceId())) {
+            return;
+        }
+
+        try {
+            ModelConfigEntity modelConfig = modelConfigService.getModelByIdFromCache(entity.getModelId());
+            if (modelConfig == null || modelConfig.getConfigJson() == null) {
+                return;
+            }
+            Map<String, Object> config = modelConfig.getConfigJson();
+            String type = String.valueOf(config.get("type"));
+            if (!COSYVOICE_CLONE_STREAM.equals(type)) {
+                return;
+            }
+
+            String apiKey = getConfigString(config, "api_key");
+            if (StringUtils.isBlank(apiKey)) {
+                return;
+            }
+
+            String cloneModelName = getConfigString(config, "clone_model_name");
+            VoiceEnrollmentService service = StringUtils.isNotBlank(cloneModelName)
+                    ? new VoiceEnrollmentService(apiKey, cloneModelName)
+                    : new VoiceEnrollmentService(apiKey);
+            service.deleteVoice(entity.getVoiceId());
+        } catch (Exception e) {
+            log.warn("删除远端 CosyVoice 音色失败, id={}, voiceId={}", entity.getId(), entity.getVoiceId(), e);
+        }
+    }
+
+    private String uploadCloneSampleToCos(byte[] voiceData, String originalFilename) {
+        String extension = getFileExtension(originalFilename);
+        String fileKey = UUID.randomUUID().toString().replace("-", "") + extension;
+        String objectKey = buildCloneSampleObjectKey(fileKey);
+
+        ObjectMetadata metadata = new ObjectMetadata();
+        metadata.setContentLength(voiceData.length);
+        metadata.setContentType(resolveAudioContentType(extension));
+
+        try (ByteArrayInputStream inputStream = new ByteArrayInputStream(voiceData)) {
+            PutObjectRequest request = new PutObjectRequest(
+                    cosProperties.getBucket(),
+                    objectKey,
+                    inputStream,
+                    metadata);
+            cosClient.putObject(request);
+        } catch (Exception e) {
+            throw new RenException("上传音频样本到 COS 失败: " + e.getMessage());
+        }
+
+        return buildPublicUrl(objectKey);
+    }
+
+    private String buildCloneSampleObjectKey(String fileKey) {
+        return normalizePrefix(cosProperties.getCloneSamplePathPrefix()) + fileKey;
+    }
+
+    private String buildPublicUrl(String objectKey) {
+        if (StringUtils.isNotBlank(cosProperties.getBaseUrl())) {
+            String baseUrl = cosProperties.getBaseUrl().endsWith("/")
+                    ? cosProperties.getBaseUrl()
+                    : cosProperties.getBaseUrl() + "/";
+            return baseUrl + objectKey;
+        }
+        return String.format("https://%s.cos.%s.myqcloud.com/%s",
+                cosProperties.getBucket(),
+                cosProperties.getRegion(),
+                objectKey);
+    }
+
+    private String resolveCloneSampleObjectKey(String sourceUrl) {
+        if (StringUtils.isBlank(sourceUrl)) {
+            return "";
+        }
+        String key = sourceUrl.trim();
+        String baseUrl = cosProperties.getBaseUrl();
+        if (StringUtils.isNotBlank(baseUrl)) {
+            String normalizedBase = baseUrl.endsWith("/") ? baseUrl : baseUrl + "/";
+            if (key.startsWith(normalizedBase)) {
+                key = key.substring(normalizedBase.length());
+            }
+        }
+        if (key.startsWith("http://") || key.startsWith("https://")) {
+            int idx = key.indexOf("myqcloud.com/");
+            if (idx >= 0) {
+                key = key.substring(idx + "myqcloud.com/".length());
+            }
+        }
+        if (key.startsWith("/")) {
+            key = key.substring(1);
+        }
+        String expectedPrefix = normalizePrefix(cosProperties.getCloneSamplePathPrefix());
+        if (StringUtils.isNotBlank(expectedPrefix) && !key.startsWith(expectedPrefix)) {
+            key = expectedPrefix + key;
+        }
+        return key;
+    }
+
+    private String normalizePrefix(String prefix) {
+        if (StringUtils.isBlank(prefix)) {
+            return "";
+        }
+        String normalized = prefix.trim();
+        if (normalized.startsWith("/")) {
+            normalized = normalized.substring(1);
+        }
+        if (!normalized.endsWith("/")) {
+            normalized += "/";
+        }
+        return normalized;
+    }
+
+    private String getFileExtension(String originalFilename) {
+        if (StringUtils.isBlank(originalFilename) || !originalFilename.contains(".")) {
+            return ".wav";
+        }
+        return originalFilename.substring(originalFilename.lastIndexOf(".")).toLowerCase(Locale.ROOT);
+    }
+
+    private String resolveAudioContentType(String extension) {
+        return switch (extension) {
+            case ".mp3" -> "audio/mpeg";
+            case ".wav" -> "audio/wav";
+            default -> "application/octet-stream";
+        };
+    }
+
+    private boolean isCosyvoiceRealVoiceId(String voiceId) {
+        return StringUtils.isNotBlank(voiceId) && voiceId.startsWith(COSYVOICE_REAL_VOICE_PREFIX);
+    }
+
+    private String buildCosyvoicePrefix(VoiceCloneEntity entity, Map<String, Object> config) {
+        String configuredPrefix = getConfigString(config, "prefix");
+        if (StringUtils.isNotBlank(configuredPrefix)) {
+            return sanitizeCosyvoicePrefix(configuredPrefix);
+        }
+
+        String suffix = entity.getId().replace("-", "").toLowerCase(Locale.ROOT);
+        return sanitizeCosyvoicePrefix("cv" + suffix.substring(0, Math.min(8, suffix.length())));
+    }
+
+    private String sanitizeCosyvoicePrefix(String prefix) {
+        String sanitized = prefix == null ? "" : prefix.toLowerCase(Locale.ROOT).replaceAll("[^a-z0-9_]", "");
+        if (StringUtils.isBlank(sanitized)) {
+            sanitized = "cvslot";
+        }
+        return sanitized.substring(0, Math.min(10, sanitized.length()));
+    }
+
+    private List<String> getLanguageHints(Object value) {
+        if (value instanceof List<?> listValue) {
+            return listValue.stream().filter(Objects::nonNull).map(String::valueOf).filter(StringUtils::isNotBlank)
+                    .toList();
+        }
+        if (value instanceof String stringValue && StringUtils.isNotBlank(stringValue)) {
+            return Arrays.stream(stringValue.split(",")).map(String::trim).filter(StringUtils::isNotBlank).toList();
+        }
+        return Collections.emptyList();
+    }
+
+    private Number getConfigNumber(Object value) {
+        if (value instanceof Number number) {
+            return number;
+        }
+        if (value instanceof String stringValue && StringUtils.isNotBlank(stringValue)) {
+            try {
+                return Double.parseDouble(stringValue);
+            } catch (NumberFormatException ignored) {
+                return null;
+            }
+        }
+        return null;
+    }
+
+    private String getConfigString(Map<String, Object> config, String... keys) {
+        for (String key : keys) {
+            Object value = config.get(key);
+            if (value != null && StringUtils.isNotBlank(String.valueOf(value))) {
+                return String.valueOf(value);
+            }
+        }
+        return null;
     }
 
     /**

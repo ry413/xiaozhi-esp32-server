@@ -73,9 +73,9 @@
                         <i class="el-icon-edit-outline"></i>
                       </button>
                     </template>
-                    <el-button type="success" plain class="summary-ai-btn">
+                    <!-- <el-button type="success" plain class="summary-ai-btn">
                       智能话术
-                    </el-button>
+                    </el-button> -->
                     <el-button plain class="summary-side-btn" @click="handleImportConfig">
                       导入
                     </el-button>

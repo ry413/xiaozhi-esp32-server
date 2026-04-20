@@ -40,6 +40,9 @@ public class VoiceCloneEntity {
     @Schema(description = "声音")
     private byte[] voice;
 
+    @Schema(description = "声音样本公网地址")
+    private String voiceSourceUrl;
+
     @Schema(description = "训练状态：0待训练 1训练中 2训练成功 3训练失败")
     private Integer trainStatus;
 

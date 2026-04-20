@@ -43,6 +43,9 @@ public class VoiceCloneResponseDTO {
     @Schema(description = "训练错误原因")
     private String trainError;
 
+    @Schema(description = "声音样本公网地址")
+    private String voiceSourceUrl;
+
     @Schema(description = "创建时间")
     private Date createDate;
 

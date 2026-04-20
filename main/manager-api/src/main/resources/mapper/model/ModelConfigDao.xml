@@ -28,6 +28,6 @@
     <select id="getTtsPlatformList" resultType="map">
         select id, model_name as modelName from ai_model_config
         where model_type = 'TTS'
-        and JSON_EXTRACT(config_json, '$.type') = 'huoshan_double_stream'
+        and JSON_EXTRACT(config_json, '$.type') in ('huoshan_double_stream', 'cosyvoice_clone_stream')
     </select>
 </mapper>

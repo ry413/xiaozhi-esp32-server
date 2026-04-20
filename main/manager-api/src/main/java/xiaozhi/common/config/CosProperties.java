@@ -13,4 +13,5 @@ public class CosProperties {
     private String bucket;
     private String baseUrl;
     private String pathPrefix = "wallpaper/";
+    private String cloneSamplePathPrefix = "cosyvoice-v3.5-flash_clone_sample_source/";
 }

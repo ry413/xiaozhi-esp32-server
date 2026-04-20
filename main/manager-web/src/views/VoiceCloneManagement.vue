@@ -147,6 +147,7 @@ export default {
             cloneDialogVisible: false,
             currentVoiceClone: {},
             isAllSelected: false,
+            refreshTimer: null,
             voiceCloneForm: {
                 modelId: "",
                 voiceIds: [],
@@ -159,6 +160,10 @@ export default {
     },
     created() {
         this.fetchVoiceCloneList();
+        this.startAutoRefresh();
+    },
+    beforeDestroy() {
+        this.stopAutoRefresh();
     },
 
     computed: {
@@ -235,6 +240,21 @@ export default {
                 }
             });
         },
+        startAutoRefresh() {
+            this.stopAutoRefresh();
+            this.refreshTimer = setInterval(() => {
+                if (this.loading) {
+                    return;
+                }
+                this.fetchVoiceCloneList();
+            }, 10000);
+        },
+        stopAutoRefresh() {
+            if (this.refreshTimer) {
+                clearInterval(this.refreshTimer);
+                this.refreshTimer = null;
+            }
+        },
         handleSearch() {
             this.currentPage = 1;
             this.fetchVoiceCloneList();
@@ -267,6 +287,8 @@ export default {
             switch (row.trainStatus) {
                 case 0:
                     return this.$t('voiceClone.waitingTraining');
+                case 1:
+                    return this.$t('voiceClone.training');
                 case 2:
                     return this.$t('voiceClone.trainSuccess');
                 case 3:

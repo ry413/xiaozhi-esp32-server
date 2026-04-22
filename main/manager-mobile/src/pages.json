@@ -64,6 +64,14 @@
         "text": "系统",
         "icon": "i-carbon-settings",
         "iconType": "uiLib"
+      },
+      {
+        "iconPath": "static/tabbar/microphone.png",
+        "selectedIconPath": "static/tabbar/microphone_activate.png",
+        "pagePath": "pages/voice-clone/index",
+        "text": "音色",
+        "icon": "i-carbon-microphone",
+        "iconType": "uiLib"
       }
     ]
   },
@@ -230,6 +238,15 @@
       "style": {
         "navigationBarTitleText": "设置",
         "navigationStyle": "custom"
+      }
+    },
+    {
+      "path": "pages/voice-clone/index",
+      "type": "page",
+      "layout": "tabbar",
+      "style": {
+        "navigationStyle": "custom",
+        "navigationBarTitleText": "音色克隆"
       }
     },
     {

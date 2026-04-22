@@ -68,6 +68,14 @@ export const tabbarList: FgTabBarItem[] = [
     icon: 'i-carbon-settings',
     iconType: 'uiLib',
   },
+  {
+    iconPath: 'static/tabbar/microphone.png',
+    selectedIconPath: 'static/tabbar/microphone_activate.png',
+    pagePath: 'pages/voice-clone/index',
+    text: '音色',
+    icon: 'i-carbon-microphone',
+    iconType: 'uiLib',
+  },
 ]
 
 // NATIVE_TABBAR(1) 和 CUSTOM_TABBAR_WITH_CACHE(2) 时，需要tabbar缓存

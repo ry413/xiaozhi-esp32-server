@@ -57,6 +57,7 @@ public class VoiceCloneServiceImpl extends BaseServiceImpl<VoiceCloneDao, VoiceC
     private static final String COSYVOICE_CLONE_MODEL_NAME = "voice-enrollment";
     private static final String COSYVOICE_STATUS_OK = "OK";
     private static final String COSYVOICE_STATUS_UNDEPLOYED = "UNDEPLOYED";
+    private static final String COSYVOICE_DEPLOYING_MESSAGE = "CosyVoice音色仍在部署中，请稍后重试";
     private static final int COSYVOICE_POLL_MAX_ATTEMPTS = 30;
     private static final long COSYVOICE_POLL_INTERVAL_MS = 2000L;
 
@@ -178,6 +179,8 @@ public class VoiceCloneServiceImpl extends BaseServiceImpl<VoiceCloneDao, VoiceC
                 getPage(params, "create_date", true),
                 getWrapper(params));
 
+        refreshTrainingStatuses(page.getRecords());
+
         // 将实体列表转换为DTO列表
         List<VoiceCloneResponseDTO> dtoList = convertToResponseDTOList(page.getRecords());
 
@@ -190,6 +193,8 @@ public class VoiceCloneServiceImpl extends BaseServiceImpl<VoiceCloneDao, VoiceC
         if (entity == null) {
             return null;
         }
+
+        refreshTrainingStatus(entity);
 
         VoiceCloneResponseDTO dto = ConvertUtils.sourceToTarget(entity, VoiceCloneResponseDTO.class);
 
@@ -215,6 +220,7 @@ public class VoiceCloneServiceImpl extends BaseServiceImpl<VoiceCloneDao, VoiceC
     @Override
     public List<VoiceCloneResponseDTO> getByUserIdWithNames(Long userId) {
         List<VoiceCloneEntity> entityList = getByUserId(userId);
+        refreshTrainingStatuses(entityList);
         return convertToResponseDTOList(entityList);
     }
 
@@ -398,6 +404,13 @@ public class VoiceCloneServiceImpl extends BaseServiceImpl<VoiceCloneDao, VoiceC
                 throw new RenException("暂不支持该音色克隆类型: " + type);
             }
         } catch (RenException re) {
+            if (isCosyvoiceDeployingException(re)) {
+                entity.setTrainStatus(1);
+                entity.setTrainError(re.getMsg());
+                baseDao.updateById(entity);
+                log.info("CosyVoice音色仍在部署中，保留训练中状态, cloneId={}, voiceId={}", entity.getId(), entity.getVoiceId());
+                return;
+            }
             entity.setTrainStatus(3);
             entity.setTrainError(re.getMsg());
             baseDao.updateById(entity);
@@ -500,7 +513,81 @@ public class VoiceCloneServiceImpl extends BaseServiceImpl<VoiceCloneDao, VoiceC
             Thread.sleep(COSYVOICE_POLL_INTERVAL_MS);
         }
 
-        throw new RenException("CosyVoice音色仍在部署中，请稍后重试");
+        throw new RenException(COSYVOICE_DEPLOYING_MESSAGE);
+    }
+
+    private boolean isCosyvoiceDeployingException(RenException exception) {
+        return exception != null && COSYVOICE_DEPLOYING_MESSAGE.equals(exception.getMsg());
+    }
+
+    private void refreshTrainingStatuses(List<VoiceCloneEntity> entityList) {
+        if (entityList == null || entityList.isEmpty()) {
+            return;
+        }
+        for (VoiceCloneEntity entity : entityList) {
+            refreshTrainingStatus(entity);
+        }
+    }
+
+    private void refreshTrainingStatus(VoiceCloneEntity entity) {
+        if (entity == null || !shouldRefreshCosyvoiceStatus(entity) || !isCosyvoiceRealVoiceId(entity.getVoiceId())) {
+            return;
+        }
+
+        try {
+            ModelConfigEntity modelConfig = modelConfigService.getModelByIdFromCache(entity.getModelId());
+            if (modelConfig == null || modelConfig.getConfigJson() == null) {
+                return;
+            }
+
+            Map<String, Object> config = modelConfig.getConfigJson();
+            String type = String.valueOf(config.get("type"));
+            if (!COSYVOICE_CLONE_STREAM.equals(type)) {
+                return;
+            }
+
+            String apiKey = getConfigString(config, "api_key");
+            String cloneModelName = getConfigString(config, "clone_model_name");
+            if (StringUtils.isBlank(apiKey)) {
+                return;
+            }
+
+            VoiceEnrollmentService service = StringUtils.isNotBlank(cloneModelName)
+                    ? new VoiceEnrollmentService(apiKey, cloneModelName)
+                    : new VoiceEnrollmentService(apiKey);
+
+            Voice voice = service.queryVoice(entity.getVoiceId());
+            if (voice == null || StringUtils.isBlank(voice.getStatus())) {
+                return;
+            }
+
+            String status = voice.getStatus();
+            if (COSYVOICE_STATUS_OK.equalsIgnoreCase(status)) {
+                entity.setTrainStatus(2);
+                entity.setTrainError("");
+                baseDao.updateById(entity);
+                return;
+            }
+
+            if (COSYVOICE_STATUS_UNDEPLOYED.equalsIgnoreCase(status)) {
+                entity.setTrainStatus(3);
+                entity.setTrainError("CosyVoice音色审核未通过");
+                baseDao.updateById(entity);
+            }
+        } catch (Exception e) {
+            log.warn("刷新CosyVoice音色训练状态失败, cloneId={}, voiceId={}", entity.getId(), entity.getVoiceId(), e);
+        }
+    }
+
+    private boolean shouldRefreshCosyvoiceStatus(VoiceCloneEntity entity) {
+        if (entity == null) {
+            return false;
+        }
+        if (Objects.equals(entity.getTrainStatus(), 1)) {
+            return true;
+        }
+        return Objects.equals(entity.getTrainStatus(), 3)
+                && COSYVOICE_DEPLOYING_MESSAGE.equals(entity.getTrainError());
     }
 
     private void deleteRemoteCloneVoice(VoiceCloneEntity entity) {

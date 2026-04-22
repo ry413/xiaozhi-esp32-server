@@ -34,8 +34,11 @@ import xiaozhi.modules.device.dto.DeviceUnBindDTO;
 import xiaozhi.modules.device.dto.DeviceUpdateDTO;
 import xiaozhi.modules.device.entity.DeviceEntity;
 import xiaozhi.modules.device.service.DeviceService;
+import xiaozhi.modules.device.vo.DeviceOwnerVO;
 import xiaozhi.modules.security.user.SecurityUser;
+import xiaozhi.modules.sys.dto.SysUserDTO;
 import xiaozhi.modules.sys.service.SysParamsService;
+import xiaozhi.modules.sys.service.SysUserService;
 
 @Tag(name = "设备管理")
 @RestController
@@ -45,12 +48,15 @@ public class DeviceController {
     private final RedisUtils redisUtils;
     private final SysParamsService sysParamsService;
     private final RestTemplate restTemplate;
+    private final SysUserService sysUserService;
 
-    public DeviceController(DeviceService deviceService, RedisUtils redisUtils, SysParamsService sysParamsService, RestTemplate restTemplate) {
+    public DeviceController(DeviceService deviceService, RedisUtils redisUtils, SysParamsService sysParamsService,
+            RestTemplate restTemplate, SysUserService sysUserService) {
         this.deviceService = deviceService;
         this.redisUtils = redisUtils;
         this.sysParamsService = sysParamsService;
         this.restTemplate = restTemplate;
+        this.sysUserService = sysUserService;
     }
 
     @PostMapping("/bind/{agentId}/{deviceCode}")
@@ -326,14 +332,22 @@ public class DeviceController {
         }
     }
 
-    @GetMapping("/user/{deviceId}")
-    @Operation(summary = "按设备查询所属用户ID")
-    public Result<Long> getDeviceUserId(@PathVariable String deviceId) {
+    @GetMapping("/owner/{deviceId}")
+    @Operation(summary = "按设备查询所属用户")
+    public Result<DeviceOwnerVO> getDeviceOwner(@PathVariable String deviceId) {
         DeviceEntity deviceById = deviceService.selectById(deviceId);
         if (deviceById == null || deviceById.getUserId() == null) {
-            return new Result<Long>().error(ErrorCode.DEVICE_NOT_EXIST);
+            return new Result<DeviceOwnerVO>().error(ErrorCode.DEVICE_NOT_EXIST);
         }
 
-        return new Result<Long>().ok(deviceById.getUserId());
+        SysUserDTO user = sysUserService.getByUserId(deviceById.getUserId());
+        if (user == null) {
+            return new Result<DeviceOwnerVO>().error(ErrorCode.DEVICE_NOT_EXIST);
+        }
+
+        DeviceOwnerVO owner = new DeviceOwnerVO();
+        owner.setId(user.getId());
+        owner.setUsername(user.getUsername());
+        return new Result<DeviceOwnerVO>().ok(owner);
     }
 }

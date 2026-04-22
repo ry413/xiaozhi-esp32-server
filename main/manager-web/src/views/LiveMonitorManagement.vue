@@ -65,7 +65,14 @@
             </el-select>
           </div>
 
-          <el-table :data="filteredMonitorList" v-loading="loading" class="transparent-table">
+          <el-table
+            :data="filteredMonitorList"
+            :row-key="getRowKey"
+            :expand-row-keys="expandedRowKeys"
+            v-loading="loading"
+            class="transparent-table"
+            @expand-change="handleExpandChange"
+          >
             <el-table-column type="expand">
               <template slot-scope="{ row }">
                 <div class="expand-panel">
@@ -179,9 +186,12 @@
                 {{ safeNumber(row.current_viewer_count) }} / {{ safeNumber(row.total_viewer_count) }}
               </template>
             </el-table-column>
-            <el-table-column label="权益用户" min-width="110">
+            <el-table-column label="权益用户" min-width="160">
               <template slot-scope="{ row }">
-                {{ row.benefit_user_id || "-" }}
+                <div class="owner-cell">
+                  <span>{{ row.benefit_user_name || "-" }}</span>
+                  <span class="owner-sub">{{ row.benefit_user_id || "-" }}</span>
+                </div>
               </template>
             </el-table-column>
             <el-table-column label="点卡秒数" min-width="110">
@@ -222,6 +232,7 @@ export default {
       loading: false,
       refreshTimer: null,
       monitorList: [],
+      expandedRowKeys: [],
       filters: {
         keyword: "",
         status: "",
@@ -289,6 +300,8 @@ export default {
             const bTime = new Date(b.updated_at || b.created_at || 0).getTime();
             return bTime - aTime;
           });
+          const currentKeys = new Set(this.monitorList.map(item => this.getRowKey(item)));
+          this.expandedRowKeys = this.expandedRowKeys.filter(key => currentKeys.has(key));
           return;
         }
         this.$message.error((data && data.msg) || "获取直播实例失败");
@@ -394,6 +407,12 @@ export default {
       } catch (error) {
         return String(value);
       }
+    },
+    getRowKey(row) {
+      return row.device_id;
+    },
+    handleExpandChange(row, expandedRows) {
+      this.expandedRowKeys = expandedRows.map(item => this.getRowKey(item));
     },
   },
 };
@@ -539,6 +558,17 @@ export default {
 }
 
 .detail-label {
+  font-size: 12px;
+  color: #6b7280;
+}
+
+.owner-cell {
+  display: flex;
+  flex-direction: column;
+  line-height: 1.4;
+}
+
+.owner-sub {
   font-size: 12px;
   color: #6b7280;
 }

@@ -44,34 +44,43 @@
               <el-card class="director-summary-card" shadow="never">
                 <div class="director-summary">
                   <div class="director-summary__top">
-                    <template v-if="editingRobotName">
-                      <div class="name-editor">
-                        <el-input
-                          ref="robotNameInput"
-                          v-model="selectedRobot.name"
-                          class="summary-edit summary-name-input"
-                          @keyup.enter.native="finishRobotNameEdit"
-                        ></el-input>
-                        <el-button
-                          type="success"
-                          icon="el-icon-check"
-                          class="summary-action-btn"
-                          @click="finishRobotNameEdit"
-                        ></el-button>
-                        <el-button
-                          type="danger"
-                          icon="el-icon-close"
-                          class="summary-action-btn"
-                          @click="cancelRobotNameEdit"
-                        ></el-button>
-                      </div>
-                    </template>
-                    <template v-else>
-                      <div class="summary-name-text">{{ selectedRobot.name }}</div>
-                      <!-- <button type="button" class="edit-trigger" @click="startRobotNameEdit">
-                        <i class="el-icon-edit-outline"></i>
-                      </button> -->
-                    </template>
+                    <div class="summary-top-main">
+                      <template v-if="editingRobotName">
+                        <div class="name-editor">
+                          <el-input
+                            ref="robotNameInput"
+                            v-model="selectedRobot.name"
+                            class="summary-edit summary-name-input"
+                            @keyup.enter.native="finishRobotNameEdit"
+                          ></el-input>
+                          <el-button
+                            type="success"
+                            icon="el-icon-check"
+                            class="summary-action-btn"
+                            @click="finishRobotNameEdit"
+                          ></el-button>
+                          <el-button
+                            type="danger"
+                            icon="el-icon-close"
+                            class="summary-action-btn"
+                            @click="cancelRobotNameEdit"
+                          ></el-button>
+                        </div>
+                      </template>
+                      <template v-else>
+                        <div class="summary-name-text">{{ selectedRobot.name }}</div>
+                        <!-- <button type="button" class="edit-trigger" @click="startRobotNameEdit">
+                          <i class="el-icon-edit-outline"></i>
+                        </button> -->
+                      </template>
+                    </div>
+
+                    <div class="auto-close-notice">
+                      <div class="auto-close-notice__title">系统将在以下情况自动关闭导播</div>
+                      <div class="auto-close-notice__item">激活码过期超过 30 分钟</div>
+                      <div class="auto-close-notice__item">机器人关闭超过 30 分钟</div>
+                      <div class="auto-close-notice__item">直播间关闭超过 30 分钟</div>
+                    </div>
                   </div>
 
                   <div class="device-meta-line">
@@ -1048,19 +1057,66 @@ export default {
   flex-direction: column;
   gap: 16px;
   align-items: flex-start;
+  position: relative;
 }
 
 .director-summary__top {
   display: flex;
+  align-items: flex-start;
+  gap: 16px;
+  flex-wrap: wrap;
+  width: 100%;
+}
+
+.summary-top-main {
+  display: flex;
   align-items: center;
   gap: 10px;
-  flex-wrap: wrap;
+  min-width: 0;
 }
 
 .summary-name-text {
   font-size: 18px;
   font-weight: 700;
   color: #1f2937;
+}
+
+.auto-close-notice {
+  position: absolute;
+  top: 0;
+  right: 0;
+  width: 360px;
+  padding: 12px 14px;
+  border-radius: 14px;
+  border: 1px solid #d8e4f4;
+  background: linear-gradient(135deg, #f8fbff 0%, #eef5ff 100%);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.8);
+}
+
+.auto-close-notice__title {
+  margin-bottom: 8px;
+  font-size: 13px;
+  font-weight: 700;
+  color: #26436a;
+}
+
+.auto-close-notice__item {
+  position: relative;
+  padding-left: 14px;
+  font-size: 13px;
+  line-height: 1.7;
+  color: #5f6f86;
+}
+
+.auto-close-notice__item::before {
+  content: "";
+  position: absolute;
+  left: 0;
+  top: 8px;
+  width: 6px;
+  height: 6px;
+  border-radius: 999px;
+  background: #6d9ce8;
 }
 
 .edit-trigger {
@@ -1352,6 +1408,11 @@ export default {
 
   .message-input,
   .plan-select-wrap {
+    width: 100%;
+  }
+
+  .auto-close-notice {
+    position: static;
     width: 100%;
   }
 }

@@ -75,22 +75,22 @@ class MemoryProvider(MemoryProviderBase):
                 powermem_config["llm"] = config["llm"]
             else:
                 llm_config = {}
-                if "llm_api_key" in config:
+                if config.get("llm_api_key"):
                     llm_config["api_key"] = config["llm_api_key"]
-                if "llm_model" in config:
+                if config.get("llm_model"):
                     llm_config["model"] = config["llm_model"]
                 # Handle base_url based on provider type
                 # - qwen provider uses dashscope_base_url
                 # - openai provider uses openai_base_url
-                if "llm_base_url" in config:
-                    if llm_provider == "qwen":
-                        llm_config["dashscope_base_url"] = config["llm_base_url"]
-                    else:
-                        llm_config["openai_base_url"] = config["llm_base_url"]
-                if "openai_base_url" in config:
-                    llm_config["openai_base_url"] = config["openai_base_url"]
-                if "dashscope_base_url" in config:
-                    llm_config["dashscope_base_url"] = config["dashscope_base_url"]
+                if llm_provider == "qwen":
+                    base_url = config.get("dashscope_base_url") or config.get("llm_base_url")
+                    if base_url:
+                        llm_config["dashscope_base_url"] = base_url
+                else:
+                    base_url = config.get("openai_base_url") or config.get("llm_base_url")
+                    if base_url:
+                        llm_config["openai_base_url"] = base_url
+
                 powermem_config["llm"] = {
                     "provider": llm_provider,
                     "config": llm_config
@@ -101,24 +101,23 @@ class MemoryProvider(MemoryProviderBase):
                 powermem_config["embedder"] = config["embedder"]
             else:
                 embedder_config = {}
-                if "embedding_api_key" in config:
+                if config.get("embedding_api_key"):
                     embedder_config["api_key"] = config["embedding_api_key"]
-                if "embedding_model" in config:
+                if config.get("embedding_model"):
                     embedder_config["model"] = config["embedding_model"]
                 # Handle base_url based on provider type
                 # - qwen provider uses dashscope_base_url
                 # - openai provider uses openai_base_url
                 # Priority: embedding_xxx_base_url > embedding_base_url > xxx_base_url
-                if "embedding_base_url" in config:
-                    if embedding_provider == "qwen":
-                        embedder_config["dashscope_base_url"] = config["embedding_base_url"]
-                    else:
-                        embedder_config["openai_base_url"] = config["embedding_base_url"]
-                # Embedding-specific base_url (higher priority)
-                if "embedding_openai_base_url" in config:
-                    embedder_config["openai_base_url"] = config["embedding_openai_base_url"]
-                if "embedding_dashscope_base_url" in config:
-                    embedder_config["dashscope_base_url"] = config["embedding_dashscope_base_url"]
+                if embedding_provider == "qwen":
+                    base_url = config.get("embedding_dashscope_base_url") or config.get("embedding_base_url")
+                    if base_url:
+                        embedder_config["dashscope_base_url"] = base_url
+                else:
+                    base_url = config.get("embedding_openai_base_url") or config.get("embedding_base_url")
+                    if base_url:
+                        embedder_config["openai_base_url"] = base_url
+
                 powermem_config["embedder"] = {
                     "provider": embedding_provider,
                     "config": embedder_config
@@ -163,59 +162,55 @@ class MemoryProvider(MemoryProviderBase):
         Returns:
             Result from PowerMem API or None if failed
         """
-        if not self.use_powermem or self.memory_client is None:
-            logger.bind(tag=TAG).warning("PowerMem is not available, skipping save_memory")
-            return None
-
-        if len(msgs) < 2:
-            logger.bind(tag=TAG).debug("Not enough messages to save (need at least 2)")
-            return None
-
         try:
-            # Format the content as a message list for PowerMem
-            messages = []
-            for message in msgs:
-                if message.role == "system":
-                    continue
+            if self.use_powermem and self.memory_client is not None and len(msgs) >= 2:
+                # Format the content as a message list for PowerMem
+                messages = []
+                for message in msgs:
+                    if message.role == "system":
+                        continue
 
-                content = message.content
+                    content = message.content
 
-                # Extract content from JSON format if present (for ASR with emotion/language tags)
-                # Same logic as in query_memory method
-                try:
-                    if content and content.strip().startswith("{") and content.strip().endswith("}"):
-                        data = json.loads(content)
-                        if "content" in data:
-                            content = data["content"]
-                except (json.JSONDecodeError, KeyError, TypeError):
-                    # If parsing fails, use original content
-                    pass
+                    # Extract content from JSON format if present (for ASR with emotion/language tags)
+                    # Same logic as in query_memory method
+                    try:
+                        if content and content.strip().startswith("{") and content.strip().endswith("}"):
+                            data = json.loads(content)
+                            if "content" in data:
+                                content = data["content"]
+                    except (json.JSONDecodeError, KeyError, TypeError):
+                        # If parsing fails, use original content
+                        pass
 
-                messages.append({"role": message.role, "content": content})
+                    messages.append({"role": message.role, "content": content})
 
-            # Add memory using PowerMem SDK
-            result = self.memory_client.add(
-                messages=messages,
-                user_id=self.role_id
-            )
-            # Handle both sync and async returns
-            if asyncio.iscoroutine(result):
-                result = await result
+                # Add memory using PowerMem SDK
+                result = self.memory_client.add(
+                    messages=messages,
+                    user_id=self.role_id
+                )
+                # Handle both sync and async returns
+                if asyncio.iscoroutine(result):
+                    result = await result
 
-            logger.bind(tag=TAG).debug(f"Save memory result: {result}")
+                logger.bind(tag=TAG).debug(f"Save memory result: {result}")
 
-            # Cache user profile if UserMemory mode and profile was extracted
-            if self.enable_user_profile and result:
-                if result.get('profile_extracted'):
-                    self.last_profile_content = result.get('profile_content', '')
-                    logger.bind(tag=TAG).debug(f"User profile extracted: {self.last_profile_content}")
-
-            return result
-
+                # Cache user profile if UserMemory mode and profile was extracted
+                if self.enable_user_profile and result:
+                    if result.get('profile_extracted'):
+                        self.last_profile_content = result.get('profile_content', '')
+                        logger.bind(tag=TAG).debug(f"User profile extracted: {self.last_profile_content}")
+            else:
+                if not self.use_powermem or self.memory_client is None:
+                    logger.bind(tag=TAG).warning("PowerMem is not available, skipping save_memory")
+                elif len(msgs) < 2:
+                    logger.bind(tag=TAG).debug("Not enough messages to save (need at least 2)")
         except Exception as e:
             logger.bind(tag=TAG).error(f"Error saving memory: {str(e)}")
             logger.bind(tag=TAG).debug(f"Detailed error: {traceback.format_exc()}")
-            return None
+
+        return None
 
     async def query_memory(self, query: str) -> str:
         """

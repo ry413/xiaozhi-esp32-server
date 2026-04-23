@@ -660,9 +660,10 @@ export default {
 }
 
 .main-wrapper {
-  margin: 5px 22px;
+  // 顶部 63px 底部 35px 查询72px
+  height: calc(100vh - 63px - 35px - 72px);
+  margin: 0 22px;
   border-radius: 15px;
-  height: 80vh;
   box-shadow: 0 2px 12px rgba(0, 0, 0, 0.1);
   position: relative;
   background: rgba(237, 242, 255, 0.5);
@@ -687,7 +688,6 @@ export default {
   height: 100%;
   border-radius: 15px;
   background: transparent;
-  border: 1px solid #fff;
 }
 
 .nav-panel {
@@ -954,7 +954,7 @@ export default {
 
 ::v-deep .el-table__body .el-checkbox__inner {
   display: inline-block !important;
-  background: #e6edfa;
+  background: #ffffff;
 }
 
 ::v-deep .el-table thead th:not(:first-child) .cell {

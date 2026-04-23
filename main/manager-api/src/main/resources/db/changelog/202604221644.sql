@@ -1,0 +1,6 @@
+delete from `ai_model_provider` where id = 'SYSTEM_TTS_CVLocalCloneStream';
+INSERT INTO `ai_model_provider` (`id`, `model_type`, `provider_code`, `name`, `fields`, `sort`, `creator`, `create_date`, `updater`, `update_date`) VALUES
+('SYSTEM_TTS_CVLocalCloneStream', 'TTS', 'cosyvoice_local_clone_stream', 'CosyVoice本地克隆语音合成', '[{"key":"base_url","label":"API基础URL","type":"string"},{"key":"endpoint","label":"API端点","type":"string"},{"key":"api_url","label":"完整API URL","type":"string"},{"key":"output_dir","label":"输出目录","type":"string"},{"key":"voice","type":"string","label":"音色"},{"key":"format","label":"音频格式","type":"string"},{"key":"volume","label":"音量","type":"number"},{"key":"speed","label":"语速","type":"number"},{"key":"pitch","label":"音调","type":"number"},{"key":"prefix","label":"音频资源id前缀","type":"string"},{"key":"sample_rate","label":"采样率","type":"number"}]', 22, 1, NOW(), 1, NOW());
+
+delete from `ai_model_config` where id = 'TTS_CVLocalCloneStream';
+INSERT INTO `ai_model_config` VALUES ('TTS_CVLocalCloneStream', 'tts', 'cosyvoice_local_clone_stream', 'CosyVoice本地克隆语音合成(流式)', 0, 1, '{"base_url":"","endpoint":"","api_url":"","type":"cosyvoice_local_clone_stream","output_dir":"/tmp","voice":"null","format":"wav","volume":"50","rate":"1","pitch":"1","prefix":"xzclone","sample_rate":24000}', '', '', 1, NULL, NULL, NULL, NULL);

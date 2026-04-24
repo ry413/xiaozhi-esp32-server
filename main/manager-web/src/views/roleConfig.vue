@@ -122,6 +122,22 @@
                         智能话术
                       </el-button>
                     </el-form-item>
+                    <el-form-item label="提示词模板：">
+                      <el-select
+                        v-model="form.promptTemplate"
+                        filterable
+                        clearable
+                        placeholder="卖货主播"
+                        class="form-select"
+                      >
+                        <el-option
+                          v-for="item in promptTemplateOptions"
+                          :key="item.value"
+                          :label="item.label"
+                          :value="item.value"
+                        />
+                      </el-select>
+                    </el-form-item>
 
                     <el-form-item>
                       <template #label>
@@ -252,7 +268,7 @@
                           </el-select>
                         </div>
                       </el-form-item>
-                      <el-form-item class="model-item">
+                      <!-- <el-form-item class="model-item">
                         <template #label>
                           <el-tooltip :content="$t('roleConfig.tooltip.slm')" placement="top" effect="light" popper-class="custom-tooltip">
                             <span>{{ $t('roleConfig.slm') }}</span>
@@ -273,7 +289,7 @@
                             />
                           </el-select>
                         </div>
-                      </el-form-item>
+                      </el-form-item> -->
                     </div>
                     <el-form-item
                       v-for="(model, index) in models.slice(4)"
@@ -492,6 +508,7 @@ export default {
         ttsPitch: null,
         chatHistoryConf: 0,
         systemPrompt: "",
+        promptTemplate: "",
         summaryMemory: "",
         langCode: "",
         language: "",
@@ -520,6 +537,11 @@ export default {
       llmModeTypeMap: new Map(),
       modelOptions: {},
       templates: [],
+      promptTemplateOptions: [
+        { label: "卖货主播", value: "agent-base-prompt.txt" },
+        { label: "通用小智", value: "base-prompt-common-xiaozhi.txt" },
+        { label: "无提示词模板", value: "base-prompt-empty.txt" },
+      ],
       loadingTemplate: false,
       voiceOptions: [],
       voiceDetails: {}, // 保存完整的音色信息
@@ -573,6 +595,7 @@ export default {
         memModelId: this.form.model.memModelId,
         intentModelId: this.form.model.intentModelId,
         systemPrompt: this.form.systemPrompt,
+        promptTemplate: this.form.promptTemplate,
         summaryMemory: this.form.summaryMemory,
         langCode: this.form.langCode,
         language: this.form.language,
@@ -676,6 +699,7 @@ export default {
             ttsVoiceId: "",
             chatHistoryConf: 0,
             systemPrompt: "",
+            promptTemplate: "",
             summaryMemory: "",
             langCode: "",
             language: "",
@@ -735,6 +759,7 @@ export default {
         ttsVoiceId: templateData.ttsVoiceId || this.form.ttsVoiceId,
         chatHistoryConf: templateData.chatHistoryConf || this.form.chatHistoryConf,
         systemPrompt: templateData.systemPrompt || this.form.systemPrompt,
+        promptTemplate: templateData.promptTemplate || this.form.promptTemplate,
         summaryMemory: templateData.summaryMemory || this.form.summaryMemory,
         langCode: templateData.langCode || this.form.langCode,
         model: {
@@ -1607,6 +1632,13 @@ export default {
   flex: 1;
   width: 100%;
   height: 36px;
+}
+
+.field-tip {
+  margin-top: 6px;
+  color: #909399;
+  font-size: 12px;
+  line-height: 18px;
 }
 
 .play-button {

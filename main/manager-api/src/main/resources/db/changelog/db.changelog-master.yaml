@@ -711,3 +711,10 @@ databaseChangeLog:
         - sqlFile:
             encoding: utf8
             path: classpath:db/changelog/202604241545.sql
+  - changeSet:
+      id: 202604241620
+      author: ry
+      changes:
+        - sqlFile:
+            encoding: utf8
+            path: classpath:db/changelog/202604241620.sql

@@ -176,6 +176,9 @@ public class ConfigServiceImpl implements ConfigService {
             chatHistoryConf = Constant.ChatHistoryConfEnum.RECORD_TEXT_AUDIO.getCode();
         }
         result.put("chat_history_conf", chatHistoryConf);
+        if (StringUtils.isNotBlank(agent.getPromptTemplate())) {
+            result.put("prompt_template", agent.getPromptTemplate());
+        }
         // 如果客户端已实例化模型，则不返回
         String alreadySelectedVadModelId = selectedModule.get("VAD");
         if (alreadySelectedVadModelId != null && alreadySelectedVadModelId.equals(agent.getVadModelId())) {

@@ -55,6 +55,7 @@ class PromptManager:
         self.config = config
         self.logger = logger or setup_logging()
         self.base_prompt_template = None
+        self.current_template_path = None
         self.last_update_time = 0
 
         # 导入全局缓存管理器
@@ -78,12 +79,15 @@ class PromptManager:
             if not template_path:
                 template_path = "agent-base-prompt.txt"
             cache_key = f"prompt_template:{template_path}"
+            self.current_template_path = template_path
 
             # 先从缓存获取
             cached_template = self.cache_manager.get(self.CacheType.CONFIG, cache_key)
             if cached_template is not None:
                 self.base_prompt_template = cached_template
-                self.logger.bind(tag=TAG).debug("从缓存加载基础提示词模板")
+                self.logger.bind(tag=TAG).debug(
+                    f"从缓存加载基础提示词模板: {template_path}"
+                )
                 return
 
             # 缓存未命中，从文件读取
@@ -96,11 +100,23 @@ class PromptManager:
                     self.CacheType.CONFIG, cache_key, template_content
                 )
                 self.base_prompt_template = template_content
-                self.logger.bind(tag=TAG).debug("成功加载基础提示词模板并缓存")
+                self.logger.bind(tag=TAG).debug(
+                    f"成功加载基础提示词模板并缓存: {template_path}"
+                )
             else:
                 self.logger.bind(tag=TAG).warning(f"未找到{template_path}文件")
         except Exception as e:
             self.logger.bind(tag=TAG).error(f"加载提示词模板失败: {e}")
+
+    def reload_if_template_changed(self):
+        """当连接配置中的模板文件变化时，重新加载基础提示词模板"""
+        template_path = (
+            self.config.get("prompt_template", None) or "agent-base-prompt.txt"
+        )
+        if template_path == self.current_template_path:
+            return
+        self.base_prompt_template = None
+        self._load_base_template()
 
     def get_quick_prompt(self, user_prompt: str, device_id: str = None) -> str:
         """快速获取系统提示词（使用用户配置）"""

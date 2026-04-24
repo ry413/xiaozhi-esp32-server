@@ -106,6 +106,11 @@ public class AgentTemplateEntity implements Serializable {
     private String systemPrompt;
 
     /**
+     * 提示词模板文件
+     */
+    private String promptTemplate;
+
+    /**
      * 总结记忆
      */
     private String summaryMemory;

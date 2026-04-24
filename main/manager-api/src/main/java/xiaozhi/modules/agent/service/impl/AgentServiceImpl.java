@@ -333,6 +333,9 @@ public class AgentServiceImpl extends BaseServiceImpl<AgentDao, AgentEntity> imp
         if (dto.getSystemPrompt() != null) {
             existingEntity.setSystemPrompt(dto.getSystemPrompt());
         }
+        if (dto.getPromptTemplate() != null) {
+            existingEntity.setPromptTemplate(dto.getPromptTemplate());
+        }
         if (dto.getSummaryMemory() != null) {
             existingEntity.setSummaryMemory(dto.getSummaryMemory());
         }
@@ -490,6 +493,7 @@ public class AgentServiceImpl extends BaseServiceImpl<AgentDao, AgentEntity> imp
             entity.setMemModelId(template.getMemModelId());
             entity.setIntentModelId(template.getIntentModelId());
             entity.setSystemPrompt(template.getSystemPrompt());
+            entity.setPromptTemplate(template.getPromptTemplate());
             entity.setSummaryMemory(template.getSummaryMemory());
 
             // 根据记忆模型类型设置默认的chatHistoryConf值

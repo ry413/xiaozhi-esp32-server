@@ -717,6 +717,9 @@ class ConnectionHandler:
                 ] = plugin_from_server.keys()
         if private_config.get("prompt", None) is not None:
             self.config["prompt"] = private_config["prompt"]
+        if private_config.get("prompt_template", None) is not None:
+            self.config["prompt_template"] = private_config["prompt_template"]
+            self.prompt_manager.reload_if_template_changed()
         # 获取声纹信息
         if private_config.get("voiceprint", None) is not None:
             self.config["voiceprint"] = private_config["voiceprint"]

@@ -112,7 +112,7 @@ function createFeedbackPanel(latestCount: number, templates: string[]): TextTemp
 function createDanmuPanel() {
   return {
     latestCount: 5,
-    fixedTemplate: '【弹幕】{name} 说: [{text}]',
+    fixedTemplate: '【弹幕】{name} 说：{text}',
     keywordReplies: [
       { keyword: '合作', reply: '{name} 想合作，你让他私信主播联系' },
       { keyword: '价格', reply: '{name} 问价格，你可以告诉他今天的优惠' },

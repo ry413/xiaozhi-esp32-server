@@ -83,8 +83,8 @@
                   <template slot-scope="{ row }">
                     <div v-if="row.membershipActive" class="quota-cell">
                       <div class="quota-line">
-                        <span>{{ formatDuration(row.membershipDailyRemainingSeconds) }}</span>
-                        <span class="quota-muted">剩余 / {{ formatDuration(row.membershipDailyLimitSeconds) }}</span>
+                        <span>{{ formatDuration(row.membershipDailyConsumedSeconds) }}</span>
+                        <span class="quota-muted">/ {{ formatDuration(row.membershipDailyLimitSeconds) }}</span>
                       </div>
                       <el-progress
                         :percentage="quotaPercent(row)"
@@ -92,6 +92,9 @@
                         :stroke-width="8"
                         :show-text="false"
                       />
+                      <div :class="['quota-remaining', { exhausted: Number(row.membershipDailyRemainingSeconds) <= 0 }]">
+                        剩余 {{ formatDuration(row.membershipDailyRemainingSeconds) }}
+                      </div>
                     </div>
                     <span v-else>-</span>
                   </template>
@@ -595,21 +598,33 @@ export default {
 }
 
 .quota-cell {
-  min-width: 180px;
+  min-width: 190px;
 }
 
 .quota-line {
   display: flex;
-  justify-content: space-between;
-  gap: 10px;
+  align-items: baseline;
+  gap: 4px;
   margin-bottom: 6px;
   color: #1f2d3d;
   font-size: 13px;
+  white-space: nowrap;
 }
 
 .quota-muted {
   color: #7b8794;
-  white-space: nowrap;
+}
+
+.quota-remaining {
+  margin-top: 6px;
+  color: #5f6f85;
+  font-size: 12px;
+  line-height: 1.2;
+}
+
+.quota-remaining.exhausted {
+  color: #f56c6c;
+  font-weight: 600;
 }
 
 ::v-deep .el-table th {

@@ -11,21 +11,22 @@
 
     <div class="main-wrapper">
       <div class="content-panel">
-        <div class="hero-card">
-          <div class="hero-copy">
-            <span class="eyebrow">Benefit Console</span>
-            <h3>用户权益、余额和流水全局视图</h3>
-            <p>适合排查充值发放、点卡消费、月卡叠加和过期状态。</p>
+        <div class="summary-strip">
+          <div class="summary-item">
+            <span class="summary-label">当前页用户</span>
+            <strong>{{ benefitList.length }}</strong>
           </div>
-          <div class="hero-stats">
-            <div class="stat-pill">
-              <span class="stat-label">当前页用户</span>
-              <strong>{{ benefitList.length }}</strong>
-            </div>
-            <div class="stat-pill">
-              <span class="stat-label">当前页有效月卡</span>
-              <strong>{{ activeMembershipCount }}</strong>
-            </div>
+          <div class="summary-item">
+            <span class="summary-label">有效月卡</span>
+            <strong>{{ activeMembershipCount }}</strong>
+          </div>
+          <div class="summary-item">
+            <span class="summary-label">今日额度耗尽</span>
+            <strong>{{ exhaustedMembershipCount }}</strong>
+          </div>
+          <div class="summary-item wide">
+            <span class="summary-label">当前页点卡余额</span>
+            <strong>{{ formatDuration(totalBalanceSeconds) }}</strong>
           </div>
         </div>
 
@@ -36,9 +37,10 @@
                 <el-input v-model="benefitFilters.keyword" placeholder="用户ID / 用户名" clearable class="filter-item" @keyup.enter.native="handleBenefitSearch" />
                 <el-button type="primary" @click="handleBenefitSearch">查询</el-button>
                 <el-button @click="resetBenefitFilters">重置</el-button>
+                <el-button icon="el-icon-refresh" @click="fetchBenefits">刷新</el-button>
               </div>
 
-              <el-table :data="benefitList" v-loading="benefitLoading" class="transparent-table">
+              <el-table :data="benefitList" v-loading="benefitLoading" class="transparent-table" empty-text="暂无权益数据">
                 <el-table-column prop="userId" label="用户ID" min-width="120" />
                 <el-table-column prop="username" label="用户名" min-width="160" />
                 <el-table-column label="用户状态" width="100">
@@ -48,9 +50,21 @@
                     </el-tag>
                   </template>
                 </el-table-column>
-                <el-table-column prop="balanceSeconds" label="剩余秒数" min-width="110" />
-                <el-table-column prop="totalRechargedSeconds" label="累计充值秒数" min-width="130" />
-                <el-table-column prop="totalConsumedSeconds" label="累计消费秒数" min-width="130" />
+                <el-table-column label="点卡余额" min-width="130">
+                  <template slot-scope="{ row }">
+                    <span class="duration-text">{{ formatDuration(row.balanceSeconds) }}</span>
+                  </template>
+                </el-table-column>
+                <el-table-column label="累计充值" min-width="120">
+                  <template slot-scope="{ row }">
+                    {{ formatDuration(row.totalRechargedSeconds) }}
+                  </template>
+                </el-table-column>
+                <el-table-column label="累计消费" min-width="120">
+                  <template slot-scope="{ row }">
+                    {{ formatDuration(row.totalConsumedSeconds) }}
+                  </template>
+                </el-table-column>
                 <el-table-column label="余额账户" width="110">
                   <template slot-scope="{ row }">
                     <el-tag v-if="row.accountStatus === 1" type="success">正常</el-tag>
@@ -63,6 +77,23 @@
                     <el-tag :type="row.membershipActive ? 'warning' : 'info'">
                       {{ row.membershipActive ? '生效中' : '无有效月卡' }}
                     </el-tag>
+                  </template>
+                </el-table-column>
+                <el-table-column label="月卡今日额度" min-width="210">
+                  <template slot-scope="{ row }">
+                    <div v-if="row.membershipActive" class="quota-cell">
+                      <div class="quota-line">
+                        <span>{{ formatDuration(row.membershipDailyRemainingSeconds) }}</span>
+                        <span class="quota-muted">剩余 / {{ formatDuration(row.membershipDailyLimitSeconds) }}</span>
+                      </div>
+                      <el-progress
+                        :percentage="quotaPercent(row)"
+                        :status="quotaStatus(row)"
+                        :stroke-width="8"
+                        :show-text="false"
+                      />
+                    </div>
+                    <span v-else>-</span>
                   </template>
                 </el-table-column>
                 <el-table-column prop="membershipStartAt" label="月卡开始时间" min-width="170" />
@@ -97,14 +128,20 @@
                 <el-button @click="resetBalanceLogFilters">重置</el-button>
               </div>
 
-              <el-table :data="balanceLogList" v-loading="balanceLogLoading" class="transparent-table">
+              <el-table :data="balanceLogList" v-loading="balanceLogLoading" class="transparent-table" empty-text="暂无点卡流水">
                 <el-table-column prop="id" label="流水ID" min-width="90" />
                 <el-table-column prop="userId" label="用户ID" min-width="110" />
                 <el-table-column prop="username" label="用户名" min-width="150" />
                 <el-table-column prop="changeType" label="变更类型" min-width="100" />
-                <el-table-column prop="deltaMinutes" label="变更秒数" min-width="100" />
-                <el-table-column prop="balanceBefore" label="变更前" min-width="100" />
-                <el-table-column prop="balanceAfter" label="变更后" min-width="100" />
+                <el-table-column label="变更时长" min-width="110">
+                  <template slot-scope="{ row }">{{ formatSignedDuration(row.deltaMinutes) }}</template>
+                </el-table-column>
+                <el-table-column label="变更前" min-width="110">
+                  <template slot-scope="{ row }">{{ formatDuration(row.balanceBefore) }}</template>
+                </el-table-column>
+                <el-table-column label="变更后" min-width="110">
+                  <template slot-scope="{ row }">{{ formatDuration(row.balanceAfter) }}</template>
+                </el-table-column>
                 <el-table-column prop="sourceType" label="来源类型" min-width="120" />
                 <el-table-column prop="sourceId" label="来源ID" min-width="100" />
                 <el-table-column prop="remark" label="备注" min-width="180" show-overflow-tooltip />
@@ -140,7 +177,7 @@
                 <el-button @click="resetMembershipFilters">重置</el-button>
               </div>
 
-              <el-table :data="membershipList" v-loading="membershipLoading" class="transparent-table">
+              <el-table :data="membershipList" v-loading="membershipLoading" class="transparent-table" empty-text="暂无月卡权益">
                 <el-table-column prop="id" label="权益ID" min-width="90" />
                 <el-table-column prop="userId" label="用户ID" min-width="110" />
                 <el-table-column prop="username" label="用户名" min-width="150" />
@@ -182,7 +219,7 @@
                 <el-button @click="resetMembershipLogFilters">重置</el-button>
               </div>
 
-              <el-table :data="membershipLogList" v-loading="membershipLogLoading" class="transparent-table">
+              <el-table :data="membershipLogList" v-loading="membershipLogLoading" class="transparent-table" empty-text="暂无月卡流水">
                 <el-table-column prop="id" label="流水ID" min-width="90" />
                 <el-table-column prop="userId" label="用户ID" min-width="110" />
                 <el-table-column prop="username" label="用户名" min-width="150" />
@@ -254,6 +291,12 @@ export default {
   computed: {
     activeMembershipCount() {
       return this.benefitList.filter(item => item.membershipActive).length;
+    },
+    exhaustedMembershipCount() {
+      return this.benefitList.filter(item => item.membershipActive && Number(item.membershipDailyRemainingSeconds) <= 0).length;
+    },
+    totalBalanceSeconds() {
+      return this.benefitList.reduce((total, item) => total + (Number(item.balanceSeconds) || 0), 0);
     },
   },
   created() {
@@ -406,6 +449,43 @@ export default {
       if (status === 2) return "danger";
       return "info";
     },
+    formatDuration(seconds) {
+      const value = Math.max(0, Number(seconds) || 0);
+      const hours = Math.floor(value / 3600);
+      const minutes = Math.floor((value % 3600) / 60);
+      const restSeconds = value % 60;
+
+      if (hours > 0) {
+        return `${hours}小时${minutes}分`;
+      }
+      if (minutes > 0) {
+        return `${minutes}分${restSeconds}秒`;
+      }
+      return `${restSeconds}秒`;
+    },
+    formatSignedDuration(seconds) {
+      const value = Number(seconds) || 0;
+      const prefix = value > 0 ? "+" : value < 0 ? "-" : "";
+      return `${prefix}${this.formatDuration(Math.abs(value))}`;
+    },
+    quotaPercent(row) {
+      const limit = Number(row.membershipDailyLimitSeconds) || 0;
+      if (limit <= 0) {
+        return 0;
+      }
+      const consumed = Number(row.membershipDailyConsumedSeconds) || 0;
+      return Math.min(100, Math.round((consumed / limit) * 100));
+    },
+    quotaStatus(row) {
+      const remaining = Number(row.membershipDailyRemainingSeconds) || 0;
+      if (remaining <= 0) {
+        return "exception";
+      }
+      if (this.quotaPercent(row) >= 80) {
+        return "warning";
+      }
+      return undefined;
+    },
   },
 };
 </script>
@@ -414,7 +494,7 @@ export default {
 .benefit-page {
   min-width: 1100px;
   min-height: 100vh;
-  background: linear-gradient(135deg, #e7f1ff 0%, #eef6ff 45%, #f8efe3 100%);
+  background: #f4f7fb;
 }
 
 .operation-bar {
@@ -439,66 +519,39 @@ export default {
 }
 
 .content-panel {
-  background: rgba(255, 255, 255, 0.72);
-  border: 1px solid rgba(255, 255, 255, 0.8);
-  border-radius: 20px;
-  box-shadow: 0 18px 50px rgba(70, 89, 129, 0.12);
-  padding: 18px;
+  background: #fff;
+  border: 1px solid #e5eaf2;
+  border-radius: 8px;
+  box-shadow: 0 10px 30px rgba(28, 43, 70, 0.06);
+  padding: 16px;
 }
 
-.hero-card {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  padding: 22px 24px;
-  border-radius: 18px;
-  background: linear-gradient(120deg, #17345f, #31598f 55%, #688cb2);
-  color: #fff;
-  margin-bottom: 18px;
-}
-
-.eyebrow {
-  display: inline-block;
-  margin-bottom: 8px;
-  font-size: 12px;
-  letter-spacing: 1.6px;
-  text-transform: uppercase;
-  color: rgba(255, 255, 255, 0.7);
-}
-
-.hero-copy h3 {
-  margin: 0 0 8px;
-  font-size: 28px;
-}
-
-.hero-copy p {
-  margin: 0;
-  max-width: 520px;
-  color: rgba(255, 255, 255, 0.82);
-}
-
-.hero-stats {
-  display: flex;
+.summary-strip {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(150px, 1fr)) minmax(220px, 1.4fr);
   gap: 12px;
+  margin-bottom: 16px;
 }
 
-.stat-pill {
-  min-width: 130px;
+.summary-item {
+  min-height: 76px;
   padding: 14px 16px;
-  border-radius: 16px;
-  background: rgba(255, 255, 255, 0.14);
-  backdrop-filter: blur(8px);
+  border: 1px solid #e7edf5;
+  border-radius: 8px;
+  background: #fbfcfe;
 }
 
-.stat-label {
+.summary-label {
   display: block;
-  font-size: 12px;
-  color: rgba(255, 255, 255, 0.74);
-  margin-bottom: 6px;
+  margin-bottom: 8px;
+  color: #697386;
+  font-size: 13px;
 }
 
-.stat-pill strong {
-  font-size: 28px;
+.summary-item strong {
+  color: #1f2d3d;
+  font-size: 24px;
+  font-weight: 650;
 }
 
 .benefit-tabs ::v-deep .el-tabs__header {
@@ -510,8 +563,8 @@ export default {
 }
 
 .table-card {
-  border: none;
-  border-radius: 16px;
+  border: 1px solid #edf1f7;
+  border-radius: 8px;
   box-shadow: none;
 }
 
@@ -534,6 +587,29 @@ export default {
 
 .transparent-table {
   width: 100%;
+}
+
+.duration-text {
+  color: #1f2d3d;
+  font-weight: 600;
+}
+
+.quota-cell {
+  min-width: 180px;
+}
+
+.quota-line {
+  display: flex;
+  justify-content: space-between;
+  gap: 10px;
+  margin-bottom: 6px;
+  color: #1f2d3d;
+  font-size: 13px;
+}
+
+.quota-muted {
+  color: #7b8794;
+  white-space: nowrap;
 }
 
 ::v-deep .el-table th {

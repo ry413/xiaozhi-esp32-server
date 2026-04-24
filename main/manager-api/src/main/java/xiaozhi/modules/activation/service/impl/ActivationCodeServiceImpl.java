@@ -1,5 +1,6 @@
 package xiaozhi.modules.activation.service.impl;
 
+import java.time.LocalDate;
 import java.time.temporal.ChronoUnit;
 import java.util.ArrayList;
 import java.util.Date;
@@ -32,6 +33,7 @@ import xiaozhi.modules.activation.dao.ActivationCodeBatchDao;
 import xiaozhi.modules.activation.dao.ActivationCodeDao;
 import xiaozhi.modules.activation.dao.UserBalanceAccountDao;
 import xiaozhi.modules.activation.dao.UserBalanceLogDao;
+import xiaozhi.modules.activation.dao.UserMembershipDailyUsageDao;
 import xiaozhi.modules.activation.dao.UserMembershipDao;
 import xiaozhi.modules.activation.dao.UserMembershipLogDao;
 import xiaozhi.modules.activation.dto.ActivationCodeBatchCreateDTO;
@@ -45,6 +47,7 @@ import xiaozhi.modules.activation.entity.ActivationCodeBatchEntity;
 import xiaozhi.modules.activation.entity.ActivationCodeEntity;
 import xiaozhi.modules.activation.entity.UserBalanceAccountEntity;
 import xiaozhi.modules.activation.entity.UserBalanceLogEntity;
+import xiaozhi.modules.activation.entity.UserMembershipDailyUsageEntity;
 import xiaozhi.modules.activation.entity.UserMembershipEntity;
 import xiaozhi.modules.activation.entity.UserMembershipLogEntity;
 import xiaozhi.modules.activation.service.ActivationCodeService;
@@ -65,11 +68,13 @@ public class ActivationCodeServiceImpl extends BaseServiceImpl<ActivationCodeDao
 
     private static final String CARD_TYPE_POINT = "point";
     private static final String CARD_TYPE_MONTH = "month";
+    private static final int MEMBERSHIP_DAILY_LIMIT_SECONDS = 4 * 60 * 60;
 
     private final ActivationCodeDao activationCodeDao;
     private final ActivationCodeBatchDao activationCodeBatchDao;
     private final UserBalanceAccountDao userBalanceAccountDao;
     private final UserBalanceLogDao userBalanceLogDao;
+    private final UserMembershipDailyUsageDao userMembershipDailyUsageDao;
     private final UserMembershipDao userMembershipDao;
     private final UserMembershipLogDao userMembershipLogDao;
     private final SysUserDao sysUserDao;
@@ -245,12 +250,7 @@ public class ActivationCodeServiceImpl extends BaseServiceImpl<ActivationCodeDao
         vo.setBalanceSeconds(accountEntity == null ? 0 : safeInt(accountEntity.getBalanceMinutes()));
 
         Date now = new Date();
-        UserMembershipEntity membership = userMembershipDao.selectOne(new QueryWrapper<UserMembershipEntity>()
-                .eq("user_id", userId)
-                .eq("status", 1)
-                .ge("end_at", now)
-                .orderByDesc("end_at")
-                .last("limit 1"));
+        UserMembershipEntity membership = getActiveMembership(userId, now);
 
         if (membership == null) {
             vo.setMembershipActive(false);
@@ -260,12 +260,16 @@ public class ActivationCodeServiceImpl extends BaseServiceImpl<ActivationCodeDao
         vo.setMembershipActive(true);
         vo.setMembershipStartAt(membership.getStartAt());
         vo.setMembershipEndAt(membership.getEndAt());
+        int consumedSeconds = getMembershipDailyConsumedSeconds(userId, LocalDate.now());
+        vo.setMembershipDailyLimitSeconds(MEMBERSHIP_DAILY_LIMIT_SECONDS);
+        vo.setMembershipDailyConsumedSeconds(consumedSeconds);
+        vo.setMembershipDailyRemainingSeconds(Math.max(0, MEMBERSHIP_DAILY_LIMIT_SECONDS - consumedSeconds));
         return vo;
     }
 
     @Override
     @Transactional(rollbackFor = Exception.class)
-    public void consumeUserBalance(Long userId, UserBalanceConsumeDTO dto) {
+    public void consumeUserBenefit(Long userId, UserBalanceConsumeDTO dto) {
         if (userId == null) {
             throw new RenException("用户不存在");
         }
@@ -273,8 +277,57 @@ public class ActivationCodeServiceImpl extends BaseServiceImpl<ActivationCodeDao
             throw new RenException("消费秒数必须大于0");
         }
 
-        int delta = dto.getSeconds();
         Date now = new Date();
+        UserMembershipEntity membership = getActiveMembership(userId, now);
+        if (membership != null) {
+            consumeUserMembershipDailyQuota(userId, membership, dto);
+            return;
+        }
+
+        consumeUserBalance(userId, dto, now);
+    }
+
+    private void consumeUserMembershipDailyQuota(Long userId, UserMembershipEntity membership, UserBalanceConsumeDTO dto) {
+        LocalDate usageDate = LocalDate.now();
+        userMembershipDailyUsageDao.insertIgnoreDailyUsage(userId, membership.getId(), usageDate,
+                MEMBERSHIP_DAILY_LIMIT_SECONDS);
+
+        UserMembershipDailyUsageEntity usage = userMembershipDailyUsageDao.selectOne(
+                new QueryWrapper<UserMembershipDailyUsageEntity>()
+                        .eq("user_id", userId)
+                        .eq("usage_date", usageDate)
+                        .last("limit 1 for update"));
+        if (usage == null || !Integer.valueOf(1).equals(usage.getStatus())) {
+            throw new RenException("月卡每日额度账户不存在");
+        }
+
+        int before = safeInt(usage.getConsumedSeconds());
+        int limit = safeInt(usage.getDailyLimitSeconds());
+        if (limit <= 0) {
+            limit = MEMBERSHIP_DAILY_LIMIT_SECONDS;
+        }
+        if (before >= limit) {
+            throw new RenException("月卡今日额度不足");
+        }
+
+        int actualDelta = Math.min(limit - before, dto.getSeconds());
+        int after = before + actualDelta;
+        int updated = userMembershipDailyUsageDao.update(null,
+                new UpdateWrapper<UserMembershipDailyUsageEntity>()
+                        .eq("id", usage.getId())
+                        .eq("status", 1)
+                        .eq("consumed_seconds", before)
+                        .set("membership_id", membership.getId())
+                        .set("daily_limit_seconds", limit)
+                        .set("consumed_seconds", after)
+                        .set("updated_at", new Date()));
+        if (updated <= 0) {
+            throw new RenException("月卡每日额度扣减失败");
+        }
+    }
+
+    private void consumeUserBalance(Long userId, UserBalanceConsumeDTO dto, Date now) {
+        int delta = dto.getSeconds();
         UserBalanceAccountEntity account = userBalanceAccountDao.selectOne(
                 new QueryWrapper<UserBalanceAccountEntity>().eq("user_id", userId).last("limit 1"));
 
@@ -314,6 +367,27 @@ public class ActivationCodeServiceImpl extends BaseServiceImpl<ActivationCodeDao
         userBalanceLogDao.insert(logEntity);
     }
 
+    private UserMembershipEntity getActiveMembership(Long userId, Date now) {
+        return userMembershipDao.selectOne(new QueryWrapper<UserMembershipEntity>()
+                .eq("user_id", userId)
+                .eq("status", 1)
+                .ge("end_at", now)
+                .orderByDesc("end_at")
+                .last("limit 1"));
+    }
+
+    private int getMembershipDailyConsumedSeconds(Long userId, LocalDate usageDate) {
+        UserMembershipDailyUsageEntity usage = userMembershipDailyUsageDao.selectOne(
+                new QueryWrapper<UserMembershipDailyUsageEntity>()
+                        .eq("user_id", userId)
+                        .eq("usage_date", usageDate)
+                        .last("limit 1"));
+        if (usage == null || !Integer.valueOf(1).equals(usage.getStatus())) {
+            return 0;
+        }
+        return safeInt(usage.getConsumedSeconds());
+    }
+
     @Override
     public PageData<UserBalanceLogEntity> pageUserBalanceLog(Long userId, UserBenefitLogPageDTO dto) {
         IPage<UserBalanceLogEntity> pageInfo = buildPage(dto.getPage(), dto.getLimit(), "id");
@@ -348,6 +422,7 @@ public class ActivationCodeServiceImpl extends BaseServiceImpl<ActivationCodeDao
 
         Map<Long, UserBalanceAccountEntity> accountMap = buildUserBalanceAccountMap(userIds);
         Map<Long, UserMembershipEntity> activeMembershipMap = buildActiveMembershipMap(userIds);
+        Map<Long, UserMembershipDailyUsageEntity> dailyUsageMap = buildMembershipDailyUsageMap(userIds, LocalDate.now());
 
         List<AdminUserBenefitVO> records = new ArrayList<>();
         for (SysUserEntity user : users) {
@@ -367,6 +442,18 @@ public class ActivationCodeServiceImpl extends BaseServiceImpl<ActivationCodeDao
             vo.setMembershipStatus(membership == null ? null : membership.getStatus());
             vo.setMembershipStartAt(membership == null ? null : membership.getStartAt());
             vo.setMembershipEndAt(membership == null ? null : membership.getEndAt());
+            if (membership != null) {
+                UserMembershipDailyUsageEntity dailyUsage = dailyUsageMap.get(user.getId());
+                int dailyLimitSeconds = dailyUsage == null ? MEMBERSHIP_DAILY_LIMIT_SECONDS
+                        : safeInt(dailyUsage.getDailyLimitSeconds());
+                if (dailyLimitSeconds <= 0) {
+                    dailyLimitSeconds = MEMBERSHIP_DAILY_LIMIT_SECONDS;
+                }
+                int dailyConsumedSeconds = dailyUsage == null ? 0 : safeInt(dailyUsage.getConsumedSeconds());
+                vo.setMembershipDailyLimitSeconds(dailyLimitSeconds);
+                vo.setMembershipDailyConsumedSeconds(dailyConsumedSeconds);
+                vo.setMembershipDailyRemainingSeconds(Math.max(0, dailyLimitSeconds - dailyConsumedSeconds));
+            }
             records.add(vo);
         }
         return new PageData<>(records, page.getTotal());
@@ -578,6 +665,23 @@ public class ActivationCodeServiceImpl extends BaseServiceImpl<ActivationCodeDao
         Map<Long, UserMembershipEntity> result = new HashMap<>();
         for (UserMembershipEntity membership : memberships) {
             result.putIfAbsent(membership.getUserId(), membership);
+        }
+        return result;
+    }
+
+    private Map<Long, UserMembershipDailyUsageEntity> buildMembershipDailyUsageMap(List<Long> userIds,
+            LocalDate usageDate) {
+        if (userIds == null || userIds.isEmpty()) {
+            return Map.of();
+        }
+        List<UserMembershipDailyUsageEntity> usages = userMembershipDailyUsageDao.selectList(
+                new QueryWrapper<UserMembershipDailyUsageEntity>()
+                        .in("user_id", userIds)
+                        .eq("usage_date", usageDate)
+                        .eq("status", 1));
+        Map<Long, UserMembershipDailyUsageEntity> result = new HashMap<>();
+        for (UserMembershipDailyUsageEntity usage : usages) {
+            result.put(usage.getUserId(), usage);
         }
         return result;
     }

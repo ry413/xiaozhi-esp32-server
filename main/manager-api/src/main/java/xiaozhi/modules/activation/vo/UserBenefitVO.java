@@ -23,4 +23,13 @@ public class UserBenefitVO {
 
     @Schema(description = "月卡结束时间")
     private Date membershipEndAt;
+
+    @Schema(description = "月卡每日限额秒数")
+    private Integer membershipDailyLimitSeconds;
+
+    @Schema(description = "月卡今日已消费秒数")
+    private Integer membershipDailyConsumedSeconds;
+
+    @Schema(description = "月卡今日剩余额度秒数")
+    private Integer membershipDailyRemainingSeconds;
 }

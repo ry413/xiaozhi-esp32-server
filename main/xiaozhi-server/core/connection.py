@@ -37,7 +37,12 @@ from core.auth import AuthenticationError
 from config.config_loader import get_private_config_from_api
 from core.providers.tts.dto.dto import ContentType, TTSMessageDTO, SentenceType
 from config.logger import setup_logging, build_module_string, create_connection_logger
-from config.manage_api_client import DeviceNotFoundException, DeviceBindException, generate_and_save_chat_title
+from config.manage_api_client import (
+    DeviceNotFoundException,
+    DeviceBindException,
+    generate_and_save_chat_title,
+    report_llm,
+)
 from core.utils.prompt_manager import PromptManager
 from core.utils.voiceprint_provider import VoiceprintProvider
 from core.utils.util import get_system_error_response
@@ -852,12 +857,50 @@ class ConnectionHandler:
         # 更新系统prompt至上下文
         self.dialogue.update_system_message(self.prompt)
 
+    def _get_log_context(self):
+        client_id = self._get_client_id()
+        return (
+            f"session_id={self.session_id}, "
+            f"device_id={self.device_id}, "
+            f"client_id={client_id}, "
+            f"client_ip={self.client_ip}"
+        )
+
+    def _get_client_id(self):
+        client_id = None
+        if self.headers:
+            client_id = self.headers.get("client-id", self.headers.get("device-id"))
+        return client_id
+
+    def _enqueue_llm_report(self, llm_input, llm_output):
+        if not self.read_config_from_api or self.need_bind:
+            return
+        if not llm_input or not llm_output:
+            return
+        try:
+            asyncio.run_coroutine_threadsafe(
+                report_llm(
+                    mac_address=self.device_id,
+                    session_id=self.session_id,
+                    client_id=self._get_client_id(),
+                    client_ip=self.client_ip,
+                    llm_input=llm_input,
+                    llm_output=llm_output,
+                    report_time=int(time.time() * 1000),
+                ),
+                self.loop,
+            )
+        except Exception as e:
+            self.logger.bind(tag=TAG).error(f"大模型调用上报任务提交失败: {e}")
+
     def chat(self, query, depth=0):
         # 保存当前任务的sentence_id到局部变量，避免被新任务覆盖
         current_sentence_id = None
 
         if query is not None:
-            self.logger.bind(tag=TAG).info(f"大模型收到用户消息: {query}")
+            self.logger.bind(tag=TAG).info(
+                f"大模型收到用户消息 [{self._get_log_context()}]: {query}"
+            )
 
         # 为最顶层时新建会话ID和发送FIRST请求
         if depth == 0:
@@ -963,6 +1006,7 @@ class ConnectionHandler:
         if tool_call_reminder:
             self.dialogue.put(Message(role="user", content=tool_call_reminder, is_temporary=True))
 
+        llm_input_for_report = None
         try:
             # 使用带记忆的对话
             memory_str = None
@@ -973,21 +1017,24 @@ class ConnectionHandler:
                 )
                 memory_str = future.result()
 
+            llm_dialogue = self.dialogue.get_llm_dialogue_with_memory(
+                memory_str, self.config.get("voiceprint", {})
+            )
+            llm_input_for_report = json.dumps(
+                llm_dialogue, ensure_ascii=False, default=str
+            )
+
             if self.intent_type == "function_call" and functions is not None:
                 # 使用支持functions的streaming接口
                 llm_responses = self.llm.response_with_functions(
                     self.session_id,
-                    self.dialogue.get_llm_dialogue_with_memory(
-                        memory_str, self.config.get("voiceprint", {})
-                    ),
+                    llm_dialogue,
                     functions=functions,
                 )
             else:
                 llm_responses = self.llm.response(
                     self.session_id,
-                    self.dialogue.get_llm_dialogue_with_memory(
-                        memory_str, self.config.get("voiceprint", {})
-                    ),
+                    llm_dialogue,
                 )
         except Exception as e:
             self.logger.bind(tag=TAG).error(f"LLM 处理出错 {query}: {e}")
@@ -1059,6 +1106,12 @@ class ConnectionHandler:
                     )
                 )
             return
+        llm_output_for_report = "".join(response_message)
+        if not llm_output_for_report and content_arguments:
+            llm_output_for_report = content_arguments
+        if not llm_output_for_report and tool_calls_list:
+            llm_output_for_report = json.dumps(tool_calls_list, ensure_ascii=False)
+        self._enqueue_llm_report(llm_input_for_report, llm_output_for_report)
         # 处理function call
         if tool_call_flag:
             bHasError = False
@@ -1161,6 +1214,9 @@ class ConnectionHandler:
         # 存储对话内容
         if len(response_message) > 0:
             text_buff = "".join(response_message)
+            self.logger.bind(tag=TAG).info(
+                f"大模型回复 [{self._get_log_context()}]: {text_buff}"
+            )
             self.tts.store_tts_text(current_sentence_id, text_buff)
             self.dialogue.put(Message(role="assistant", content=text_buff))
 

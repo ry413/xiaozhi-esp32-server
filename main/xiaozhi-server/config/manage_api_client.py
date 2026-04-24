@@ -233,6 +233,37 @@ async def report(
         return None
 
 
+async def report_llm(
+    mac_address: str,
+    session_id: str,
+    llm_input: str,
+    llm_output: str,
+    report_time: int,
+    client_id: str = None,
+    client_ip: str = None,
+) -> Optional[Dict]:
+    """异步大模型调用记录上报"""
+    if not mac_address or not llm_input or not llm_output or not ManageApiClient._instance:
+        return None
+    try:
+        return await ManageApiClient._instance._execute_async_request(
+            "POST",
+            "/agent/llm-report/report",
+            json={
+                "macAddress": mac_address,
+                "clientId": client_id,
+                "clientIp": client_ip,
+                "sessionId": session_id,
+                "llmInput": llm_input,
+                "llmOutput": llm_output,
+                "reportTime": report_time,
+            },
+        )
+    except Exception as e:
+        print(f"大模型调用上报失败: {e}")
+        return None
+
+
 def init_service(config):
     ManageApiClient(config)
 

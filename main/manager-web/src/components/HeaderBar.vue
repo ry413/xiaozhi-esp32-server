@@ -108,7 +108,8 @@
             $route.path === '/ota-management' ||
             $route.path === '/user-management' ||
             $route.path === '/feature-management' ||
-            $route.path === '/activation-code-management',
+            $route.path === '/activation-code-management' ||
+            $route.path === '/llm-report-management',
         }" @visible-change="handleParamDropdownVisibleChange">
           <span class="el-dropdown-link">
             <img loading="lazy" alt="" src="@/assets/header/param_management.png" :style="{
@@ -123,6 +124,7 @@
                   $route.path === '/feature-management' ||
                   $route.path === '/activation-code-management' ||
                   $route.path === '/user-benefit-management' ||
+                  $route.path === '/llm-report-management' ||
                   $route.path === '/live-monitor-management'
                   ? 'brightness(0) invert(1)'
                   : 'None',
@@ -160,6 +162,9 @@
             </el-dropdown-item>
             <el-dropdown-item @click.native="goUserBenefitManagement">
               用户权益管理
+            </el-dropdown-item>
+            <el-dropdown-item @click.native="goLlmReportManagement">
+              大模型调用记录
             </el-dropdown-item>
             <el-dropdown-item @click.native="goLiveMonitorManagement">
               直播实例管理
@@ -418,6 +423,9 @@ export default {
     },
     goUserBenefitManagement() {
       this.$router.push("/user-benefit-management");
+    },
+    goLlmReportManagement() {
+      this.$router.push("/llm-report-management");
     },
     goLiveMonitorManagement() {
       this.$router.push("/live-monitor-management");

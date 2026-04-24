@@ -94,6 +94,7 @@ public class ShiroConfig {
         filterMap.put("/device/online/**", "server");
         filterMap.put("/device/owner/**", "server");
         filterMap.put("/agent/chat-history/report", "server");
+        filterMap.put("/agent/llm-report/report", "server");
         filterMap.put("/agent/chat-history/download/**", "anon");
         filterMap.put("/agent/chat-summary/**", "server");
         filterMap.put("/agent/chat-title/**", "server");

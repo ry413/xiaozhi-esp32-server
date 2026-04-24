@@ -233,6 +233,17 @@ const routes = [
     }
   },
   {
+    path: '/llm-report-management',
+    name: 'LlmReportManagement',
+    component: function () {
+      return import('../views/LlmReportManagement.vue')
+    },
+    meta: {
+      requiresAuth: true,
+      title: '大模型调用记录'
+    }
+  },
+  {
     path: '/live-monitor-management',
     name: 'LiveMonitorManagement',
     component: function () {
@@ -264,7 +275,7 @@ VueRouter.prototype.push = function push(location) {
 }
 
 // 需要登录才能访问的路由
-const protectedRoutes = ['home', 'RoleConfig', 'DeviceManagement', 'UserManagement', 'ModelConfig', 'KnowledgeBaseManagement', 'KnowledgeFileUpload', 'ActivationCodeManagement', 'UserBenefitManagement', 'LiveMonitorManagement']
+const protectedRoutes = ['home', 'RoleConfig', 'DeviceManagement', 'UserManagement', 'ModelConfig', 'KnowledgeBaseManagement', 'KnowledgeFileUpload', 'ActivationCodeManagement', 'UserBenefitManagement', 'LlmReportManagement', 'LiveMonitorManagement']
 
 // 路由守卫
 router.beforeEach((to, from, next) => {

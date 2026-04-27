@@ -151,7 +151,7 @@ public class AgentController {
             requestBody.put("model", agentLlmModel);
             requestBody.put("messages", List.of(systemMessage, userMessage));
             requestBody.put("stream", false);
-            requestBody.put("temperature", 1.5);
+            requestBody.put("temperature", 1.0);
 
             HttpHeaders headers = new HttpHeaders();
             headers.setContentType(MediaType.APPLICATION_JSON);

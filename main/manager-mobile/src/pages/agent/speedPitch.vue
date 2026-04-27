@@ -24,6 +24,12 @@ const localSettings = ref({
   ttsPitch: 0,
 })
 
+type SpeedPitchKey = 'ttsVolume' | 'ttsRate' | 'ttsPitch'
+
+function updateLocalSetting(key: SpeedPitchKey, value: number) {
+  localSettings.value[key] = Number(value)
+}
+
 function handleConfirm() {
   speedPitchStore.updateSpeedPitch(localSettings.value)
   goBack()
@@ -65,14 +71,18 @@ onMounted(() => {
             {{ t('agent.ttsVolume') }}
           </text>
           <view class="flex items-center gap-[20rpx]">
-            <wd-slider
-              v-model="localSettings.ttsVolume"
+            <slider
+              class="flex-1"
+              :value="localSettings.ttsVolume"
               :min="-100"
               :max="100"
               :step="1"
-              :show-value="false"
-              custom-class="voice-slider"
-              class="flex-1"
+              active-color="#336cff"
+              background-color="#d9e2ff"
+              block-color="#336cff"
+              :block-size="22"
+              @changing="event => updateLocalSetting('ttsVolume', event.detail.value)"
+              @change="event => updateLocalSetting('ttsVolume', event.detail.value)"
             />
             <text class="min-w-[80rpx] text-right text-[28rpx] text-[#336cff] font-medium">
               {{ localSettings.ttsVolume }}
@@ -89,14 +99,18 @@ onMounted(() => {
             {{ t('agent.ttsRate') }}
           </text>
           <view class="flex items-center gap-[20rpx]">
-            <wd-slider
-              v-model="localSettings.ttsRate"
+            <slider
+              class="flex-1"
+              :value="localSettings.ttsRate"
               :min="-100"
               :max="100"
               :step="1"
-              :show-value="false"
-              custom-class="voice-slider"
-              class="flex-1"
+              active-color="#336cff"
+              background-color="#d9e2ff"
+              block-color="#336cff"
+              :block-size="22"
+              @changing="event => updateLocalSetting('ttsRate', event.detail.value)"
+              @change="event => updateLocalSetting('ttsRate', event.detail.value)"
             />
             <text class="min-w-[80rpx] text-right text-[28rpx] text-[#336cff] font-medium">
               {{ localSettings.ttsRate }}
@@ -113,14 +127,18 @@ onMounted(() => {
             {{ t('agent.ttsPitch') }}
           </text>
           <view class="flex items-center gap-[20rpx]">
-            <wd-slider
-              v-model="localSettings.ttsPitch"
+            <slider
+              class="flex-1"
+              :value="localSettings.ttsPitch"
               :min="-100"
               :max="100"
               :step="1"
-              :show-value="false"
-              custom-class="voice-slider"
-              class="flex-1"
+              active-color="#336cff"
+              background-color="#d9e2ff"
+              block-color="#336cff"
+              :block-size="22"
+              @changing="event => updateLocalSetting('ttsPitch', event.detail.value)"
+              @change="event => updateLocalSetting('ttsPitch', event.detail.value)"
             />
             <text class="min-w-[80rpx] text-right text-[28rpx] text-[#336cff] font-medium">
               {{ localSettings.ttsPitch }}
@@ -142,12 +160,4 @@ onMounted(() => {
 </template>
 
 <style scoped lang="scss">
-/* 自定义滑块样式 */
-:deep(.wd-slider) {
-  --wd-slider-bar-background: #e6ebff;
-  --wd-slider-bar-active-background: #336cff;
-  --wd-slider-thumb-border-color: #336cff;
-  --wd-slider-thumb-background: #336cff;
-  --wd-slider-thumb-size: 32rpx;
-}
 </style>

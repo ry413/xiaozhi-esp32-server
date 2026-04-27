@@ -316,7 +316,7 @@ onUnload(() => {
       <wd-status-tip image="content" tip="暂无可用音色资源" />
     </view>
 
-    <scroll-view v-else scroll-y class="list-scroll">
+    <view v-else class="list-wrap">
       <view
         v-for="item in filteredVoiceCloneList"
         :key="item.id"
@@ -373,7 +373,7 @@ onUnload(() => {
           </wd-button>
         </view>
       </view>
-    </scroll-view>
+    </view>
 
     <wd-popup
       v-model="renamePopupVisible"
@@ -453,8 +453,8 @@ onUnload(() => {
   color: #666666;
 }
 
-.list-scroll {
-  height: calc(100vh - 260rpx);
+.list-wrap {
+  padding-bottom: calc(40rpx + env(safe-area-inset-bottom));
 }
 
 .clone-card {

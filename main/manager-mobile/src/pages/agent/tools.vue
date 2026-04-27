@@ -10,9 +10,16 @@
 
 <script lang="ts" setup>
 import { useMessage } from 'wot-design-uni'
-import { getMcpAddress, getMcpTools } from '@/api/agent/agent'
+import { getMcpAddress, getMcpTools, getPluginFunctions } from '@/api/agent/agent'
 import { t } from '@/i18n'
 import { usePluginStore } from '@/store'
+import {
+  getPluginFieldDefault,
+  getPluginFieldLabel,
+  getPluginFieldName,
+  getPluginFieldType,
+  normalizePluginFunctions,
+} from './pluginFields'
 
 const message = useMessage()
 const pluginStore = usePluginStore()
@@ -40,10 +47,20 @@ const currentFunction = ref<any>(null)
 const tempParams = ref<Record<string, any>>({})
 const arrayTextCache = ref<Record<string, string>>({})
 const jsonTextCache = ref<Record<string, string>>({})
+const currentFields = computed(() => {
+  return currentFunction.value?.fieldsMeta || []
+})
 
 async function mergeFunctions() {
+  const pluginMetadata = await loadPluginFunctions()
+  console.log('插件元数据字段数量:', pluginMetadata.map(item => ({
+    id: item.id,
+    name: item.name,
+    fieldsCount: item.fieldsMeta?.length || 0,
+  })))
+
   selectedList.value = functions.value.map((mapping) => {
-    const meta = allFunctions.value.find(f => f.id === mapping.pluginId)
+    const meta = pluginMetadata.find(f => f.id === mapping.pluginId)
     if (!meta) {
       return { id: mapping.pluginId, name: mapping.pluginId, params: {} }
     }
@@ -57,7 +74,7 @@ async function mergeFunctions() {
   })
 
   // 未选的插件
-  notSelectedList.value = allFunctions.value.filter(
+  notSelectedList.value = pluginMetadata.filter(
     item => !selectedList.value.some(f => f.id === item.id),
   )
 
@@ -83,6 +100,31 @@ async function mergeFunctions() {
       console.error('获取MCP工具列表失败:', error)
     }
   }
+}
+
+async function loadPluginFunctions() {
+  try {
+    const res = await getPluginFunctions()
+    const pluginList = normalizePluginResponse(res)
+    const processedFunctions = normalizePluginFunctions(pluginList)
+    pluginStore.setAllFunctions(processedFunctions)
+    return processedFunctions
+  }
+  catch (error) {
+    console.error('加载插件元数据失败:', error)
+    return []
+  }
+}
+
+function normalizePluginResponse(res: any) {
+  if (Array.isArray(res))
+    return res
+  if (Array.isArray(res?.data))
+    return res.data
+  if (Array.isArray(res?.data?.data))
+    return res.data.data
+  console.error('插件列表响应格式异常:', res)
+  return []
 }
 
 // 添加插件到已选
@@ -122,23 +164,25 @@ function editFunction(func: any) {
 
   // 初始化文本缓存
   if (func.fieldsMeta) {
-    func.fieldsMeta.forEach((field: any) => {
-      if (field.type === 'array') {
-        const value = tempParams.value[field.key]
-        arrayTextCache.value[field.key] = Array.isArray(value)
+    for (let index = 0; index < func.fieldsMeta.length; index += 1) {
+      if (!getPluginFieldName(func.fieldsMeta[index]))
+        continue
+      if (getPluginFieldType(func.fieldsMeta[index]) === 'array') {
+        const value = tempParams.value[getPluginFieldName(func.fieldsMeta[index])]
+        arrayTextCache.value[getPluginFieldName(func.fieldsMeta[index])] = Array.isArray(value)
           ? value.join('\n')
           : value || ''
       }
-      else if (field.type === 'json') {
-        const value = tempParams.value[field.key]
+      else if (getPluginFieldType(func.fieldsMeta[index]) === 'json') {
+        const value = tempParams.value[getPluginFieldName(func.fieldsMeta[index])]
         try {
-          jsonTextCache.value[field.key] = JSON.stringify(value || {}, null, 2)
+          jsonTextCache.value[getPluginFieldName(func.fieldsMeta[index])] = JSON.stringify(value || {}, null, 2)
         }
         catch {
-          jsonTextCache.value[field.key] = '{}'
+          jsonTextCache.value[getPluginFieldName(func.fieldsMeta[index])] = '{}'
         }
       }
-    })
+    }
   }
 
   showParamDialog.value = true
@@ -233,19 +277,94 @@ function copyMcpAddress() {
 
 // 渲染参数字段的辅助函数
 function getFieldDisplayValue(field: any, value: any) {
-  if (field.type === 'array') {
+  if (getPluginFieldType(field) === 'array') {
     return Array.isArray(value) ? value.join('\n') : value || ''
   }
   return value || ''
 }
 
+function getParamValue(key: string) {
+  return tempParams.value[key] ?? ''
+}
+
+function getArrayTextValue(key: string) {
+  return arrayTextCache.value[key] ?? ''
+}
+
+function getJsonTextValue(key: string) {
+  return jsonTextCache.value[key] ?? ''
+}
+
+function getFieldAt(index: number) {
+  return currentFields.value[index] || {}
+}
+
+function getNameAt(index: number) {
+  return getPluginFieldName(getFieldAt(index))
+}
+
+function getFieldLabelAt(index: number) {
+  return getPluginFieldLabel(getFieldAt(index))
+}
+
+function isFieldTypeAt(index: number, type: string) {
+  return getPluginFieldType(getFieldAt(index)) === type
+}
+
+function isBooleanFieldAt(index: number) {
+  const type = getPluginFieldType(getFieldAt(index))
+  return type === 'boolean' || type === 'bool'
+}
+
+function getParamValueAt(index: number) {
+  return getParamValue(getNameAt(index))
+}
+
+function getArrayTextValueAt(index: number) {
+  return getArrayTextValue(getNameAt(index))
+}
+
+function getJsonTextValueAt(index: number) {
+  return getJsonTextValue(getNameAt(index))
+}
+
+function handleParamChangeAt(index: number, value: any) {
+  const field = getFieldAt(index)
+  if (!getPluginFieldName(field))
+    return
+  handleParamChange(getPluginFieldName(field), value, field)
+}
+
+function handleNumberParamChangeAt(index: number, value: any) {
+  handleParamChangeAt(index, Number(value))
+}
+
+function handleArrayChangeAt(index: number, value: string) {
+  const field = getFieldAt(index)
+  if (!getPluginFieldName(field))
+    return
+  handleArrayChange(getPluginFieldName(field), value, field)
+}
+
+function handleJsonChangeAt(index: number, value: string) {
+  const field = getFieldAt(index)
+  if (!getPluginFieldName(field))
+    return
+  handleJsonChange(getPluginFieldName(field), value, field)
+}
+
 // 字段说明
 function getFieldRemark(field: any) {
-  let description = field.label || ''
-  if (field.default) {
-    description += `（${t('agent.tools.defaultValue')}：${field.default}）`
+  let description = getPluginFieldLabel(field)
+  const defaultValue = getPluginFieldDefault(field)
+  if (defaultValue) {
+    description += `（${t('agent.tools.defaultValue')}：${defaultValue}）`
   }
   return description
+}
+
+function getFieldRemarkAt(index: number) {
+  return getFieldRemark(getFieldAt(index))
 }
 
 // 监听已选列表变化，实时更新插件配置，避免用户不点击返回按钮导致配置丢失
@@ -458,8 +577,7 @@ onMounted(async () => {
           <!-- 无参数提示 -->
           <view
             v-if="
-              !currentFunction?.fieldsMeta
-                || currentFunction.fieldsMeta.length === 0
+              currentFields.length === 0
             "
             class="h-[400rpx] flex items-center justify-center"
           >
@@ -471,18 +589,18 @@ onMounted(async () => {
           <!-- 参数表单 - 卡片式布局 -->
           <view v-else class="flex flex-col gap-[24rpx]">
             <view
-              v-for="field in currentFunction.fieldsMeta"
-              :key="field.key"
+              v-for="(_, fieldIndex) in currentFields"
+              :key="fieldIndex"
               class="border border-[#eeeeee] rounded-[20rpx] bg-white p-[30rpx]"
               style="box-shadow: 0 2rpx 12rpx rgba(0, 0, 0, 0.04);"
             >
               <!-- 字段信息 -->
               <view class="mb-[24rpx]">
                 <text class="mb-[8rpx] block text-[32rpx] text-[#232338] font-medium">
-                  {{ field.label }}
+                  {{ getFieldLabelAt(fieldIndex) }}
                 </text>
-                <text v-if="getFieldRemark(field)" class="block text-[24rpx] text-[#65686f] leading-[1.5]">
-                  {{ getFieldRemark(field) }}
+                <text v-if="getFieldRemarkAt(fieldIndex)" class="block text-[24rpx] text-[#65686f] leading-[1.5]">
+                  {{ getFieldRemarkAt(fieldIndex) }}
                 </text>
               </view>
 
@@ -490,65 +608,61 @@ onMounted(async () => {
               <view>
                 <!-- 字符串类型 -->
                 <input
-                  v-if="field.type === 'string'"
-                  v-model="tempParams[field.key]"
+                  v-if="isFieldTypeAt(fieldIndex, 'string')"
+                  :value="getParamValueAt(fieldIndex)"
                   class="box-border h-[80rpx] w-full border border-[#eeeeee] rounded-[12rpx] bg-[#f5f7fb] p-[16rpx_20rpx] text-[28rpx] text-[#232338] focus:border-[#336cff] focus:bg-white placeholder:text-[#9d9ea3]"
                   type="text"
-                  :placeholder="`${t('agent.tools.pleaseInput')}${field.label}`"
+                  :placeholder="`${t('agent.tools.pleaseInput')}${getFieldLabelAt(fieldIndex)}`"
                   @input="
-                    handleParamChange(field.key, $event.detail.value, field)
+                    handleParamChangeAt(fieldIndex, $event.detail.value)
                   "
                 >
 
                 <!-- 数组类型 -->
-                <view v-else-if="field.type === 'array'">
+                <view v-else-if="isFieldTypeAt(fieldIndex, 'array')">
                   <text class="mb-[16rpx] block text-[24rpx] text-[#65686f]">
                     {{ t('agent.tools.eachLineOneItem') }}
                   </text>
                   <textarea
-                    v-model="arrayTextCache[field.key]"
+                    :value="getArrayTextValueAt(fieldIndex)"
                     class="box-border min-h-[200rpx] w-full border border-[#eeeeee] rounded-[12rpx] bg-[#f5f7fb] p-[20rpx] text-[26rpx] text-[#232338] leading-[1.6] focus:border-[#336cff] focus:bg-white placeholder:text-[#9d9ea3]"
-                    :placeholder="`${t('agent.tools.pleaseInput')}${field.label}，${t('agent.tools.eachLineOneItem')}`"
+                    :placeholder="`${t('agent.tools.pleaseInput')}${getFieldLabelAt(fieldIndex)}，${t('agent.tools.eachLineOneItem')}`"
                     @input="
-                      handleArrayChange(field.key, $event.detail.value, field)
+                      handleArrayChangeAt(fieldIndex, $event.detail.value)
                     "
                   />
                 </view>
 
                 <!-- JSON类型 -->
-                <view v-else-if="field.type === 'json'">
+                <view v-else-if="isFieldTypeAt(fieldIndex, 'json')">
                   <text class="mb-[16rpx] block text-[24rpx] text-[#65686f]">
                     {{ t('agent.tools.pleaseInputValidJson') }}
                   </text>
                   <textarea
-                    v-model="jsonTextCache[field.key]"
+                    :value="getJsonTextValueAt(fieldIndex)"
                     class="box-border min-h-[300rpx] w-full border border-[#eeeeee] rounded-[12rpx] bg-[#f5f7fb] p-[20rpx] text-[26rpx] text-[#232338] leading-[1.6] font-mono focus:border-[#336cff] focus:bg-white placeholder:text-[#9d9ea3]"
                     :placeholder="t('agent.tools.pleaseInputValidJson')"
                     @blur="
-                      handleJsonChange(field.key, $event.detail.value, field)
+                      handleJsonChangeAt(fieldIndex, $event.detail.value)
                     "
                   />
                 </view>
 
                 <!-- 数字类型 -->
                 <input
-                  v-else-if="field.type === 'number'"
-                  v-model="tempParams[field.key]"
+                  v-else-if="isFieldTypeAt(fieldIndex, 'number')"
+                  :value="getParamValueAt(fieldIndex)"
                   class="box-border h-[80rpx] w-full border border-[#eeeeee] rounded-[12rpx] bg-[#f5f7fb] p-[16rpx_20rpx] text-[28rpx] text-[#232338] focus:border-[#336cff] focus:bg-white placeholder:text-[#9d9ea3]"
                   type="number"
-                  :placeholder="`${t('agent.tools.pleaseInput')}${field.label}`"
+                  :placeholder="`${t('agent.tools.pleaseInput')}${getFieldLabelAt(fieldIndex)}`"
                   @input="
-                    handleParamChange(
-                      field.key,
-                      Number($event.detail.value),
-                      field,
-                    )
+                    handleNumberParamChangeAt(fieldIndex, $event.detail.value)
                   "
                 >
 
                 <!-- 布尔类型 -->
                 <view
-                  v-else-if="field.type === 'boolean' || field.type === 'bool'"
+                  v-else-if="isBooleanFieldAt(fieldIndex)"
                   class="flex items-center justify-between py-[20rpx]"
                 >
                   <view class="flex-1">
@@ -560,9 +674,9 @@ onMounted(async () => {
                     </text>
                   </view>
                   <switch
-                    :checked="tempParams[field.key]"
+                    :checked="Boolean(getParamValueAt(fieldIndex))"
                     @change="
-                      handleParamChange(field.key, $event.detail.value, field)
+                      handleParamChangeAt(fieldIndex, $event.detail.value)
                     "
                   />
                 </view>
@@ -570,12 +684,12 @@ onMounted(async () => {
                 <!-- 默认字符串类型 -->
                 <input
                   v-else
-                  v-model="tempParams[field.key]"
+                  :value="getParamValueAt(fieldIndex)"
                   class="box-border h-[80rpx] w-full border border-[#eeeeee] rounded-[12rpx] bg-[#f5f7fb] p-[16rpx_20rpx] text-[28rpx] text-[#232338] focus:border-[#336cff] focus:bg-white placeholder:text-[#9d9ea3]"
                   type="text"
-                  :placeholder="`${t('agent.tools.pleaseInput')}${field.label}`"
+                  :placeholder="`${t('agent.tools.pleaseInput')}${getFieldLabelAt(fieldIndex)}`"
                   @input="
-                    handleParamChange(field.key, $event.detail.value, field)
+                    handleParamChangeAt(fieldIndex, $event.detail.value)
                   "
                 >
               </view>

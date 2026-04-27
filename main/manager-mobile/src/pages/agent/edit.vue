@@ -1,7 +1,8 @@
 <script lang="ts" setup>
 import type { AgentDetail, ModelOption, PluginDefinition, RoleTemplate } from '@/api/agent/types'
 import { computed, nextTick, onMounted, ref, watch } from 'vue'
-import { getAgentDetail, getAgentTags, getAllLanguage, getModelOptions, getPluginFunctions, getRoleTemplates, updateAgent, updateAgentTags } from '@/api/agent/agent'
+import { useMessage } from 'wot-design-uni'
+import { generateAgentScript, getAgentDetail, getAgentTags, getAllLanguage, getModelOptions, getPluginFunctions, getRoleTemplates, updateAgent, updateAgentTags } from '@/api/agent/agent'
 import { t } from '@/i18n'
 import { usePluginStore, useProvider, useSpeedPitch } from '@/store'
 import { toast } from '@/utils/toast'
@@ -20,11 +21,13 @@ interface Props {
 }
 
 const agentId = computed(() => props.agentId)
+const defaultPromptTemplateName = '卖货主播'
 
 // 表单数据
 const formData = ref<Partial<AgentDetail>>({
   agentName: '',
   systemPrompt: '',
+  promptTemplate: '',
   summaryMemory: '',
   vadModelId: '',
   asrModelId: '',
@@ -55,6 +58,7 @@ const displayNames = ref({
   voiceprint: t('agent.pleaseSelect'),
   report: t('agent.pleaseSelect'),
   language: t('agent.pleaseSelect'),
+  promptTemplate: defaultPromptTemplateName,
 })
 
 // 角色模板数据
@@ -89,6 +93,13 @@ const reportOptions = [
   { name: t('agent.reportTextVoice'), value: 2 },
 ]
 
+// 提示词模板选项
+const promptTemplateOptions = [
+  { name: '卖货主播', value: 'agent-base-prompt.txt' },
+  { name: '通用小智', value: 'base-prompt-common-xiaozhi.txt' },
+  { name: '无提示词模板', value: 'base-prompt-empty.txt' },
+]
+
 // 选择器显示状态
 const pickerShow = ref<{
   [key: string]: boolean
@@ -104,6 +115,7 @@ const pickerShow = ref<{
   voiceprint: false,
   language: false,
   report: false,
+  promptTemplate: false,
 })
 
 const allFunctions = ref<PluginDefinition[]>([])
@@ -122,6 +134,7 @@ const playingVoiceId = ref<string>('')
 const pluginStore = usePluginStore()
 const speedPitchStore = useSpeedPitch()
 const providerStore = useProvider()
+const message = useMessage()
 
 // tabs
 const tabList = [
@@ -174,6 +187,39 @@ function openContextProviderDialog() {
   uni.navigateTo({
     url: '/pages/agent/provider',
   })
+}
+
+function handleGenerateScript() {
+  message.prompt({
+    title: '智能话术',
+    msg: '',
+    inputPlaceholder: '请输入你希望生成的话术要求',
+    inputValue: '',
+    confirmButtonText: '生成',
+    cancelButtonText: '取消',
+  }).then(async ({ value }: any) => {
+    const inputPrompt = String(value || '').trim()
+    if (!inputPrompt) {
+      toast.warning('请输入生成要求')
+      return
+    }
+
+    try {
+      const script = await generateAgentScript(inputPrompt)
+      console.log('智能话术接口返回:', script)
+      if (!script) {
+        console.error('智能话术生成失败: 接口返回空内容')
+        toast.error('智能话术生成失败')
+        return
+      }
+      formData.value.systemPrompt = script
+      toast.success('智能话术已生成')
+    }
+    catch (error: any) {
+      console.error('智能话术生成失败:', error)
+      toast.error(error?.message || '智能话术生成失败')
+    }
+  }).catch(() => {})
 }
 
 function handleRegulate() {
@@ -280,6 +326,7 @@ function updateDisplayNames() {
   displayNames.value.intent = getModelDisplayName('Intent', formData.value.intentModelId)
   displayNames.value.memory = getModelDisplayName('Memory', formData.value.memModelId)
   displayNames.value.tts = getModelDisplayName('TTS', formData.value.ttsModelId)
+  displayNames.value.promptTemplate = getPromptTemplateDisplayName(formData.value.promptTemplate)
 
   // 角色音色特殊处理
   displayNames.value.report = reportOptions.find(item => item.value === formData.value.chatHistoryConf)?.name
@@ -287,6 +334,12 @@ function updateDisplayNames() {
   isVisibleReport.value = formData.value.memModelId !== 'Memory_nomem'
 
   console.log('最终音色显示名称:', displayNames.value.voiceprint)
+}
+
+function getPromptTemplateDisplayName(promptTemplate?: string) {
+  if (!promptTemplate)
+    return defaultPromptTemplateName
+  return promptTemplateOptions.find(item => item.value === promptTemplate)?.name || promptTemplate
 }
 
 // 加载角色模板
@@ -448,6 +501,7 @@ function selectRoleTemplate(templateId: string) {
       ttsVoiceId: template.ttsVoiceId || formData.value.ttsVoiceId,
       agentName: template.agentName || formData.value.agentName,
       chatHistoryConf: template.chatHistoryConf || formData.value.chatHistoryConf,
+      promptTemplate: template.promptTemplate || formData.value.promptTemplate,
       summaryMemory: template.summaryMemory || formData.value.summaryMemory,
       langCode: template.langCode || formData.value.langCode,
     }
@@ -517,6 +571,9 @@ async function onPickerConfirm(type: string, value: any, name: string) {
       break
     case 'report':
       formData.value.chatHistoryConf = value
+      break
+    case 'promptTemplate':
+      formData.value.promptTemplate = value
       break
   }
 
@@ -641,25 +698,72 @@ async function saveAgent() {
   }
 }
 
-function loadPluginFunctions() {
-  getPluginFunctions().then((res) => {
-    const processedFunctions = res?.map((item) => {
-      const meta = JSON.parse(item.fields || '[]')
-      const params = meta.reduce((m: any, f: any) => {
-        m[f.key] = f.default
-        return m
-      }, {})
-      return { ...item, fieldsMeta: meta, params }
-    }) || []
+async function loadPluginFunctions() {
+  try {
+    const res = await getPluginFunctions()
+    const processedFunctions = (res || []).map(item => normalizePluginFunction(item))
 
     allFunctions.value = processedFunctions
     // 同时更新到store
     pluginStore.setAllFunctions(processedFunctions)
-  })
+    return processedFunctions
+  }
+  catch (error) {
+    console.error('加载插件列表失败:', error)
+    allFunctions.value = []
+    pluginStore.setAllFunctions([])
+    return []
+  }
 }
 
-function handleTools() {
+function normalizePluginFunction(item: any) {
+  try {
+    const meta = parsePluginFields(item.fields)
+    const params = meta.reduce((m: any, f: any) => {
+      if (f && f.key)
+        m[f.key] = f.default
+      return m
+    }, {})
+    return { ...item, fieldsMeta: meta, params }
+  }
+  catch (error) {
+    console.error('处理插件配置失败:', item, error)
+    return { ...item, fieldsMeta: [], params: {} }
+  }
+}
+
+function parsePluginFields(fields: any) {
+  if (Array.isArray(fields))
+    return fields
+  if (!fields)
+    return []
+  if (typeof fields === 'object') {
+    const values = Object.values(fields)
+    return values.every(item => item && typeof item === 'object') ? values : []
+  }
+  if (typeof fields !== 'string') {
+    console.error('插件字段类型异常:', fields)
+    return []
+  }
+
+  try {
+    const parsed = JSON.parse(fields)
+    if (Array.isArray(parsed))
+      return parsed
+    console.error('插件字段不是数组:', parsed)
+    return []
+  }
+  catch (error) {
+    console.error('解析插件字段失败:', fields, error)
+    return []
+  }
+}
+
+async function handleTools() {
   console.log('当前插件配置:', formData.value.functions)
+  if (allFunctions.value.length === 0) {
+    await loadPluginFunctions()
+  }
 
   // 确保store中有最新数据
   pluginStore.setCurrentAgentId(agentId.value)
@@ -803,6 +907,21 @@ onMounted(async () => {
         />
         <view class="mt-[8rpx] text-right text-[22rpx] text-[#9d9ea3]">
           {{ (formData.systemPrompt || '').length }}/2000
+        </view>
+        <wd-button class="mt-[16rpx] !bg-[rgba(51,108,255,0.1)] !text-[#336cff]" size="small" @click="handleGenerateScript">
+          智能话术
+        </wd-button>
+      </view>
+
+      <view class="mb-[24rpx] last:mb-0">
+        <text class="mb-[12rpx] block text-[28rpx] text-[#232338] font-medium">
+          提示词模板
+        </text>
+        <view class="flex cursor-pointer items-center justify-between border border-[#eeeeee] rounded-[12rpx] bg-[#f5f7fb] p-[20rpx] transition-all duration-300 active:bg-[#eef3ff]" @click="openPicker('promptTemplate')">
+          <text class="mx-[16rpx] flex-1 text-right text-[26rpx] text-[#65686f]">
+            {{ displayNames.promptTemplate }}
+          </text>
+          <wd-icon name="arrow-right" custom-class="text-[20rpx] text-[#9d9ea3]" />
         </view>
       </view>
     </view>
@@ -1085,6 +1204,13 @@ onMounted(async () => {
       @close="onPickerCancel('report')"
       @select="({ item }) => onPickerConfirm('report', item.value, item.name)"
     />
+    <wd-action-sheet
+      v-model="pickerShow.promptTemplate"
+      :actions="promptTemplateOptions"
+      @close="onPickerCancel('promptTemplate')"
+      @select="({ item }) => onPickerConfirm('promptTemplate', item.value, item.name)"
+    />
+    <wd-message-box />
   </view>
 </template>
 

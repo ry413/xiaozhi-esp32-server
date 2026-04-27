@@ -6,6 +6,7 @@ import type {
   RoleTemplate,
 } from './types'
 import { http } from '@/http/request/alova'
+import { getEnvBaseUrl } from '@/utils'
 
 // 获取智能体详情
 export function getAgentDetail(id: string) {
@@ -112,16 +113,71 @@ export function updateAgent(id: string, data: Partial<AgentDetail>) {
   })
 }
 
+// 智能话术生成
+export function generateAgentScript(prompt: string) {
+  return new Promise<string>((resolve, reject) => {
+    const authInfo = JSON.parse(uni.getStorageSync('token') || '{}')
+    uni.request({
+      url: `${getEnvBaseUrl()}/agent/generate-script`,
+      method: 'POST',
+      header: {
+        'Content-Type': 'application/json',
+        'Accept': 'application/json, text/plain, */*',
+        'Authorization': `Bearer ${authInfo.token}`,
+      },
+      data: { prompt },
+      success: (response) => {
+        const body = response.data as any
+        if (response.statusCode !== 200) {
+          reject(new Error(`HTTP ${response.statusCode}: ${JSON.stringify(body)}`))
+          return
+        }
+        if (!body || body.code !== 0) {
+          reject(new Error(body?.msg || `接口返回异常: ${JSON.stringify(body)}`))
+          return
+        }
+        resolve(String(body.data || ''))
+      },
+      fail: reject,
+    })
+  })
+}
+
 // 获取插件列表
 export function getPluginFunctions() {
-  return http.Get<any[]>(`/models/provider/plugin/names`, {
-    meta: {
-      ignoreAuth: false,
-      toast: false,
-    },
-    cacheFor: {
-      expire: 0,
-    },
+  return new Promise<any[]>((resolve, reject) => {
+    const authInfo = JSON.parse(uni.getStorageSync('token') || '{}')
+    uni.request({
+      url: `${getEnvBaseUrl()}/models/provider/plugin/names`,
+      method: 'GET',
+      header: {
+        Accept: 'application/json, text/plain, */*',
+        Authorization: `Bearer ${authInfo.token}`,
+      },
+      success: (response) => {
+        let body = response.data as any
+        if (typeof body === 'string') {
+          try {
+            body = JSON.parse(body)
+          }
+          catch (error) {
+            reject(new Error(`插件列表响应解析失败: ${body}`))
+            return
+          }
+        }
+        console.log('插件列表接口返回:', body)
+        if (response.statusCode !== 200) {
+          reject(new Error(`HTTP ${response.statusCode}: ${JSON.stringify(body)}`))
+          return
+        }
+        if (!body || body.code !== 0) {
+          reject(new Error(body?.msg || `接口返回异常: ${JSON.stringify(body)}`))
+          return
+        }
+        resolve(Array.isArray(body.data) ? body.data : [])
+      },
+      fail: reject,
+    })
   })
 }
 

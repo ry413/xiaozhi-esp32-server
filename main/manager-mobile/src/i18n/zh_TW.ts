@@ -2,6 +2,8 @@
 export default {
   // TabBar
   'tabBar.home': '首頁',
+  'tabBar.director': '導播',
+  'tabBar.voice': '音色',
   'tabBar.deviceConfig': '配網',
   'tabBar.settings': '系統',
   // 設置頁面標題

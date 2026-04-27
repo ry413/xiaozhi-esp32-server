@@ -36,6 +36,7 @@ export interface AgentDetail {
   intentModelId: string
   chatHistoryConf: number
   systemPrompt: string
+  promptTemplate: string
   summaryMemory: string
   langCode: string
   language: string
@@ -82,6 +83,7 @@ export interface RoleTemplate {
   intentModelId: string
   chatHistoryConf: number
   systemPrompt: string
+  promptTemplate: string
   summaryMemory: string
   langCode: string
   language: string

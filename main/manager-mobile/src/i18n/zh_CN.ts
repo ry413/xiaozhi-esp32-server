@@ -2,6 +2,8 @@
 export default {
   // TabBar
   'tabBar.home': '首页',
+  'tabBar.director': '导播',
+  'tabBar.voice': '音色',
   'tabBar.deviceConfig': '配网',
   'tabBar.settings': '系统',
   // 设置页面标题

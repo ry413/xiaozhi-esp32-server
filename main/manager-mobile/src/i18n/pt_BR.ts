@@ -2,6 +2,8 @@
 export default {
   // TabBar
   'tabBar.home': 'Início',
+  'tabBar.director': 'Diretor',
+  'tabBar.voice': 'Voz',
   'tabBar.deviceConfig': 'Config. de Rede',
   'tabBar.settings': 'Sistema',
   // Settings page title

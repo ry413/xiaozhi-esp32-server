@@ -2,6 +2,8 @@
 export default {
     // TabBar
     'tabBar.home': 'Trang chủ',
+    'tabBar.director': 'Đạo diễn',
+    'tabBar.voice': 'Âm sắc',
     'tabBar.deviceConfig': 'Cấu hình mạng',
     'tabBar.settings': 'Hệ thống',
     // Tiêu đề trang cài đặt

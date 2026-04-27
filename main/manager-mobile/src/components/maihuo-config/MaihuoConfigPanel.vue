@@ -1,35 +1,25 @@
-<route lang="jsonc" type="page">
-{
-  "layout": "default",
-  "style": {
-    "navigationStyle": "custom",
-    "navigationBarTitleText": "卖货配置"
-  }
-}
-</route>
-
 <script lang="ts" setup>
-import { addLivePlan, deleteLivePlan, getDouyinRoomId, getLivePlanList, updateLivePlan } from '@/api/live-plan/live-plan'
-import { computed, ref } from 'vue'
 import { onShow } from '@dcloudio/uni-app'
+import { computed, onMounted, ref } from 'vue'
 import { useMessage } from 'wot-design-uni'
+import { addLivePlan, deleteLivePlan, getDouyinRoomId, getLivePlanList, updateLivePlan } from '@/api/live-plan/live-plan'
 import { toast } from '@/utils/toast'
 
 defineOptions({
   name: 'MaihuoConfigMobile',
 })
 
-type KeywordReply = {
+interface KeywordReply {
   keyword: string
   reply: string
 }
 
-type TextTemplatePanel = {
+interface TextTemplatePanel {
   latestCount: number
   templates: string[]
 }
 
-type SchemePanels = {
+interface SchemePanels {
   timed: {
     enabled: boolean
     interval: number
@@ -63,7 +53,7 @@ type SchemePanels = {
   gift: TextTemplatePanel
 }
 
-type SchemeItem = {
+interface SchemeItem {
   id: string
   planNo: string
   roomId: string
@@ -203,9 +193,9 @@ function normalizePanels(rawPanels: Partial<SchemePanels> = {}): SchemePanels {
   ;['welcome', 'like', 'follow', 'gift'].forEach((key) => {
     const panel = rawPanels[key as keyof SchemePanels] as TextTemplatePanel | undefined
     const defaultPanel = defaults[key as keyof SchemePanels] as TextTemplatePanel
-    if (!panel)
+    if (!panel) {
       return
-
+    }
     ;(merged[key as keyof SchemePanels] as TextTemplatePanel).latestCount = parsePanelNumber(panel.latestCount, defaultPanel.latestCount)
     ;(merged[key as keyof SchemePanels] as TextTemplatePanel).templates = Array.isArray(panel.templates)
       ? panel.templates.map(item => String(item))
@@ -435,7 +425,7 @@ function editField(field: 'name' | 'roomId') {
 }
 
 function updateNumberField(target: any, key: string, value: string, min = 0) {
-  const digitsOnly = String(value).replace(/[^\d]/g, '')
+  const digitsOnly = String(value).replace(/\D/g, '')
   if (!digitsOnly) {
     target[key] = min
     return
@@ -524,7 +514,7 @@ function handleSmartScript() {
 function readClipboardText() {
   return new Promise<string>((resolve, reject) => {
     uni.getClipboardData({
-      success: (res) => resolve(String(res.data || '')),
+      success: res => resolve(String(res.data || '')),
       fail: reject,
     })
   })
@@ -574,331 +564,375 @@ async function handleImportConfig() {
 onShow(() => {
   fetchLivePlanData()
 })
+
+onMounted(() => {
+  fetchLivePlanData()
+})
 </script>
 
 <template>
   <view class="page">
-    <wd-navbar title="卖货配置" safe-area-inset-top fixed placeholder />
-
     <view class="page-body">
-        <view class="current-scheme-card" @click="showSchemeActions = true">
-          <view class="current-label">
-            当前方案
-          </view>
-          <template v-if="selectedScheme">
-            <view class="current-row">
-              <view>
-                <view class="current-name">
-                  {{ selectedScheme.name }}
-                </view>
-                <view class="current-room">
-                  直播间 {{ selectedScheme.roomId }}
-                </view>
-              </view>
-              <view class="current-switch">
-                切换
-              </view>
-            </view>
-          </template>
-          <template v-else>
-            <view class="empty-box">
-              <text class="empty-text">
-                暂无方案
-              </text>
-              <view class="current-switch" @click="showSchemeActions = true">
-                添加
-              </view>
-            </view>
-          </template>
+      <view class="current-scheme-card" @click="showSchemeActions = true">
+        <view class="current-label">
+          当前方案
         </view>
-
         <template v-if="selectedScheme">
-          <view class="summary-card">
-            <view class="summary-head">
-              <view class="platform-tag">
-                {{ selectedScheme.platform }}
+          <view class="current-row">
+            <view>
+              <view class="current-name">
+                {{ selectedScheme.name }}
               </view>
-              <view class="summary-name-wrap">
-                <text class="summary-name">
-                  {{ selectedScheme.name }}
-                </text>
-                <text class="summary-edit" @click="editField('name')">
-                  ✎
-                </text>
+              <view class="current-room">
+                直播间 {{ selectedScheme.roomId }}
               </view>
             </view>
+            <view class="current-switch">
+              切换
+            </view>
+          </view>
+        </template>
+        <template v-else>
+          <view class="empty-box">
+            <text class="empty-text">
+              暂无方案
+            </text>
+            <view class="current-switch" @click="showSchemeActions = true">
+              添加
+            </view>
+          </view>
+        </template>
+      </view>
 
-            <view class="summary-room-wrap">
-              <text class="summary-room">
-                直播间id: {{ selectedScheme.roomId }}
+      <template v-if="selectedScheme">
+        <view class="summary-card">
+          <view class="summary-head">
+            <view class="platform-tag">
+              {{ selectedScheme.platform }}
+            </view>
+            <view class="summary-name-wrap">
+              <text class="summary-name">
+                {{ selectedScheme.name }}
               </text>
-              <text class="summary-edit" @click="editField('roomId')">
+              <text class="summary-edit" @click="editField('name')">
                 ✎
               </text>
             </view>
-
-            <view class="summary-actions">
-              <!-- <view class="action-btn action-btn--soft" @click="handleSmartScript">
-                智能话术
-              </view> -->
-              <view class="action-btn action-btn--plain" @click="handleExportConfig">
-                导出
-              </view>
-              <view class="action-btn action-btn--plain" @click="handleImportConfig">
-                导入
-              </view>
-            </view>
           </view>
 
-          <!-- <view class="priority-card">
+          <view class="summary-room-wrap">
+            <text class="summary-room">
+              直播间id: {{ selectedScheme.roomId }}
+            </text>
+            <text class="summary-edit" @click="editField('roomId')">
+              ✎
+            </text>
+          </view>
+
+          <view class="summary-actions">
+            <!-- <view class="action-btn action-btn--soft" @click="handleSmartScript">
+                智能话术
+              </view> -->
+            <view class="action-btn action-btn--plain" @click="handleExportConfig">
+              导出
+            </view>
+            <view class="action-btn action-btn--plain" @click="handleImportConfig">
+              导入
+            </view>
+          </view>
+        </view>
+
+        <!-- <view class="priority-card">
             <text class="priority-icon">💡</text>
             <text class="priority-text">
               机器人处理优先级： 强制插播 ＞ 刷礼物 ＞ 弹幕 ＞ 关注 ＞ 欢迎 ＞ 防冷场
             </text>
           </view> -->
 
-          <view class="panel-card">
-            <scroll-view scroll-x class="tabs-scroll" enable-flex>
-              <view class="tabs-row">
-                <view
-                  v-for="tab in tabs"
-                  :key="tab.name"
-                  class="tab-chip"
-                  :class="{ 'tab-chip--active': activeTab === tab.name }"
-                  @click="activeTab = tab.name"
-                >
-                  {{ tab.label }}
-                </view>
+        <view class="panel-card">
+          <scroll-view scroll-x class="tabs-scroll" enable-flex>
+            <view class="tabs-row">
+              <view
+                v-for="tab in tabs"
+                :key="tab.name"
+                class="tab-chip"
+                :class="{ 'tab-chip--active': activeTab === tab.name }"
+                @click="activeTab = tab.name"
+              >
+                {{ tab.label }}
               </view>
-            </scroll-view>
-
-            <view class="panel-body">
-              <template v-if="activeTab === 'timed'">
-                <view class="form-row">
-                  <text class="field-label">启用定时强制</text>
-                  <wd-switch v-model="selectedScheme.panels.timed.enabled" />
-                </view>
-                <view class="form-row">
-                  <text class="field-label">间隔时长（秒）</text>
-                  <view class="stepper">
-                    <view class="step-btn" @click="stepNumberField(selectedScheme.panels.timed, 'interval', -10, 1)">
-                      -
-                    </view>
-                    <input
-                      :value="String(selectedScheme.panels.timed.interval)"
-                      class="step-input"
-                      type="number"
-                      @input="updateNumberField(selectedScheme.panels.timed, 'interval', $event.detail.value, 1)"
-                    >
-                    <view class="step-btn" @click="stepNumberField(selectedScheme.panels.timed, 'interval', 10, 1)">
-                      +
-                    </view>
-                  </view>
-                </view>
-                <view class="form-row">
-                  <text class="field-label">按顺序循环发送</text>
-                  <wd-switch v-model="selectedScheme.panels.timed.sequential" />
-                </view>
-                <view class="template-block">
-                  <text class="block-title">随机模板</text>
-                  <view v-for="(item, index) in selectedScheme.panels.timed.templates" :key="`timed-${index}`" class="template-item">
-                    <input v-model="selectedScheme.panels.timed.templates[index]" class="template-input" maxlength="200" />
-                    <view class="remove-btn" @click="removeListItem(selectedScheme.panels.timed.templates, index)">
-                      ×
-                    </view>
-                  </view>
-                  <view class="add-template-btn" @click="addTextListItem(selectedScheme.panels.timed.templates, '新增模板')">
-                    + 添加模板
-                  </view>
-                </view>
-              </template>
-
-              <template v-else-if="activeTab === 'awkward'">
-                <view class="form-row">
-                  <text class="field-label">启用防冷场</text>
-                  <wd-switch v-model="selectedScheme.panels.awkward.enabled" />
-                </view>
-                <view class="form-row">
-                  <text class="field-label">间隔时长（秒）</text>
-                  <view class="stepper">
-                    <view class="step-btn" @click="stepNumberField(selectedScheme.panels.awkward, 'interval', -10, 1)">
-                      -
-                    </view>
-                    <input
-                      :value="String(selectedScheme.panels.awkward.interval)"
-                      class="step-input"
-                      type="number"
-                      @input="updateNumberField(selectedScheme.panels.awkward, 'interval', $event.detail.value, 1)"
-                    >
-                    <view class="step-btn" @click="stepNumberField(selectedScheme.panels.awkward, 'interval', 10, 1)">
-                      +
-                    </view>
-                  </view>
-                </view>
-                <view class="form-row">
-                  <text class="field-label">按顺序循环发送</text>
-                  <wd-switch v-model="selectedScheme.panels.awkward.sequential" />
-                </view>
-                <view class="form-row">
-                  <text class="field-label">防冷场可被打断</text>
-                  <wd-switch v-model="selectedScheme.panels.awkward.interruptEnabled" />
-                </view>
-                <view class="template-block">
-                  <text class="block-title">随机模板</text>
-                  <view v-for="(item, index) in selectedScheme.panels.awkward.templates" :key="`awkward-${index}`" class="template-item">
-                    <input v-model="selectedScheme.panels.awkward.templates[index]" class="template-input" maxlength="200" />
-                    <view class="remove-btn" @click="removeListItem(selectedScheme.panels.awkward.templates, index)">
-                      ×
-                    </view>
-                  </view>
-                  <view class="add-template-btn" @click="addTextListItem(selectedScheme.panels.awkward.templates, '新增模板')">
-                    + 添加模板
-                  </view>
-                </view>
-              </template>
-
-              <template v-else-if="activeTab === 'manual'">
-                <view class="form-row">
-                  <text class="field-label">只处理最新的几条消息</text>
-                  <view class="stepper">
-                    <view class="step-btn" @click="stepNumberField(selectedScheme.panels.manual, 'latestCount', -1, 1)">
-                      -
-                    </view>
-                    <input
-                      :value="String(selectedScheme.panels.manual.latestCount)"
-                      class="step-input"
-                      type="number"
-                      @input="updateNumberField(selectedScheme.panels.manual, 'latestCount', $event.detail.value, 1)"
-                    >
-                    <view class="step-btn" @click="stepNumberField(selectedScheme.panels.manual, 'latestCount', 1, 1)">
-                      +
-                    </view>
-                  </view>
-                </view>
-                <view class="template-block">
-                  <text class="block-title">固定模板</text>
-                  <input
-                    v-model="selectedScheme.panels.manual.fixedTemplate"
-                    class="template-input template-input--full"
-                    maxlength="400"
-                  >
-                </view>
-              </template>
-
-              <template v-else-if="activeTab === 'basic'">
-                <view class="form-row">
-                  <text class="field-label">忽略纯数字用户名</text>
-                  <wd-switch v-model="selectedScheme.panels.basic.ignoreNumericName" />
-                </view>
-                <view class="form-row">
-                  <text class="field-label">忽略包含多个*的用户名</text>
-                  <wd-switch v-model="selectedScheme.panels.basic.ignoreMaskedName" />
-                </view>
-              </template>
-
-              <template v-else-if="['welcome', 'like', 'follow', 'gift'].includes(activeTab)">
-                <view class="form-row">
-                  <text class="field-label">只处理最新的几条消息</text>
-                  <view class="stepper">
-                    <view class="step-btn" @click="stepNumberField((selectedScheme.panels as any)[activeTab], 'latestCount', -1, 1)">
-                      -
-                    </view>
-                    <input
-                      :value="String((selectedScheme.panels as any)[activeTab].latestCount)"
-                      class="step-input"
-                      type="number"
-                      @input="updateNumberField((selectedScheme.panels as any)[activeTab], 'latestCount', $event.detail.value, 1)"
-                    >
-                    <view class="step-btn" @click="stepNumberField((selectedScheme.panels as any)[activeTab], 'latestCount', 1, 1)">
-                      +
-                    </view>
-                  </view>
-                </view>
-                <view class="template-block">
-                  <text class="block-title">随机模板</text>
-                  <view v-for="(item, index) in (selectedScheme.panels as any)[activeTab].templates" :key="`${activeTab}-${index}`" class="template-item">
-                    <input v-model="(selectedScheme.panels as any)[activeTab].templates[index]" class="template-input" maxlength="200" />
-                    <view class="remove-btn" @click="removeListItem((selectedScheme.panels as any)[activeTab].templates, index)">
-                      ×
-                    </view>
-                  </view>
-                  <view class="add-template-btn" @click="addTextListItem((selectedScheme.panels as any)[activeTab].templates, getTemplatePlaceholder(activeTab))">
-                    + 添加模板
-                  </view>
-                </view>
-              </template>
-
-              <template v-else-if="activeTab === 'danmu'">
-                <view class="form-row">
-                  <text class="field-label">只处理最新的几条消息</text>
-                  <view class="stepper">
-                    <view class="step-btn" @click="stepNumberField(selectedScheme.panels.danmu, 'latestCount', -1, 1)">
-                      -
-                    </view>
-                    <input
-                      :value="String(selectedScheme.panels.danmu.latestCount)"
-                      class="step-input"
-                      type="number"
-                      @input="updateNumberField(selectedScheme.panels.danmu, 'latestCount', $event.detail.value, 1)"
-                    >
-                    <view class="step-btn" @click="stepNumberField(selectedScheme.panels.danmu, 'latestCount', 1, 1)">
-                      +
-                    </view>
-                  </view>
-                </view>
-                <view class="template-block">
-                  <text class="block-title">固定模板</text>
-                  <input
-                    v-model="selectedScheme.panels.danmu.fixedTemplate"
-                    class="template-input template-input--full"
-                    maxlength="400"
-                  >
-                </view>
-                <view class="template-block">
-                  <text class="block-title">关键词回复</text>
-                  <view v-for="(item, index) in selectedScheme.panels.danmu.keywordReplies" :key="`reply-${index}`" class="keyword-item">
-                    <input v-model="item.keyword" class="keyword-input" placeholder="关键词" maxlength="40" />
-                    <input v-model="item.reply" class="template-input keyword-reply-input" placeholder="回复内容" maxlength="160" />
-                    <view class="remove-btn" @click="removeKeywordReply(index)">
-                      ×
-                    </view>
-                  </view>
-                  <view class="add-template-btn" @click="addKeywordReply">
-                    + 添加关键词回复
-                  </view>
-                </view>
-                <view class="template-block">
-                  <text class="block-title">屏蔽词跳过</text>
-                  <view v-for="(item, index) in selectedScheme.panels.danmu.blockedKeywords" :key="`blocked-${index}`" class="template-item">
-                    <input v-model="selectedScheme.panels.danmu.blockedKeywords[index]" class="template-input" maxlength="60" />
-                    <view class="remove-btn" @click="removeListItem(selectedScheme.panels.danmu.blockedKeywords, index)">
-                      ×
-                    </view>
-                  </view>
-                  <view class="add-template-btn" @click="addTextListItem(selectedScheme.panels.danmu.blockedKeywords, '新增屏蔽词')">
-                    + 添加屏蔽词
-                  </view>
-                </view>
-              </template>
             </view>
+          </scroll-view>
 
-            <view class="footer-actions">
-              <view class="ghost-btn" @click="resetScheme">
-                重置
+          <view class="panel-body">
+            <template v-if="activeTab === 'timed'">
+              <view class="form-row">
+                <text class="field-label">
+                  启用定时强制
+                </text>
+                <wd-switch v-model="selectedScheme.panels.timed.enabled" />
               </view>
-              <view class="primary-btn" @click="handleSaveScheme">
-                {{ savePlanLoading ? '保存中...' : '保存方案' }}
+              <view class="form-row">
+                <text class="field-label">
+                  间隔时长（秒）
+                </text>
+                <view class="stepper">
+                  <view class="step-btn" @click="stepNumberField(selectedScheme.panels.timed, 'interval', -10, 1)">
+                    -
+                  </view>
+                  <input
+                    :value="String(selectedScheme.panels.timed.interval)"
+                    class="step-input"
+                    type="number"
+                    @input="updateNumberField(selectedScheme.panels.timed, 'interval', $event.detail.value, 1)"
+                  >
+                  <view class="step-btn" @click="stepNumberField(selectedScheme.panels.timed, 'interval', 10, 1)">
+                    +
+                  </view>
+                </view>
               </view>
+              <view class="form-row">
+                <text class="field-label">
+                  按顺序循环发送
+                </text>
+                <wd-switch v-model="selectedScheme.panels.timed.sequential" />
+              </view>
+              <view class="template-block">
+                <text class="block-title">
+                  随机模板
+                </text>
+                <view v-for="(item, index) in selectedScheme.panels.timed.templates" :key="`timed-${index}`" class="template-item">
+                  <input v-model="selectedScheme.panels.timed.templates[index]" class="template-input" maxlength="200">
+                  <view class="remove-btn" @click="removeListItem(selectedScheme.panels.timed.templates, index)">
+                    ×
+                  </view>
+                </view>
+                <view class="add-template-btn" @click="addTextListItem(selectedScheme.panels.timed.templates, '新增模板')">
+                  + 添加模板
+                </view>
+              </view>
+            </template>
+
+            <template v-else-if="activeTab === 'awkward'">
+              <view class="form-row">
+                <text class="field-label">
+                  启用防冷场
+                </text>
+                <wd-switch v-model="selectedScheme.panels.awkward.enabled" />
+              </view>
+              <view class="form-row">
+                <text class="field-label">
+                  间隔时长（秒）
+                </text>
+                <view class="stepper">
+                  <view class="step-btn" @click="stepNumberField(selectedScheme.panels.awkward, 'interval', -10, 1)">
+                    -
+                  </view>
+                  <input
+                    :value="String(selectedScheme.panels.awkward.interval)"
+                    class="step-input"
+                    type="number"
+                    @input="updateNumberField(selectedScheme.panels.awkward, 'interval', $event.detail.value, 1)"
+                  >
+                  <view class="step-btn" @click="stepNumberField(selectedScheme.panels.awkward, 'interval', 10, 1)">
+                    +
+                  </view>
+                </view>
+              </view>
+              <view class="form-row">
+                <text class="field-label">
+                  按顺序循环发送
+                </text>
+                <wd-switch v-model="selectedScheme.panels.awkward.sequential" />
+              </view>
+              <view class="form-row">
+                <text class="field-label">
+                  防冷场可被打断
+                </text>
+                <wd-switch v-model="selectedScheme.panels.awkward.interruptEnabled" />
+              </view>
+              <view class="template-block">
+                <text class="block-title">
+                  随机模板
+                </text>
+                <view v-for="(item, index) in selectedScheme.panels.awkward.templates" :key="`awkward-${index}`" class="template-item">
+                  <input v-model="selectedScheme.panels.awkward.templates[index]" class="template-input" maxlength="200">
+                  <view class="remove-btn" @click="removeListItem(selectedScheme.panels.awkward.templates, index)">
+                    ×
+                  </view>
+                </view>
+                <view class="add-template-btn" @click="addTextListItem(selectedScheme.panels.awkward.templates, '新增模板')">
+                  + 添加模板
+                </view>
+              </view>
+            </template>
+
+            <template v-else-if="activeTab === 'manual'">
+              <view class="form-row">
+                <text class="field-label">
+                  只处理最新的几条消息
+                </text>
+                <view class="stepper">
+                  <view class="step-btn" @click="stepNumberField(selectedScheme.panels.manual, 'latestCount', -1, 1)">
+                    -
+                  </view>
+                  <input
+                    :value="String(selectedScheme.panels.manual.latestCount)"
+                    class="step-input"
+                    type="number"
+                    @input="updateNumberField(selectedScheme.panels.manual, 'latestCount', $event.detail.value, 1)"
+                  >
+                  <view class="step-btn" @click="stepNumberField(selectedScheme.panels.manual, 'latestCount', 1, 1)">
+                    +
+                  </view>
+                </view>
+              </view>
+              <view class="template-block">
+                <text class="block-title">
+                  固定模板
+                </text>
+                <input
+                  v-model="selectedScheme.panels.manual.fixedTemplate"
+                  class="template-input template-input--full"
+                  maxlength="400"
+                >
+              </view>
+            </template>
+
+            <template v-else-if="activeTab === 'basic'">
+              <view class="form-row">
+                <text class="field-label">
+                  忽略纯数字用户名
+                </text>
+                <wd-switch v-model="selectedScheme.panels.basic.ignoreNumericName" />
+              </view>
+              <view class="form-row">
+                <text class="field-label">
+                  忽略包含多个*的用户名
+                </text>
+                <wd-switch v-model="selectedScheme.panels.basic.ignoreMaskedName" />
+              </view>
+            </template>
+
+            <template v-else-if="['welcome', 'like', 'follow', 'gift'].includes(activeTab)">
+              <view class="form-row">
+                <text class="field-label">
+                  只处理最新的几条消息
+                </text>
+                <view class="stepper">
+                  <view class="step-btn" @click="stepNumberField((selectedScheme.panels as any)[activeTab], 'latestCount', -1, 1)">
+                    -
+                  </view>
+                  <input
+                    :value="String((selectedScheme.panels as any)[activeTab].latestCount)"
+                    class="step-input"
+                    type="number"
+                    @input="updateNumberField((selectedScheme.panels as any)[activeTab], 'latestCount', $event.detail.value, 1)"
+                  >
+                  <view class="step-btn" @click="stepNumberField((selectedScheme.panels as any)[activeTab], 'latestCount', 1, 1)">
+                    +
+                  </view>
+                </view>
+              </view>
+              <view class="template-block">
+                <text class="block-title">
+                  随机模板
+                </text>
+                <view v-for="(item, index) in (selectedScheme.panels as any)[activeTab].templates" :key="`${activeTab}-${index}`" class="template-item">
+                  <input v-model="(selectedScheme.panels as any)[activeTab].templates[index]" class="template-input" maxlength="200">
+                  <view class="remove-btn" @click="removeListItem((selectedScheme.panels as any)[activeTab].templates, index)">
+                    ×
+                  </view>
+                </view>
+                <view class="add-template-btn" @click="addTextListItem((selectedScheme.panels as any)[activeTab].templates, getTemplatePlaceholder(activeTab))">
+                  + 添加模板
+                </view>
+              </view>
+            </template>
+
+            <template v-else-if="activeTab === 'danmu'">
+              <view class="form-row">
+                <text class="field-label">
+                  只处理最新的几条消息
+                </text>
+                <view class="stepper">
+                  <view class="step-btn" @click="stepNumberField(selectedScheme.panels.danmu, 'latestCount', -1, 1)">
+                    -
+                  </view>
+                  <input
+                    :value="String(selectedScheme.panels.danmu.latestCount)"
+                    class="step-input"
+                    type="number"
+                    @input="updateNumberField(selectedScheme.panels.danmu, 'latestCount', $event.detail.value, 1)"
+                  >
+                  <view class="step-btn" @click="stepNumberField(selectedScheme.panels.danmu, 'latestCount', 1, 1)">
+                    +
+                  </view>
+                </view>
+              </view>
+              <view class="template-block">
+                <text class="block-title">
+                  固定模板
+                </text>
+                <input
+                  v-model="selectedScheme.panels.danmu.fixedTemplate"
+                  class="template-input template-input--full"
+                  maxlength="400"
+                >
+              </view>
+              <view class="template-block">
+                <text class="block-title">
+                  关键词回复
+                </text>
+                <view v-for="(item, index) in selectedScheme.panels.danmu.keywordReplies" :key="`reply-${index}`" class="keyword-item">
+                  <input v-model="item.keyword" class="keyword-input" placeholder="关键词" maxlength="40">
+                  <input v-model="item.reply" class="template-input keyword-reply-input" placeholder="回复内容" maxlength="160">
+                  <view class="remove-btn" @click="removeKeywordReply(index)">
+                    ×
+                  </view>
+                </view>
+                <view class="add-template-btn" @click="addKeywordReply">
+                  + 添加关键词回复
+                </view>
+              </view>
+              <view class="template-block">
+                <text class="block-title">
+                  屏蔽词跳过
+                </text>
+                <view v-for="(item, index) in selectedScheme.panels.danmu.blockedKeywords" :key="`blocked-${index}`" class="template-item">
+                  <input v-model="selectedScheme.panels.danmu.blockedKeywords[index]" class="template-input" maxlength="60">
+                  <view class="remove-btn" @click="removeListItem(selectedScheme.panels.danmu.blockedKeywords, index)">
+                    ×
+                  </view>
+                </view>
+                <view class="add-template-btn" @click="addTextListItem(selectedScheme.panels.danmu.blockedKeywords, '新增屏蔽词')">
+                  + 添加屏蔽词
+                </view>
+              </view>
+            </template>
+          </view>
+
+          <view class="footer-actions">
+            <view class="ghost-btn" @click="resetScheme">
+              重置
+            </view>
+            <view class="primary-btn" @click="handleSaveScheme">
+              {{ savePlanLoading ? '保存中...' : '保存方案' }}
             </view>
           </view>
-        </template>
+        </view>
+      </template>
     </view>
 
     <view v-if="showSchemeActions" class="scheme-popup-mask" @click="showSchemeActions = false">
       <view class="scheme-popup" @click.stop>
         <view class="scheme-popup__header">
-          <text class="scheme-popup__title">选择方案</text>
-          <text class="scheme-popup__close" @click="showSchemeActions = false">×</text>
+          <text class="scheme-popup__title">
+            选择方案
+          </text>
+          <text class="scheme-popup__close" @click="showSchemeActions = false">
+            ×
+          </text>
         </view>
 
         <view class="scheme-popup__content">
@@ -936,8 +970,12 @@ onShow(() => {
                     {{ scheme.roomId }}
                   </view>
                   <view class="scheme-card__icon-actions">
-                    <text class="scheme-card__icon-action" @click.stop="duplicateScheme(scheme.id)">⧉</text>
-                    <text class="scheme-card__icon-action scheme-card__icon-action--danger" @click.stop="removeScheme(scheme.id)">✕</text>
+                    <text class="scheme-card__icon-action" @click.stop="duplicateScheme(scheme.id)">
+                      ⧉
+                    </text>
+                    <text class="scheme-card__icon-action scheme-card__icon-action--danger" @click.stop="removeScheme(scheme.id)">
+                      ✕
+                    </text>
                   </view>
                 </view>
 
@@ -947,8 +985,12 @@ onShow(() => {
 
                 <view class="scheme-card__footer">
                   <view class="scheme-card__meta">
-                    <text class="scheme-card__status-tag">{{ scheme.status }}</text>
-                    <text class="scheme-card__time">{{ scheme.updatedAt }}</text>
+                    <text class="scheme-card__status-tag">
+                      {{ scheme.status }}
+                    </text>
+                    <text class="scheme-card__time">
+                      {{ scheme.updatedAt }}
+                    </text>
                   </view>
                   <view class="scheme-card__footer-actions">
                     <text

@@ -45,11 +45,11 @@ export const tabbarList: FgTabBarItem[] = [
     iconType: 'uiLib',
   },
   {
-    iconPath: 'static/tabbar/example.png',
-    selectedIconPath: 'static/tabbar/exampleHL.png',
-    pagePath: 'pages/maihuo-config/index',
-    text: '方案',
-    icon: 'i-carbon-store',
+    iconPath: 'static/tabbar/microphone.png',
+    selectedIconPath: 'static/tabbar/microphone_activate.png',
+    pagePath: 'pages/voice-clone/index',
+    text: '音色',
+    icon: 'i-carbon-microphone',
     iconType: 'uiLib',
   },
   {
@@ -66,14 +66,6 @@ export const tabbarList: FgTabBarItem[] = [
     pagePath: 'pages/settings/index',
     text: '系统',
     icon: 'i-carbon-settings',
-    iconType: 'uiLib',
-  },
-  {
-    iconPath: 'static/tabbar/microphone.png',
-    selectedIconPath: 'static/tabbar/microphone_activate.png',
-    pagePath: 'pages/voice-clone/index',
-    text: '音色',
-    icon: 'i-carbon-microphone',
     iconType: 'uiLib',
   },
 ]

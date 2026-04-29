@@ -377,28 +377,35 @@ async function duplicateScheme(id: string) {
   }
 }
 
-function removeScheme(id: string) {
+async function removeScheme(id: string) {
   const target = schemes.value.find(item => item.id === id)
-  if (!target?.planNo)
+  console.log('删除方案', id, target)
+  if (!target?.planNo) {
+    toast.warning('方案不存在，无法删除')
+    return
+  }
+
+  const result = await uni.showModal({
+    title: '删除确认',
+    content: '确定删除这个方案吗？删除后不可恢复。',
+    confirmText: '删除',
+    cancelText: '取消',
+    confirmColor: '#e95b5b',
+  })
+
+  if (!result.confirm)
     return
 
-  message.confirm({
-    title: '删除确认',
-    msg: '确定删除这个方案吗？删除后不可恢复。',
-    confirmButtonText: '删除',
-    cancelButtonText: '取消',
-  }).then(async () => {
-    try {
-      await deleteLivePlan(target.planNo)
-      if (selectedSchemeId.value === id)
-        selectedSchemeId.value = ''
-      toast.success('方案删除成功')
-      await fetchLivePlanData()
-    }
-    catch (error: any) {
-      toast.error(error?.message || '方案删除失败')
-    }
-  }).catch(() => {})
+  try {
+    await deleteLivePlan(target.planNo)
+    if (selectedSchemeId.value === id)
+      selectedSchemeId.value = ''
+    toast.success('方案删除成功')
+    await fetchLivePlanData()
+  }
+  catch (error: any) {
+    toast.error(error?.message || '方案删除失败')
+  }
 }
 
 function editField(field: 'name' | 'roomId') {
@@ -971,10 +978,10 @@ onMounted(() => {
                   </view>
                   <view class="scheme-card__icon-actions">
                     <text class="scheme-card__icon-action" @click.stop="duplicateScheme(scheme.id)">
-                      ⧉
+                      复制
                     </text>
                     <text class="scheme-card__icon-action scheme-card__icon-action--danger" @click.stop="removeScheme(scheme.id)">
-                      ✕
+                      删除
                     </text>
                   </view>
                 </view>

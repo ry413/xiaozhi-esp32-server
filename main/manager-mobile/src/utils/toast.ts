@@ -39,7 +39,7 @@ export function showToast(options: ToastOptions | string) {
   > = {
     success: 'success',
     error: 'error',
-    warning: 'fail',
+    warning: 'error',
     info: 'none',
   }
 

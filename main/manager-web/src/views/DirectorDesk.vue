@@ -898,33 +898,34 @@ export default {
               console.log("成功发送进入对话状态命令到设备");
             } else {
               console.error("机器人进入对话状态失败:", data.msg);
-              return;
             }
-        });
-        
-        Api.livePlan.getLivePlanDetail(this.selectedPlanNo, ({ data }) => {
-          if (data && data.code === 0) {
-            const plan = data.data || {};
-            const params = {
-              platform: plan.platform,
-              live_id: plan.roomId,
-              device_id: this.selectedRobot.mac,
-              config_json: plan.configJson,
-            };
-            Api.liveStreaming.startLive(params, ({ data }) => {
-              this.startLiveLoading = false;
-              if (data && data.code === 0) {
-                this.$message.success("导播已启动");
-                this.startSentMsgPolling(this.selectedRobot.mac);
-                this.fetchLiveStatus();
-              } else {
-                this.$message.error((data && data.msg) || "启动导播失败");
-              }
-            });
-          } else {
-            this.startLiveLoading = false;
-            this.$message.error((data && data.msg) || "获取导播方案详情失败");
-          }
+
+            setTimeout(() => {
+              Api.livePlan.getLivePlanDetail(this.selectedPlanNo, ({ data }) => {
+                if (data && data.code === 0) {
+                  const plan = data.data || {};
+                  const params = {
+                    platform: plan.platform,
+                    live_id: plan.roomId,
+                    device_id: this.selectedRobot.mac,
+                    config_json: plan.configJson,
+                  };
+                  Api.liveStreaming.startLive(params, ({ data }) => {
+                    this.startLiveLoading = false;
+                    if (data && data.code === 0) {
+                      this.$message.success("导播已启动");
+                      this.startSentMsgPolling(this.selectedRobot.mac);
+                      this.fetchLiveStatus();
+                    } else {
+                      this.$message.error((data && data.msg) || "启动导播失败");
+                    }
+                  });
+                } else {
+                  this.startLiveLoading = false;
+                  this.$message.error((data && data.msg) || "获取导播方案详情失败");
+                }
+              });
+            }, 2000);
         });
     }
   },

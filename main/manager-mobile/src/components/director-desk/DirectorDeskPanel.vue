@@ -94,6 +94,10 @@ const selectedPlanIndex = computed(() => {
   return livePlanOptions.value.findIndex(item => item.planNo === selectedPlanNo.value)
 })
 
+function delay(ms: number) {
+  return new Promise(resolve => setTimeout(resolve, ms))
+}
+
 const planPickerRange = computed(() => {
   return livePlanOptions.value.map(item => item.displayLabel)
 })
@@ -656,6 +660,8 @@ async function handleStartStopLive() {
       // ignore command failure, continue starting live
     }
 
+    await delay(2000)
+
     const plan: any = await getLivePlanDetail(selectedPlanNo.value)
     await startLive({
       platform: plan?.platform,
@@ -718,7 +724,7 @@ onUnmounted(() => {
 <template>
   <view class="page">
     <view class="page-body">
-      <view class="current-robot-card">
+      <view class="current-robot-card" @click="showRobotPopup = true">
         <view class="section-label">
           当前机器人
         </view>
@@ -732,7 +738,7 @@ onUnmounted(() => {
                 {{ selectedRobot.mac }}
               </view>
             </view>
-            <view class="current-switch" @click="showRobotPopup = true">
+            <view class="current-switch">
               切换
             </view>
           </view>

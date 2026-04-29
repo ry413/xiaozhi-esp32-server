@@ -12,7 +12,7 @@
 import type { LoginData } from '@/api/auth'
 import type { Language } from '@/store/lang'
 import { computed, onMounted, ref } from 'vue'
-import { login } from '@/api/auth'
+import { login, wechatLogin } from '@/api/auth'
 // 导入国际化相关功能
 import { changeLanguage, getCurrentLanguage, getSupportedLanguages, initI18n, t } from '@/i18n'
 import { useConfigStore, useUserStore } from '@/store'
@@ -157,6 +157,44 @@ async function refreshCaptcha() {
   captchaImage.value = `${getEnvBaseUrl()}/user/captcha?uuid=${uuid}&t=${Date.now()}`
 }
 
+async function handleLoginSuccess(response: any) {
+  uni.setStorageSync('token', JSON.stringify(response))
+  await userStore.getUserInfo()
+
+  toast.success(t('message.loginSuccess'))
+
+  setTimeout(() => {
+    uni.reLaunch({
+      url: '/pages/index/index',
+    })
+  }, 1000)
+}
+
+async function handleWechatLogin() {
+  // #ifndef MP-WEIXIN
+  toast.warning('当前平台不支持微信登录')
+  return
+  // #endif
+
+  // #ifdef MP-WEIXIN
+  if (loading.value)
+    return
+
+  try {
+    loading.value = true
+    const response = await wechatLogin('mockUserCode1')
+    await handleLoginSuccess(response)
+  }
+  catch (error: any) {
+    console.error('微信登录失败:', error)
+    toast.error(error?.message || '微信登录失败')
+  }
+  finally {
+    loading.value = false
+  }
+  // #endif
+}
+
 // 登录
 async function handleLogin() {
   // 表单验证
@@ -226,18 +264,7 @@ async function handleLogin() {
     }
 
     const response = await login(loginData)
-    // 存储token
-    uni.setStorageSync('token', JSON.stringify(response))
-    await userStore.getUserInfo()
-
-    toast.success(t('message.loginSuccess'))
-
-    // 跳转到主页
-    setTimeout(() => {
-      uni.reLaunch({
-        url: '/pages/index/index',
-      })
-    }, 1000)
+    await handleLoginSuccess(response)
   }
   catch (error: any) {
     // 登录失败重新获取验证码
@@ -383,6 +410,24 @@ onMounted(async () => {
           {{ loading ? t('login.loggingIn') : t('login.loginButton') }}
         </view>
 
+        <!-- #ifdef MP-WEIXIN -->
+        <view class="wechat-login-block">
+          <view class="login-divider">
+            <view class="divider-line" />
+            <text class="divider-text">
+              或
+            </text>
+            <view class="divider-line" />
+          </view>
+          <view
+            class="wechat-login-btn"
+            @click="handleWechatLogin"
+          >
+            {{ loading ? t('login.loggingIn') : '微信登录' }}
+          </view>
+        </view>
+        <!-- #endif -->
+
         <view class="hint-row">
           <view class="register-hint">
             <text class="register-link" @click="goToRegister">
@@ -401,7 +446,9 @@ onMounted(async () => {
           <text class="policy-link" @click="goToUserAgreement">
             {{ t('login.userAgreement') }}
           </text>
-          <text class="policy-divider">|</text>
+          <text class="policy-divider">
+            |
+          </text>
           <text class="policy-link" @click="goToPrivacyPolicy">
             {{ t('login.privacyPolicy') }}
           </text>
@@ -757,6 +804,46 @@ onMounted(async () => {
       &:disabled {
         opacity: 0.6;
         cursor: not-allowed;
+      }
+    }
+
+    .wechat-login-block {
+      margin-bottom: 30rpx;
+    }
+
+    .login-divider {
+      display: flex;
+      align-items: center;
+      gap: 18rpx;
+      margin-bottom: 24rpx;
+    }
+
+    .divider-line {
+      flex: 1;
+      height: 1rpx;
+      background: #e9ecef;
+    }
+
+    .divider-text {
+      font-size: 24rpx;
+      color: #9aa2ad;
+    }
+
+    .wechat-login-btn {
+      width: 100%;
+      height: 80rpx;
+      border-radius: 16rpx;
+      background: #07c160;
+      color: #ffffff;
+      font-size: 30rpx;
+      font-weight: 600;
+      text-align: center;
+      line-height: 80rpx;
+      box-shadow: 0 8rpx 22rpx rgba(7, 193, 96, 0.24);
+
+      &:active {
+        transform: translateY(2rpx);
+        box-shadow: 0 4rpx 12rpx rgba(7, 193, 96, 0.22);
       }
     }
 

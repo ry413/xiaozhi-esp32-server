@@ -1,0 +1,18 @@
+delete from `ai_tts_voice` where tts_model_id = 'TTS_TencentTTS';
+INSERT INTO `ai_tts_voice` VALUES ('TTS_TencentTTS0001', 'TTS_TencentTTS', '智斌-磁性男声', '501000', '中文及中英文混合', NULL, NULL, NULL, NULL, 1, NULL, NULL, NULL, NULL);
+INSERT INTO `ai_tts_voice` VALUES ('TTS_TencentTTS0002', 'TTS_TencentTTS', '智兰-轻快女声', '501001', '中文及中英文混合', NULL, NULL, NULL, NULL, 2, NULL, NULL, NULL, NULL);
+INSERT INTO `ai_tts_voice` VALUES ('TTS_TencentTTS0003', 'TTS_TencentTTS', '智菊-端庄大方', '501002', '中文及中英文混合', NULL, NULL, NULL, NULL, 3, NULL, NULL, NULL, NULL);
+INSERT INTO `ai_tts_voice` VALUES ('TTS_TencentTTS0004', 'TTS_TencentTTS', '智宇-成熟大叔', '501003', '中文及中英文混合', NULL, NULL, NULL, NULL, 4, NULL, NULL, NULL, NULL);
+INSERT INTO `ai_tts_voice` VALUES ('TTS_TencentTTS0005', 'TTS_TencentTTS', '月华-气质聪慧', '501004', '中文及中英文混合', NULL, NULL, NULL, NULL, 5, NULL, NULL, NULL, NULL);
+INSERT INTO `ai_tts_voice` VALUES ('TTS_TencentTTS0006', 'TTS_TencentTTS', '飞镜-温和男声', '501005', '中文及中英文混合', NULL, NULL, NULL, NULL, 6, NULL, NULL, NULL, NULL);
+INSERT INTO `ai_tts_voice` VALUES ('TTS_TencentTTS0007', 'TTS_TencentTTS', '千嶂-沉稳大气', '501006', '中文及中英文混合', NULL, NULL, NULL, NULL, 7, NULL, NULL, NULL, NULL);
+INSERT INTO `ai_tts_voice` VALUES ('TTS_TencentTTS0008', 'TTS_TencentTTS', '浅草-青春男声', '501007', '中文及中英文混合', NULL, NULL, NULL, NULL, 8, NULL, NULL, NULL, NULL);
+INSERT INTO `ai_tts_voice` VALUES ('TTS_TencentTTS0009', 'TTS_TencentTTS', 'WeJames-外语女声', '501008', '中文及中英文混合', NULL, NULL, NULL, NULL, 9, NULL, NULL, NULL, NULL);
+INSERT INTO `ai_tts_voice` VALUES ('TTS_TencentTTS0010', 'TTS_TencentTTS', 'WeWinny-外语男声', '501009', '中文及中英文混合', NULL, NULL, NULL, NULL, 10, NULL, NULL, NULL, NULL);
+INSERT INTO `ai_tts_voice` VALUES ('TTS_TencentTTS0011', 'TTS_TencentTTS', '爱小豪-霸道高冷', '601008', '中文及中英文混合', NULL, NULL, NULL, NULL, 11, NULL, NULL, NULL, NULL);
+INSERT INTO `ai_tts_voice` VALUES ('TTS_TencentTTS0012', 'TTS_TencentTTS', '爱小芊-清纯灵巧', '601009', '中文及中英文混合', NULL, NULL, NULL, NULL, 12, NULL, NULL, NULL, NULL);
+INSERT INTO `ai_tts_voice` VALUES ('TTS_TencentTTS0013', 'TTS_TencentTTS', '爱小娇-娇媚女声', '601010', '中文及中英文混合', NULL, NULL, NULL, NULL, 13, NULL, NULL, NULL, NULL);
+INSERT INTO `ai_tts_voice` VALUES ('TTS_TencentTTS0014', 'TTS_TencentTTS', '爱小川-活力少年', '601011', '中文及中英文混合', NULL, NULL, NULL, NULL, 14, NULL, NULL, NULL, NULL);
+INSERT INTO `ai_tts_voice` VALUES ('TTS_TencentTTS0015', 'TTS_TencentTTS', '爱小璟-可爱萝莉', '601012', '中文及中英文混合', NULL, NULL, NULL, NULL, 15, NULL, NULL, NULL, NULL);
+INSERT INTO `ai_tts_voice` VALUES ('TTS_TencentTTS0016', 'TTS_TencentTTS', '爱小伊-知性姐姐', '601013', '中文及中英文混合', NULL, NULL, NULL, NULL, 16, NULL, NULL, NULL, NULL);
+INSERT INTO `ai_tts_voice` VALUES ('TTS_TencentTTS0017', 'TTS_TencentTTS', '爱小简-清爽学生', '601014', '中文及中英文混合', NULL, NULL, NULL, NULL, 17, NULL, NULL, NULL, NULL);

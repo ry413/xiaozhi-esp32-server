@@ -817,9 +817,9 @@ onUnmounted(() => {
             <view v-if="liveRuntimeText" class="status-pill">
               已运行：{{ liveRuntimeText }}
             </view>
-            <view class="status-pill">
+            <!-- <view class="status-pill">
               直播间：{{ roomStatusText }}
-            </view>
+            </view> -->
           </view>
 
           <view v-if="abnormalStatusList.length" class="abnormal-row">

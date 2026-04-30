@@ -141,7 +141,7 @@
                   <div v-if="liveStartedAtText || liveRuntimeText" class="live-info-row">
                     <span v-if="liveStartedAtText">开始时间: {{ liveStartedAtText }}</span>
                     <span v-if="liveRuntimeText">已运行时长: {{ liveRuntimeText }}</span>
-                    <span>直播间状态: {{ roomStatusText }}</span>
+                    <!-- <span>直播间状态: {{ roomStatusText }}</span> -->
                   </div>
 
                   <div v-if="abnormalStatusList.length" class="abnormal-row">

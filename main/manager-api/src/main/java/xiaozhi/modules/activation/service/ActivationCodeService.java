@@ -36,7 +36,7 @@ public interface ActivationCodeService extends BaseService<ActivationCodeEntity>
 
     UserBenefitVO getUserBenefit(Long userId);
 
-    void consumeUserBenefit(Long userId, UserBalanceConsumeDTO dto);
+    UserBenefitVO consumeUserBenefit(Long userId, UserBalanceConsumeDTO dto);
 
     PageData<UserBalanceLogEntity> pageUserBalanceLog(Long userId, UserBenefitLogPageDTO dto);
 

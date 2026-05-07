@@ -32,4 +32,7 @@ public class UserBenefitVO {
 
     @Schema(description = "月卡今日剩余额度秒数")
     private Integer membershipDailyRemainingSeconds;
+
+    @Schema(description = "本次扣费来源: membership_daily_quota/balance")
+    private String chargedFrom;
 }

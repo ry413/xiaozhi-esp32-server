@@ -70,15 +70,14 @@ public class ActivationCodeController {
 
     @PostMapping("/device/{deviceId}/benefit/consume")
     @Operation(summary = "按设备消费所属用户权益")
-    public Result<Void> consumeDeviceOwnerBenefit(@org.springframework.web.bind.annotation.PathVariable String deviceId,
+    public Result<UserBenefitVO> consumeDeviceOwnerBenefit(@org.springframework.web.bind.annotation.PathVariable String deviceId,
             @Valid @RequestBody UserBalanceConsumeDTO dto) {
         DeviceEntity device = deviceService.selectById(deviceId);
         if (device == null || device.getUserId() == null) {
-            return new Result<Void>().error(ErrorCode.DEVICE_NOT_EXIST);
+            return new Result<UserBenefitVO>().error(ErrorCode.DEVICE_NOT_EXIST);
         }
 
-        activationCodeService.consumeUserBenefit(device.getUserId(), dto);
-        return new Result<>();
+        return new Result<UserBenefitVO>().ok(activationCodeService.consumeUserBenefit(device.getUserId(), dto));
     }
 
     @GetMapping("/me/balance/logs")

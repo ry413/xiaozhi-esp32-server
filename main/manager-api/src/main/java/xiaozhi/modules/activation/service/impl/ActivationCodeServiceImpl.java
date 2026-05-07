@@ -68,6 +68,8 @@ public class ActivationCodeServiceImpl extends BaseServiceImpl<ActivationCodeDao
 
     private static final String CARD_TYPE_POINT = "point";
     private static final String CARD_TYPE_MONTH = "month";
+    private static final String CHARGED_FROM_MEMBERSHIP_DAILY_QUOTA = "membership_daily_quota";
+    private static final String CHARGED_FROM_BALANCE = "balance";
     private static final int MEMBERSHIP_DAILY_LIMIT_SECONDS = 4 * 60 * 60;
 
     private final ActivationCodeDao activationCodeDao;
@@ -254,22 +256,30 @@ public class ActivationCodeServiceImpl extends BaseServiceImpl<ActivationCodeDao
 
         if (membership == null) {
             vo.setMembershipActive(false);
+            vo.setMembershipDailyLimitSeconds(0);
+            vo.setMembershipDailyConsumedSeconds(0);
+            vo.setMembershipDailyRemainingSeconds(0);
             return vo;
         }
 
         vo.setMembershipActive(true);
         vo.setMembershipStartAt(membership.getStartAt());
         vo.setMembershipEndAt(membership.getEndAt());
-        int consumedSeconds = getMembershipDailyConsumedSeconds(userId, LocalDate.now());
-        vo.setMembershipDailyLimitSeconds(MEMBERSHIP_DAILY_LIMIT_SECONDS);
+        UserMembershipDailyUsageEntity dailyUsage = getMembershipDailyUsage(userId, LocalDate.now());
+        int dailyLimitSeconds = dailyUsage == null ? MEMBERSHIP_DAILY_LIMIT_SECONDS : safeInt(dailyUsage.getDailyLimitSeconds());
+        if (dailyLimitSeconds <= 0) {
+            dailyLimitSeconds = MEMBERSHIP_DAILY_LIMIT_SECONDS;
+        }
+        int consumedSeconds = dailyUsage == null ? 0 : safeInt(dailyUsage.getConsumedSeconds());
+        vo.setMembershipDailyLimitSeconds(dailyLimitSeconds);
         vo.setMembershipDailyConsumedSeconds(consumedSeconds);
-        vo.setMembershipDailyRemainingSeconds(Math.max(0, MEMBERSHIP_DAILY_LIMIT_SECONDS - consumedSeconds));
+        vo.setMembershipDailyRemainingSeconds(Math.max(0, dailyLimitSeconds - consumedSeconds));
         return vo;
     }
 
     @Override
     @Transactional(rollbackFor = Exception.class)
-    public void consumeUserBenefit(Long userId, UserBalanceConsumeDTO dto) {
+    public UserBenefitVO consumeUserBenefit(Long userId, UserBalanceConsumeDTO dto) {
         if (userId == null) {
             throw new RenException("用户不存在");
         }
@@ -278,16 +288,30 @@ public class ActivationCodeServiceImpl extends BaseServiceImpl<ActivationCodeDao
         }
 
         Date now = new Date();
+        int remainingSeconds = dto.getSeconds();
+        int membershipConsumedSeconds = 0;
+        int balanceConsumedSeconds = 0;
+
         UserMembershipEntity membership = getActiveMembership(userId, now);
         if (membership != null) {
-            consumeUserMembershipDailyQuota(userId, membership, dto);
-            return;
+            membershipConsumedSeconds = consumeUserMembershipDailyQuota(userId, membership, remainingSeconds);
+            remainingSeconds -= membershipConsumedSeconds;
         }
 
-        consumeUserBalance(userId, dto, now);
+        if (remainingSeconds > 0) {
+            balanceConsumedSeconds = consumeUserBalance(userId, dto, remainingSeconds, now);
+        }
+
+        if (membershipConsumedSeconds + balanceConsumedSeconds <= 0) {
+            throw new RenException("用户权益余额不足");
+        }
+
+        UserBenefitVO snapshot = getUserBenefit(userId);
+        snapshot.setChargedFrom(balanceConsumedSeconds > 0 ? CHARGED_FROM_BALANCE : CHARGED_FROM_MEMBERSHIP_DAILY_QUOTA);
+        return snapshot;
     }
 
-    private void consumeUserMembershipDailyQuota(Long userId, UserMembershipEntity membership, UserBalanceConsumeDTO dto) {
+    private int consumeUserMembershipDailyQuota(Long userId, UserMembershipEntity membership, int seconds) {
         LocalDate usageDate = LocalDate.now();
         userMembershipDailyUsageDao.insertIgnoreDailyUsage(userId, membership.getId(), usageDate,
                 MEMBERSHIP_DAILY_LIMIT_SECONDS);
@@ -298,7 +322,7 @@ public class ActivationCodeServiceImpl extends BaseServiceImpl<ActivationCodeDao
                         .eq("usage_date", usageDate)
                         .last("limit 1 for update"));
         if (usage == null || !Integer.valueOf(1).equals(usage.getStatus())) {
-            throw new RenException("月卡每日额度账户不存在");
+            return 0;
         }
 
         int before = safeInt(usage.getConsumedSeconds());
@@ -307,10 +331,10 @@ public class ActivationCodeServiceImpl extends BaseServiceImpl<ActivationCodeDao
             limit = MEMBERSHIP_DAILY_LIMIT_SECONDS;
         }
         if (before >= limit) {
-            throw new RenException("月卡今日额度不足");
+            return 0;
         }
 
-        int actualDelta = Math.min(limit - before, dto.getSeconds());
+        int actualDelta = Math.min(limit - before, seconds);
         int after = before + actualDelta;
         int updated = userMembershipDailyUsageDao.update(null,
                 new UpdateWrapper<UserMembershipDailyUsageEntity>()
@@ -324,23 +348,23 @@ public class ActivationCodeServiceImpl extends BaseServiceImpl<ActivationCodeDao
         if (updated <= 0) {
             throw new RenException("月卡每日额度扣减失败");
         }
+        return actualDelta;
     }
 
-    private void consumeUserBalance(Long userId, UserBalanceConsumeDTO dto, Date now) {
-        int delta = dto.getSeconds();
+    private int consumeUserBalance(Long userId, UserBalanceConsumeDTO dto, int seconds, Date now) {
         UserBalanceAccountEntity account = userBalanceAccountDao.selectOne(
-                new QueryWrapper<UserBalanceAccountEntity>().eq("user_id", userId).last("limit 1"));
+                new QueryWrapper<UserBalanceAccountEntity>().eq("user_id", userId).last("limit 1 for update"));
 
         if (account == null || !Integer.valueOf(1).equals(account.getStatus())) {
-            throw new RenException("点卡余额账户不存在");
+            return 0;
         }
 
         int before = safeInt(account.getBalanceMinutes());
         if (before <= 0) {
-            throw new RenException("点卡余额不足");
+            return 0;
         }
 
-        int actualDelta = Math.min(before, delta);
+        int actualDelta = Math.min(before, seconds);
         int after = before - actualDelta;
         int updated = userBalanceAccountDao.update(null, new UpdateWrapper<UserBalanceAccountEntity>()
                 .eq("id", account.getId())
@@ -365,6 +389,7 @@ public class ActivationCodeServiceImpl extends BaseServiceImpl<ActivationCodeDao
         logEntity.setRemark(StringUtils.defaultIfBlank(dto.getRemark(), "点卡余额消费"));
         logEntity.setCreatedAt(now);
         userBalanceLogDao.insert(logEntity);
+        return actualDelta;
     }
 
     private UserMembershipEntity getActiveMembership(Long userId, Date now) {
@@ -376,16 +401,16 @@ public class ActivationCodeServiceImpl extends BaseServiceImpl<ActivationCodeDao
                 .last("limit 1"));
     }
 
-    private int getMembershipDailyConsumedSeconds(Long userId, LocalDate usageDate) {
+    private UserMembershipDailyUsageEntity getMembershipDailyUsage(Long userId, LocalDate usageDate) {
         UserMembershipDailyUsageEntity usage = userMembershipDailyUsageDao.selectOne(
                 new QueryWrapper<UserMembershipDailyUsageEntity>()
                         .eq("user_id", userId)
                         .eq("usage_date", usageDate)
                         .last("limit 1"));
         if (usage == null || !Integer.valueOf(1).equals(usage.getStatus())) {
-            return 0;
+            return null;
         }
-        return safeInt(usage.getConsumedSeconds());
+        return usage;
     }
 
     @Override

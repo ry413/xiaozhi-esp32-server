@@ -206,6 +206,26 @@
                 </el-tag>
               </template>
             </el-table-column>
+            <el-table-column label="月卡今日额度" min-width="210">
+              <template slot-scope="{ row }">
+                <div v-if="row.benefit_membership_active" class="quota-cell">
+                  <div class="quota-line">
+                    <span>{{ formatDuration(row.membership_daily_consumed_seconds) }}</span>
+                    <span class="quota-muted">/ {{ formatDuration(row.membership_daily_limit_seconds) }}</span>
+                  </div>
+                  <el-progress
+                    :percentage="quotaPercent(row)"
+                    :status="quotaStatus(row)"
+                    :stroke-width="8"
+                    :show-text="false"
+                  />
+                  <div :class="['quota-remaining', { exhausted: safeNumber(row.membership_daily_remaining_seconds) <= 0 }]">
+                    剩余 {{ formatDuration(row.membership_daily_remaining_seconds) }}
+                  </div>
+                </div>
+                <span v-else>-</span>
+              </template>
+            </el-table-column>
             <el-table-column label="异常摘要" min-width="220" show-overflow-tooltip>
               <template slot-scope="{ row }">
                 {{ buildAbnormalSummary(row) }}
@@ -353,6 +373,20 @@ export default {
       }
       return `${seconds}秒`;
     },
+    formatDuration(seconds) {
+      const value = Math.max(0, Number(seconds) || 0);
+      const hours = Math.floor(value / 3600);
+      const minutes = Math.floor((value % 3600) / 60);
+      const restSeconds = value % 60;
+
+      if (hours > 0) {
+        return `${hours}小时${minutes}分`;
+      }
+      if (minutes > 0) {
+        return `${minutes}分${restSeconds}秒`;
+      }
+      return `${restSeconds}秒`;
+    },
     statusTagType(status) {
       if (status === "running") return "success";
       if (status === "starting" || status === "stopping") return "warning";
@@ -367,6 +401,24 @@ export default {
     safeNumber(value) {
       const num = Number(value);
       return Number.isFinite(num) ? num : 0;
+    },
+    quotaPercent(row) {
+      const limit = this.safeNumber(row.membership_daily_limit_seconds);
+      if (limit <= 0) {
+        return 0;
+      }
+      const consumed = this.safeNumber(row.membership_daily_consumed_seconds);
+      return Math.min(100, Math.round((consumed / limit) * 100));
+    },
+    quotaStatus(row) {
+      const remaining = this.safeNumber(row.membership_daily_remaining_seconds);
+      if (remaining <= 0) {
+        return "exception";
+      }
+      if (this.quotaPercent(row) >= 80) {
+        return "warning";
+      }
+      return undefined;
     },
     isAbnormal(item) {
       return (
@@ -571,6 +623,36 @@ export default {
 .owner-sub {
   font-size: 12px;
   color: #6b7280;
+}
+
+.quota-cell {
+  min-width: 190px;
+}
+
+.quota-line {
+  display: flex;
+  align-items: baseline;
+  gap: 4px;
+  margin-bottom: 6px;
+  color: #1f2d3d;
+  font-size: 13px;
+  white-space: nowrap;
+}
+
+.quota-muted {
+  color: #7b8794;
+}
+
+.quota-remaining {
+  margin-top: 6px;
+  color: #5f6f85;
+  font-size: 12px;
+  line-height: 1.2;
+}
+
+.quota-remaining.exhausted {
+  color: #f56c6c;
+  font-weight: 600;
 }
 
 .full-span {

@@ -120,7 +120,7 @@ function createDefaultPanels(): SchemePanels {
       sequential: false,
       templates: [
         '三二一上一下链接，制造一下库存的紧张感',
-        '说3个让用户非买不可的理由',
+        '向大家说3个非买不可的理由',
         '今天直播间有哪些优惠给大家介绍下',
       ],
     },

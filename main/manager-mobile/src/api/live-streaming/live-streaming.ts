@@ -8,6 +8,7 @@ export function startLive(data: {
   platform: string
   live_id: string
   device_id: string
+  plan_no?: string
   config_json: Record<string, any>
 }) {
   return http.Post('/monitors', data, {
@@ -65,6 +66,21 @@ export function getSentMsg(deviceId: string, params: { afterId: number, limit: n
 
 export function sendManualMsg(deviceId: string, data: { message: string }) {
   return http.Post(`/monitors/manual/${deviceId}`, data, {
+    meta: {
+      ignoreAuth: false,
+      toast: false,
+      domain: getLiveStreamingBaseUrl(),
+    },
+  })
+}
+
+export function updatePlanConfig(data: {
+  plan_no: string
+  live_id: string
+  platform: string
+  config_json: Record<string, any>
+}) {
+  return http.Post('/updatePlanConfig', data, {
     meta: {
       ignoreAuth: false,
       toast: false,

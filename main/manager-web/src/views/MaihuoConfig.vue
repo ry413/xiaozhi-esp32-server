@@ -672,6 +672,25 @@ export default {
         remark: "",
       };
     },
+    applyRunningPlanConfig(scheme) {
+      return new Promise((resolve, reject) => {
+        Api.liveStreaming.updatePlanConfig(
+          {
+            plan_no: scheme.planNo,
+            live_id: scheme.roomId,
+            platform: scheme.platform,
+            config_json: JSON.parse(JSON.stringify(scheme.panels)),
+          },
+          ({ data }) => {
+            if (data && data.code === 0) {
+              resolve(data.data || {});
+              return;
+            }
+            reject(new Error((data && data.msg) || "运行中实例配置同步失败"));
+          }
+        );
+      });
+    },
     fetchLivePlanList() {
       this.listLoading = true;
       Api.livePlan.getLivePlanList({ page: 1, limit: 100 }, ({ data }) => {
@@ -913,18 +932,39 @@ export default {
       }
 
       this.savePlanLoading = true;
-      const payload = this.buildUpdatePayload(this.selectedScheme);
+      const scheme = this.selectedScheme;
+      const payload = this.buildUpdatePayload(scheme);
 
-      Api.livePlan.updateLivePlan(this.selectedScheme.planNo, payload, ({ data }) => {
-        this.savePlanLoading = false;
-
-        if (data && data.code === 0) {
-          this.fetchLivePlanList();
-          this.$message.success("方案保存成功");
+      Api.livePlan.updateLivePlan(scheme.planNo, payload, async ({ data }) => {
+        if (!(data && data.code === 0)) {
+          this.savePlanLoading = false;
+          this.$message.error((data && data.msg) || "方案保存失败");
           return;
         }
 
-        this.$message.error((data && data.msg) || "方案保存失败");
+        try {
+          const applyResult = await this.applyRunningPlanConfig(scheme);
+          this.fetchLivePlanList();
+          const updatedCount = Number(applyResult.updated_count) || 0;
+          const matchedCount = Number(applyResult.matched_count) || 0;
+          if (matchedCount > 0) {
+            this.$message.success(
+              `方案保存成功，已同步到 ${updatedCount}/${matchedCount} 个运行中实例`
+            );
+          } else {
+            this.$message.success("方案保存成功");
+          }
+          return;
+        }
+        catch (error) {
+          this.fetchLivePlanList();
+          this.$message.warning(
+            `方案已保存，但运行中实例同步失败：${error.message || "请稍后重试"}`
+          );
+        }
+        finally {
+          this.savePlanLoading = false;
+        }
       });
     },
     async getDouyinRoomId(input) {

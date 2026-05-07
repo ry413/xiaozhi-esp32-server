@@ -130,5 +130,26 @@ export default {
                     this.getAllLiveInfo(callback);
                 });
             }).send();
+    },
+    // 更新运行中实例的方案配置
+    updatePlanConfig(params, callback) {
+        RequestService.sendRequest()
+            .url(`${liveStreamingApi}/updatePlanConfig`)
+            .method('POST')
+            .data(params)
+            .success((res) => {
+                RequestService.clearRequestTime();
+                callback(res);
+            })
+            .fail((res) => {
+                RequestService.clearRequestTime();
+                callback(res);
+            })
+            .networkFail((err) => {
+                console.error('更新运行中实例方案配置失败:', err);
+                RequestService.reAjaxFun(() => {
+                    this.updatePlanConfig(params, callback);
+                });
+            }).send();
     }
 }

@@ -1,7 +1,7 @@
 <script lang="ts" setup>
 import { onShow } from '@dcloudio/uni-app'
 import { computed, onMounted, ref } from 'vue'
-import { useMessage } from 'wot-design-uni'
+import { updatePlanConfig } from '@/api/live-streaming/live-streaming'
 import { addLivePlan, deleteLivePlan, getDouyinRoomId, getLivePlanList, updateLivePlan } from '@/api/live-plan/live-plan'
 import { toast } from '@/utils/toast'
 
@@ -64,8 +64,6 @@ interface SchemeItem {
   panels: SchemePanels
 }
 
-const message = useMessage()
-
 const tabs = [
   { label: '定时强制', name: 'timed' },
   { label: '防冷场', name: 'awkward' },
@@ -87,6 +85,9 @@ const listLoading = ref(false)
 const addPlanLoading = ref(false)
 const savePlanLoading = ref(false)
 const showSchemeActions = ref(false)
+const showEditPopup = ref(false)
+const editingField = ref<'name' | 'roomId' | ''>('')
+const editingValue = ref('')
 
 const selectedScheme = computed(() => {
   return schemes.value.find(item => item.id === selectedSchemeId.value) || null
@@ -279,6 +280,15 @@ function buildUpdatePayload(scheme: SchemeItem) {
   }
 }
 
+async function applyRunningPlanConfig(scheme: SchemeItem) {
+  return await updatePlanConfig({
+    plan_no: scheme.planNo,
+    live_id: scheme.roomId,
+    platform: scheme.platform,
+    config_json: JSON.parse(JSON.stringify(scheme.panels)),
+  }) as any
+}
+
 async function fetchLivePlanData() {
   try {
     listLoading.value = true
@@ -411,24 +421,28 @@ async function removeScheme(id: string) {
 function editField(field: 'name' | 'roomId') {
   if (!selectedScheme.value)
     return
+  editingField.value = field
+  editingValue.value = field === 'name' ? selectedScheme.value.name : selectedScheme.value.roomId
+  showEditPopup.value = true
+}
 
-  message.prompt({
-    title: field === 'name' ? '修改方案名' : '修改直播间 ID',
-    msg: '',
-    inputPlaceholder: field === 'name' ? '请输入方案名' : '请输入直播间 ID',
-    inputValue: field === 'name' ? selectedScheme.value.name : selectedScheme.value.roomId,
-    confirmButtonText: '确定',
-    cancelButtonText: '取消',
-  }).then(({ value }: any) => {
-    const nextValue = String(value || '').trim()
-    if (!nextValue || !selectedScheme.value)
-      return
+function cancelEditField() {
+  showEditPopup.value = false
+  editingField.value = ''
+  editingValue.value = ''
+}
 
-    if (field === 'name')
-      selectedScheme.value.name = nextValue
-    else
-      selectedScheme.value.roomId = nextValue
-  }).catch(() => {})
+function confirmEditField() {
+  const nextValue = editingValue.value.trim()
+  if (!nextValue || !selectedScheme.value || !editingField.value)
+    return
+
+  if (editingField.value === 'name')
+    selectedScheme.value.name = nextValue
+  else
+    selectedScheme.value.roomId = nextValue
+
+  cancelEditField()
 }
 
 function updateNumberField(target: any, key: string, value: string, min = 0) {
@@ -502,8 +516,22 @@ async function handleSaveScheme() {
 
   try {
     savePlanLoading.value = true
-    await updateLivePlan(selectedScheme.value.planNo, buildUpdatePayload(selectedScheme.value))
-    toast.success('方案保存成功')
+    const scheme = selectedScheme.value
+    await updateLivePlan(scheme.planNo, buildUpdatePayload(scheme))
+
+    try {
+      const applyResult: any = await applyRunningPlanConfig(scheme)
+      const updatedCount = Number(applyResult?.updated_count) || 0
+      const matchedCount = Number(applyResult?.matched_count) || 0
+      if (matchedCount > 0)
+        toast.success(`方案保存成功，已同步到 ${updatedCount}/${matchedCount} 个运行中实例`)
+      else
+        toast.success('方案保存成功')
+    }
+    catch (error: any) {
+      toast.warning(`方案已保存，但运行中实例同步失败：${error?.message || '请稍后重试'}`)
+    }
+
     await fetchLivePlanData()
   }
   catch (error: any) {
@@ -586,12 +614,17 @@ onMounted(() => {
         </view>
         <template v-if="selectedScheme">
           <view class="current-row">
-            <view>
+            <view class="current-info">
               <view class="current-name">
                 {{ selectedScheme.name }}
               </view>
-              <view class="current-room">
-                直播间 {{ selectedScheme.roomId }}
+              <view class="current-meta-row">
+                <view class="current-room">
+                  直播间id {{ selectedScheme.roomId }}
+                </view>
+                <view class="current-platform">
+                  {{ selectedScheme.platform }}
+                </view>
               </view>
             </view>
             <view class="current-switch">
@@ -613,38 +646,18 @@ onMounted(() => {
 
       <template v-if="selectedScheme">
         <view class="summary-card">
-          <view class="summary-head">
-            <view class="platform-tag">
-              {{ selectedScheme.platform }}
+          <view class="summary-actions-grid">
+            <view class="action-btn action-btn--plain" @click="editField('name')">
+              编辑方案名称
             </view>
-            <view class="summary-name-wrap">
-              <text class="summary-name">
-                {{ selectedScheme.name }}
-              </text>
-              <text class="summary-edit" @click="editField('name')">
-                ✎
-              </text>
+            <view class="action-btn action-btn--plain" @click="editField('roomId')">
+              编辑直播间id
             </view>
-          </view>
-
-          <view class="summary-room-wrap">
-            <text class="summary-room">
-              直播间id: {{ selectedScheme.roomId }}
-            </text>
-            <text class="summary-edit" @click="editField('roomId')">
-              ✎
-            </text>
-          </view>
-
-          <view class="summary-actions">
-            <!-- <view class="action-btn action-btn--soft" @click="handleSmartScript">
-                智能话术
-              </view> -->
             <view class="action-btn action-btn--plain" @click="handleExportConfig">
-              导出
+              导出方案
             </view>
             <view class="action-btn action-btn--plain" @click="handleImportConfig">
-              导入
+              导入方案
             </view>
           </view>
         </view>
@@ -1023,6 +1036,35 @@ onMounted(() => {
         </view>
       </view>
     </view>
+
+    <wd-popup
+      v-model="showEditPopup"
+      position="center"
+      custom-style="width: 88%; max-width: 640rpx; border-radius: 24rpx;"
+      safe-area-inset-bottom
+      @close="cancelEditField"
+    >
+      <view class="edit-popup">
+        <view class="edit-popup__title">
+          {{ editingField === 'name' ? '修改方案名' : '修改直播间 ID' }}
+        </view>
+        <input
+          v-model.trim="editingValue"
+          class="edit-popup__input"
+          :placeholder="editingField === 'name' ? '请输入方案名' : '请输入直播间 ID'"
+          :focus="showEditPopup"
+          @confirm="confirmEditField"
+        >
+        <view class="edit-popup__actions">
+          <view class="edit-popup__btn edit-popup__btn--ghost" @click="cancelEditField">
+            取消
+          </view>
+          <view class="edit-popup__btn edit-popup__btn--primary" @click="confirmEditField">
+            确定
+          </view>
+        </view>
+      </view>
+    </wd-popup>
   </view>
 </template>
 
@@ -1058,9 +1100,14 @@ onMounted(() => {
 .current-row,
 .empty-box {
   display: flex;
-  align-items: center;
+  align-items: flex-start;
   justify-content: space-between;
   gap: 20rpx;
+}
+
+.current-info {
+  min-width: 0;
+  flex: 1;
 }
 
 .current-name {
@@ -1070,9 +1117,30 @@ onMounted(() => {
 }
 
 .current-room {
-  margin-top: 8rpx;
   font-size: 24rpx;
   color: #8d93a6;
+}
+
+.current-meta-row {
+  display: flex;
+  align-items: center;
+  gap: 14rpx;
+  margin-top: 10rpx;
+  flex-wrap: wrap;
+}
+
+.current-platform {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 78rpx;
+  height: 42rpx;
+  padding: 0 16rpx;
+  border-radius: 999rpx;
+  border: 2rpx solid #cfe0ff;
+  background: #f4f8ff;
+  color: #5d90ea;
+  font-size: 22rpx;
 }
 
 .current-switch {
@@ -1080,6 +1148,7 @@ onMounted(() => {
   color: #5d90ea;
   font-size: 24rpx;
   font-weight: 600;
+  line-height: 1.8;
 }
 
 .empty-text {
@@ -1091,75 +1160,24 @@ onMounted(() => {
   padding: 28rpx;
 }
 
-.summary-head,
-.summary-room-wrap,
-.summary-actions {
-  display: flex;
-  align-items: center;
-}
-
-.summary-head {
-  gap: 18rpx;
-}
-
-.platform-tag {
-  min-width: 72rpx;
-  height: 44rpx;
-  padding: 0 16rpx;
-  border-radius: 12rpx;
-  border: 2rpx solid #cfe0ff;
-  background: #f4f8ff;
-  color: #5d90ea;
-  font-size: 22rpx;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-}
-
-.summary-name-wrap {
-  display: flex;
-  align-items: center;
-  gap: 12rpx;
-  flex: 1;
-}
-
-.summary-name {
-  font-size: 30rpx;
-  font-weight: 700;
-  color: #202430;
-}
-
-.summary-edit {
-  color: #8c90a0;
-  font-size: 20rpx;
-}
-
-.summary-room-wrap {
-  margin-top: 18rpx;
-  gap: 12rpx;
-}
-
-.summary-room {
-  font-size: 24rpx;
-  color: #545c6e;
-}
-
-.summary-actions {
-  margin-top: 24rpx;
-  gap: 14rpx;
-  flex-wrap: wrap;
+.summary-actions-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 16rpx;
 }
 
 .action-btn {
-  min-width: 96rpx;
-  height: 56rpx;
+  width: 100%;
+  min-width: 0;
+  height: 72rpx;
   padding: 0 18rpx;
   border-radius: 14rpx;
   display: flex;
   align-items: center;
   justify-content: center;
-  font-size: 22rpx;
+  font-size: 24rpx;
   font-weight: 600;
+  box-sizing: border-box;
 }
 
 .action-btn--soft {
@@ -1617,5 +1635,55 @@ onMounted(() => {
 
 .scheme-card__action--danger {
   color: #e95b5b;
+}
+
+.edit-popup {
+  padding: 32rpx;
+}
+
+.edit-popup__title {
+  margin-bottom: 24rpx;
+  text-align: center;
+  font-size: 32rpx;
+  font-weight: 700;
+  color: #232338;
+}
+
+.edit-popup__input {
+  height: 74rpx;
+  padding: 0 20rpx;
+  border: 2rpx solid #dfe5f0;
+  border-radius: 16rpx;
+  background: #fff;
+  font-size: 24rpx;
+  color: #1f2430;
+}
+
+.edit-popup__actions {
+  display: flex;
+  gap: 16rpx;
+  margin-top: 28rpx;
+}
+
+.edit-popup__btn {
+  flex: 1;
+  height: 72rpx;
+  border-radius: 16rpx;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 26rpx;
+  font-weight: 600;
+}
+
+.edit-popup__btn--ghost {
+  border: 2rpx solid #dfe5f0;
+  background: #fff;
+  color: #5b6578;
+}
+
+.edit-popup__btn--primary {
+  background: #5d90ea;
+  color: #fff;
 }
 </style>

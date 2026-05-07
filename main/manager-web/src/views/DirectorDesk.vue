@@ -115,7 +115,7 @@
                     <div class="plan-select-wrap">
                       <span class="plan-select-label">导播方案:</span>
                       <el-select
-                        v-model="selectedPlanNo"
+                        v-model="currentSelectedPlanNo"
                         class="plan-select"
                         placeholder="请选择导播方案"
                         filterable
@@ -217,7 +217,7 @@ export default {
       editingRobotName: false,
       robotNameSnapshot: "",
       livePlanOptions: [],
-      selectedPlanNo: "",
+      selectedPlanNoMap: {},
       pendingMessage: "",
       consoleMessages: [],
       consoleMessageMap: {},
@@ -250,6 +250,20 @@ export default {
   computed: {
     selectedRobot() {
       return this.robots.find((item) => item.id === this.selectedRobotId) || null;
+    },
+    currentSelectedPlanNo: {
+      get() {
+        if (!this.selectedRobotId) {
+          return "";
+        }
+        return this.selectedPlanNoMap[this.selectedRobotId] || "";
+      },
+      set(value) {
+        if (!this.selectedRobotId) {
+          return;
+        }
+        this.$set(this.selectedPlanNoMap, this.selectedRobotId, value || "");
+      },
     },
     abnormalStatusList() {
       const list = [];
@@ -291,9 +305,7 @@ export default {
             planName: item.planName,
             roomId: item.roomId,
           }));
-          if (!this.selectedPlanNo && this.livePlanOptions.length) {
-            this.selectedPlanNo = this.livePlanOptions[0].planNo;
-          }
+          this.ensureRobotPlanSelections();
           return;
         }
 
@@ -382,6 +394,7 @@ export default {
                 }
                 const stillExists = this.robots.some((item) => item.id === this.selectedRobotId);
                 this.selectedRobotId = stillExists ? this.selectedRobotId : this.robots[0].id;
+                this.ensureRobotPlanSelections();
                 this.fetchLiveStatus();
               }
             });
@@ -466,10 +479,35 @@ export default {
     },
     selectRobot(id) {
       this.selectedRobotId = id;
+      this.ensureRobotPlanSelection(id);
       const nextRobot = this.robots.find((item) => item.id === id);
       this.stopSentMsgTracking();
       this.setConsoleMessagesForDevice(nextRobot ? nextRobot.mac : "");
       this.fetchLiveStatus();
+    },
+    ensureRobotPlanSelection(robotId) {
+      if (!robotId || !this.livePlanOptions.length) {
+        return;
+      }
+      if (!this.selectedPlanNoMap[robotId]) {
+        this.$set(this.selectedPlanNoMap, robotId, this.livePlanOptions[0].planNo);
+      }
+    },
+    ensureRobotPlanSelections() {
+      this.robots.forEach((robot) => {
+        this.ensureRobotPlanSelection(robot.id);
+      });
+    },
+    setRobotPlanSelectionByPlanNo(robotId, planNo) {
+      if (!robotId || !planNo) {
+        return;
+      }
+      const matchedPlan = this.livePlanOptions.find(
+        item => String(item.planNo || "") === String(planNo || "")
+      );
+      if (matchedPlan) {
+        this.$set(this.selectedPlanNoMap, robotId, matchedPlan.planNo);
+      }
     },
     formatDisplayTime(value) {
       if (!value) {
@@ -749,6 +787,7 @@ export default {
         if (data && data.code === 0 && data.data) {
           const liveData = data.data || {};
           const target = this.robots.find((item) => item.id === this.selectedRobotId);
+          const targetRobotId = target ? target.id : this.selectedRobotId;
 
           this.isLiveRunning = liveData.status === "running";
           this.liveStartedAtText = liveData.started_at
@@ -788,6 +827,10 @@ export default {
           if (target && this.deviceOnline !== null) {
             target.online = this.deviceOnline;
             target.deviceStatus = this.deviceOnline ? "online" : "offline";
+          }
+
+          if (this.isLiveRunning) {
+            this.setRobotPlanSelectionByPlanNo(targetRobotId, liveData.plan_no);
           }
 
           if (this.isLiveRunning) {
@@ -843,17 +886,25 @@ export default {
           return;
         }
 
-        if (!this.selectedRobot.online && !this.isLiveRunning) {
+        const targetRobot = {
+          id: this.selectedRobot.id,
+          mac: this.selectedRobot.mac,
+          online: this.selectedRobot.online,
+        };
+        const targetPlanNo = this.currentSelectedPlanNo;
+        const targetIsRunning = this.isLiveRunning;
+
+        if (!targetRobot.online && !targetIsRunning) {
           this.$message.warning("机器人不在线");
           return;
         }
 
-        if (!this.selectedPlanNo) {
+        if (!targetPlanNo) {
           this.$message.warning("请选择导播方案");
           return;
         }
 
-        if (!this.isLiveRunning && !this.canStartLiveByBenefits) {
+        if (!targetIsRunning && !this.canStartLiveByBenefits) {
           this.$message.warning("当前账户没有可用权益，无法启动导播");
           return;
         }
@@ -862,16 +913,18 @@ export default {
           return;
         }
 
-        if (this.isLiveRunning) {
+        if (targetIsRunning) {
           this.startLiveLoading = true;
-          Api.liveStreaming.stopLive(this.selectedRobot.mac, ({ data }) => {
+          Api.liveStreaming.stopLive(targetRobot.mac, ({ data }) => {
             this.startLiveLoading = false;
             if (data && data.code === 0) {
               this.$message.success("导播已停止");
-              this.stopSentMsgTracking();
-              this.stopLiveStatusPolling();
-              this.resetLiveStatusDisplay();
-              this.setConsoleMessagesForDevice(this.selectedRobot.mac);
+              if (this.selectedRobot && this.selectedRobot.mac === targetRobot.mac) {
+                this.stopSentMsgTracking();
+                this.stopLiveStatusPolling();
+                this.resetLiveStatusDisplay();
+                this.setConsoleMessagesForDevice(targetRobot.mac);
+              }
               return;
             }
             this.$message.error((data && data.msg) || "停止导播失败");
@@ -901,21 +954,25 @@ export default {
             }
 
             setTimeout(() => {
-              Api.livePlan.getLivePlanDetail(this.selectedPlanNo, ({ data }) => {
+              Api.livePlan.getLivePlanDetail(targetPlanNo, ({ data }) => {
                 if (data && data.code === 0) {
                   const plan = data.data || {};
                   const params = {
+                    plan_no: targetPlanNo,
                     platform: plan.platform,
                     live_id: plan.roomId,
-                    device_id: this.selectedRobot.mac,
+                    device_id: targetRobot.mac,
                     config_json: plan.configJson,
                   };
                   Api.liveStreaming.startLive(params, ({ data }) => {
                     this.startLiveLoading = false;
                     if (data && data.code === 0) {
                       this.$message.success("导播已启动");
-                      this.startSentMsgPolling(this.selectedRobot.mac);
-                      this.fetchLiveStatus();
+                      this.$set(this.selectedPlanNoMap, targetRobot.id, targetPlanNo);
+                      if (this.selectedRobot && this.selectedRobot.mac === targetRobot.mac) {
+                        this.startSentMsgPolling(targetRobot.mac);
+                        this.fetchLiveStatus();
+                      }
                     } else {
                       this.$message.error((data && data.msg) || "启动导播失败");
                     }

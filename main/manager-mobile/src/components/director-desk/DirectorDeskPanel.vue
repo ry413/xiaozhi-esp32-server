@@ -47,7 +47,7 @@ const selectedRobotId = ref('')
 const showRobotPopup = ref(false)
 
 const livePlanOptions = ref<LivePlanOption[]>([])
-const selectedPlanNo = ref('')
+const selectedPlanNoMap = ref<Record<string, string>>({})
 
 const pendingMessage = ref('')
 const consoleMessages = ref<ConsoleMessage[]>([])
@@ -86,12 +86,28 @@ const selectedRobot = computed(() => {
 })
 
 const selectedPlanLabel = computed(() => {
-  const target = livePlanOptions.value.find(item => item.planNo === selectedPlanNo.value)
+  const target = livePlanOptions.value.find(item => item.planNo === currentSelectedPlanNo.value)
   return target ? target.displayLabel : '请选择导播方案'
 })
 
 const selectedPlanIndex = computed(() => {
-  return livePlanOptions.value.findIndex(item => item.planNo === selectedPlanNo.value)
+  return livePlanOptions.value.findIndex(item => item.planNo === currentSelectedPlanNo.value)
+})
+
+const currentSelectedPlanNo = computed({
+  get() {
+    if (!selectedRobotId.value)
+      return ''
+    return selectedPlanNoMap.value[selectedRobotId.value] || ''
+  },
+  set(value: string) {
+    if (!selectedRobotId.value)
+      return
+    selectedPlanNoMap.value = {
+      ...selectedPlanNoMap.value,
+      [selectedRobotId.value]: value || '',
+    }
+  },
 })
 
 function delay(ms: number) {
@@ -291,11 +307,37 @@ async function fetchLivePlanData() {
       displayLabel: `${item.planName}(${item.roomId})`,
     }))
     livePlanOptions.value = list
-    if (!selectedPlanNo.value && list.length)
-      selectedPlanNo.value = list[0].planNo
+    ensureRobotPlanSelections()
   }
   catch (error: any) {
     toast.error(error?.message || '获取导播方案失败')
+  }
+}
+
+function ensureRobotPlanSelection(robotId?: string) {
+  if (!robotId || !livePlanOptions.value.length)
+    return
+  if (!selectedPlanNoMap.value[robotId]) {
+    selectedPlanNoMap.value = {
+      ...selectedPlanNoMap.value,
+      [robotId]: livePlanOptions.value[0].planNo,
+    }
+  }
+}
+
+function ensureRobotPlanSelections() {
+  robots.value.forEach(robot => ensureRobotPlanSelection(robot.id))
+}
+
+function setRobotPlanSelectionByPlanNo(robotId?: string, planNo?: string) {
+  if (!robotId || !planNo)
+    return
+  const matchedPlan = livePlanOptions.value.find(item => String(item.planNo) === String(planNo))
+  if (!matchedPlan)
+    return
+  selectedPlanNoMap.value = {
+    ...selectedPlanNoMap.value,
+    [robotId]: matchedPlan.planNo,
   }
 }
 
@@ -351,6 +393,7 @@ async function fetchRobotList() {
 
     const stillExists = nextRobots.some(item => item.id === selectedRobotId.value)
     selectedRobotId.value = stillExists ? selectedRobotId.value : nextRobots[0].id
+    ensureRobotPlanSelections()
     await fetchLiveStatus()
   }
   catch (error: any) {
@@ -527,6 +570,9 @@ async function fetchLiveStatus() {
       target.deviceStatus = deviceOnline.value ? 'online' : 'offline'
     }
 
+    if (isLiveRunning.value)
+      setRobotPlanSelectionByPlanNo(target?.id || selectedRobotId.value, liveData?.plan_no)
+
     if (isLiveRunning.value) {
       if (activeMonitorDeviceId.value !== deviceId) {
         startSentMsgPolling(deviceId)
@@ -556,6 +602,7 @@ async function fetchLiveStatus() {
 
 function selectRobot(id: string) {
   selectedRobotId.value = id
+  ensureRobotPlanSelection(id)
   showRobotPopup.value = false
   stopSentMsgTracking()
   setConsoleMessagesForDevice(selectedRobot.value?.mac || '')
@@ -616,12 +663,20 @@ async function handleStartStopLive() {
     return
   }
 
-  if (!selectedPlanNo.value) {
+  const targetRobot = {
+    id: selectedRobot.value.id,
+    mac: selectedRobot.value.mac,
+    online: selectedRobot.value.online,
+  }
+  const targetPlanNo = currentSelectedPlanNo.value
+  const targetIsRunning = isLiveRunning.value
+
+  if (!targetPlanNo) {
     toast.warning('请选择导播方案')
     return
   }
 
-  if (!isLiveRunning.value && !canStartLiveByBenefits.value) {
+  if (!targetIsRunning && !canStartLiveByBenefits.value) {
     toast.warning('当前账户没有可用权益，无法启动导播')
     return
   }
@@ -632,18 +687,20 @@ async function handleStartStopLive() {
   try {
     startLiveLoading.value = true
 
-    if (isLiveRunning.value) {
-      await stopLive(selectedRobot.value.mac)
+    if (targetIsRunning) {
+      await stopLive(targetRobot.mac)
       toast.success('导播已停止')
-      stopSentMsgTracking()
-      stopLiveStatusPolling()
-      resetLiveStatusDisplay()
-      setConsoleMessagesForDevice(selectedRobot.value.mac)
+      if (selectedRobot.value?.mac === targetRobot.mac) {
+        stopSentMsgTracking()
+        stopLiveStatusPolling()
+        resetLiveStatusDisplay()
+        setConsoleMessagesForDevice(targetRobot.mac)
+      }
       return
     }
 
     try {
-      await sendDeviceCommand(selectedRobot.value.id, {
+      await sendDeviceCommand(targetRobot.id, {
         type: 'mcp',
         payload: {
           jsonrpc: '2.0',
@@ -662,20 +719,27 @@ async function handleStartStopLive() {
 
     await delay(2000)
 
-    const plan: any = await getLivePlanDetail(selectedPlanNo.value)
+    const plan: any = await getLivePlanDetail(targetPlanNo)
     await startLive({
       platform: plan?.platform,
       live_id: plan?.roomId,
-      device_id: selectedRobot.value.mac,
+      device_id: targetRobot.mac,
+      plan_no: targetPlanNo,
       config_json: plan?.configJson,
     })
 
     toast.success('导播已启动')
-    startSentMsgPolling(selectedRobot.value.mac)
-    await fetchLiveStatus()
+    selectedPlanNoMap.value = {
+      ...selectedPlanNoMap.value,
+      [targetRobot.id]: targetPlanNo,
+    }
+    if (selectedRobot.value?.mac === targetRobot.mac) {
+      startSentMsgPolling(targetRobot.mac)
+      await fetchLiveStatus()
+    }
   }
   catch (error: any) {
-    toast.error(error?.message || (isLiveRunning.value ? '停止导播失败' : '启动导播失败'))
+    toast.error(error?.message || (targetIsRunning ? '停止导播失败' : '启动导播失败'))
   }
   finally {
     startLiveLoading.value = false
@@ -686,7 +750,7 @@ function handlePlanChange(event: any) {
   const index = Number(event?.detail?.value)
   const target = livePlanOptions.value[index]
   if (target)
-    selectedPlanNo.value = target.planNo
+    currentSelectedPlanNo.value = target.planNo
 }
 
 async function initializePage() {

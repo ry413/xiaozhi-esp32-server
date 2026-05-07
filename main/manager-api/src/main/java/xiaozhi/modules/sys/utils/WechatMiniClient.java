@@ -11,10 +11,18 @@ import java.security.MessageDigest;
 
 import org.springframework.beans.factory.annotation.Value;
 
+import lombok.extern.slf4j.Slf4j;
+import xiaozhi.common.utils.JsonUtils;
+
+@Slf4j
 @Component
 public class WechatMiniClient {
 
-    private final RestTemplate restTemplate = new RestTemplate();
+    private final RestTemplate restTemplate;
+
+    public WechatMiniClient(RestTemplate restTemplate) {
+        this.restTemplate = restTemplate;
+    }
 
     @Value("${wechat.mini.enabled:false}")
     private boolean enabled;
@@ -59,8 +67,22 @@ public class WechatMiniClient {
                 + "&grant_type=authorization_code";
 
         try {
-            return restTemplate.getForObject(url, WechatSession.class);
+            String response = restTemplate.getForObject(url, String.class);
+            WechatSession session = JsonUtils.parseObject(response, WechatSession.class);
+            if (session == null) {
+                log.warn("Wechat jscode2session returned empty response");
+                throw new RenException(ErrorCode.WECHAT_SERVICE_ERROR);
+            }
+            if (session.getErrcode() != null && session.getErrcode() != 0) {
+                log.warn("Wechat jscode2session business error, errcode={}, errmsg={}",
+                        session.getErrcode(), session.getErrmsg());
+            }
+            return session;
         } catch (Exception e) {
+            if (e instanceof RenException) {
+                throw e;
+            }
+            log.error("Wechat jscode2session request failed", e);
             throw new RenException(ErrorCode.WECHAT_SERVICE_ERROR);
         }
     }

@@ -13,10 +13,10 @@ import { onLoad } from '@dcloudio/uni-app'
 import { computed, onMounted, ref } from 'vue'
 import CustomTabs from '@/components/custom-tabs/index.vue'
 import { t } from '@/i18n'
-import ChatHistory from '@/pages/chat-history/index.vue'
-import DeviceManagement from '@/pages/device/index.vue'
-import VoiceprintManagement from '@/pages/voiceprint/index.vue'
-import AgentEdit from './edit.vue'
+import AgentEdit from './components/AgentEdit.vue'
+import ChatHistory from './components/ChatHistory.vue'
+import DeviceManagement from './components/DeviceManagement.vue'
+import VoiceprintManagement from './components/VoiceprintManagement.vue'
 
 defineOptions({
   name: 'AgentIndex',

@@ -9,13 +9,13 @@
 </route>
 
 <script lang="ts" setup>
-import type { ChatMessage, UserMessageContent } from '@/api/chat-history/types'
 import { onLoad, onUnload } from '@dcloudio/uni-app'
 import { computed, ref } from 'vue'
-import { getAudioId, getChatHistory } from '@/api/chat-history/chat-history'
 import { t } from '@/i18n'
 import { debounce, getEnvBaseUrl } from '@/utils'
 import { toast } from '@/utils/toast'
+import type { ChatMessage, UserMessageContent } from '../api/chat-history-types'
+import { getAudioId, getChatHistory } from '../api/chat-history'
 
 defineOptions({
   name: 'ChatDetail',

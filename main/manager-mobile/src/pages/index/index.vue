@@ -108,7 +108,7 @@ async function handleDeleteAgent(agent: Agent) {
 function goToEditAgent(agent: Agent) {
   // 传递智能体ID到编辑页面
   uni.navigateTo({
-    url: `/pages/agent/index?agentId=${agent.id}`,
+    url: `/pages-sub/agent/index?agentId=${agent.id}`,
   })
 }
 

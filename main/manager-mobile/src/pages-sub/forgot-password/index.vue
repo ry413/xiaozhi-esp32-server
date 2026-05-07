@@ -254,7 +254,7 @@ async function handleResetPassword() {
     // 跳转到登录页
     setTimeout(() => {
       uni.redirectTo({
-        url: "/pages/login/index",
+        url: "/pages-sub/login/index",
       });
     }, 1000);
   } catch (error: any) {
@@ -272,7 +272,7 @@ async function handleResetPassword() {
 // 返回登录
 function goBack() {
   uni.redirectTo({
-    url: "/pages/login/index",
+    url: "/pages-sub/login/index",
   });
 }
 

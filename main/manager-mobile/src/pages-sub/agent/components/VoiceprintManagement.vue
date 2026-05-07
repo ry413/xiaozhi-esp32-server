@@ -1,11 +1,11 @@
 <script lang="ts" setup>
-import type { ChatHistory, CreateSpeakerData, VoicePrint } from '@/api/voiceprint'
 import { computed, onMounted, ref } from 'vue'
 import { useMessage } from 'wot-design-uni'
 import { useToast } from 'wot-design-uni/components/wd-toast'
-import { createVoicePrint, deleteVoicePrint, getAudioDownloadId, getChatHistory, getVoicePrintList, updateVoicePrint } from '@/api/voiceprint'
 import { t } from '@/i18n'
 import { getEnvBaseUrl } from '@/utils'
+import type { ChatHistory, CreateSpeakerData, VoicePrint } from '../../api/voiceprint'
+import { createVoicePrint, deleteVoicePrint, getAudioDownloadId, getChatHistory, getVoicePrintList, updateVoicePrint } from '../../api/voiceprint'
 
 defineOptions({
   name: 'VoicePrintManage',

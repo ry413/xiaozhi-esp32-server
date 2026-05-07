@@ -95,6 +95,7 @@
     "optimization": {
       "subPackages": true
     },
+    "lazyCodeLoading": "requiredComponents",
     "permission": {
       "scope.userLocation": {
         "desc": "WiFi配网功能需要获取位置权限"
@@ -120,7 +121,7 @@
   "vueVersion": "3",
   "h5": {
     "router": {
-      "base": "/"
+      "base": "/xiaozhi-mobile/"
     }
   }
 }

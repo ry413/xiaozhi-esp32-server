@@ -1,9 +1,9 @@
 <script lang="ts" setup>
-import type { ChatSession } from '@/api/chat-history/types'
 import { computed, onMounted, ref } from 'vue'
-import { getChatSessions } from '@/api/chat-history/chat-history'
 import { t } from '@/i18n'
 import { deepClone } from '@/utils'
+import type { ChatSession } from '../../api/chat-history'
+import { getChatSessions } from '../../api/chat-history'
 
 defineOptions({
   name: 'ChatHistory',
@@ -166,7 +166,7 @@ function formatTime(timeStr: string) {
 // 进入聊天详情
 function goToChatDetail(session: ChatSession) {
   uni.navigateTo({
-    url: `/pages/chat-history/detail?sessionId=${session.sessionId}&agentId=${currentAgentId.value}`,
+    url: `/pages-sub/chat-history/detail?sessionId=${session.sessionId}&agentId=${currentAgentId.value}`,
   })
 }
 

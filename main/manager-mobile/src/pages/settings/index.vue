@@ -248,7 +248,7 @@ async function clearCache() {
 
           // 延迟跳转到登录页
           setTimeout(() => {
-            uni.reLaunch({ url: '/pages/login/index' })
+            uni.reLaunch({ url: '/pages-sub/login/index' })
           }, 1500)
         }
       },
@@ -281,7 +281,7 @@ function handleLogout() {
     cancelButtonText: '取消',
   }).then(() => {
     uni.removeStorageSync('token')
-    uni.reLaunch({ url: '/pages/login/index' })
+    uni.reLaunch({ url: '/pages-sub/login/index' })
   }).catch(() => {})
 }
 

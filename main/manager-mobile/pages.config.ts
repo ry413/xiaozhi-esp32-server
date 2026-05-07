@@ -2,6 +2,7 @@ import { defineUniPages } from '@uni-helper/vite-plugin-uni-pages'
 import { tabBar } from './src/layouts/fg-tabbar/tabbarList'
 
 export default defineUniPages({
+  lazyCodeLoading: 'requiredComponents',
   globalStyle: {
     navigationStyle: 'default',
     navigationBarTitleText: '小智',

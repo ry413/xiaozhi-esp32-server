@@ -185,7 +185,7 @@ const isMemoryDisabled = computed(() => formData.value.memModelId !== 'Memory_me
 // 打开上下文源编辑弹窗
 function openContextProviderDialog() {
   uni.navigateTo({
-    url: '/pages/agent/provider',
+    url: '/pages-sub/agent/provider',
   })
 }
 
@@ -224,7 +224,7 @@ function handleGenerateScript() {
 
 function handleRegulate() {
   uni.navigateTo({
-    url: '/pages/agent/speedPitch',
+    url: '/pages-sub/agent/speedPitch',
   })
 }
 
@@ -771,7 +771,7 @@ async function handleTools() {
   pluginStore.setAllFunctions(allFunctions.value)
 
   uni.navigateTo({
-    url: '/pages/agent/tools',
+    url: '/pages-sub/agent/tools',
   })
 }
 

@@ -36,7 +36,7 @@ const { onAuthRequired, onResponseRefreshToken } = createServerTokenAuthenticati
       }
       catch (error) {
         // 切换到登录页
-        await uni.reLaunch({ url: '/pages/login/index' })
+        await uni.reLaunch({ url: '/pages-sub/login/index' })
         throw error
       }
     },
@@ -85,7 +85,7 @@ const alovaInstance = createAlova({
       const authInfo = JSON.parse(uni.getStorageSync('token') || '{}')
       if (!authInfo.token) {
         // 跳转到登录页
-        uni.reLaunch({ url: '/pages/login/index' })
+        uni.reLaunch({ url: '/pages-sub/login/index' })
         throw new Error('[请求错误]：未登录')
       }
       // 添加 Authorization 头
@@ -130,7 +130,7 @@ const alovaInstance = createAlova({
       if (code === ResultEnum.Unauthorized) {
         // 清除token并跳转到登录页
         uni.removeStorageSync('token')
-        uni.reLaunch({ url: '/pages/login/index' })
+        uni.reLaunch({ url: '/pages-sub/login/index' })
         throw new Error(`请求错误[${code}]：${msg}`)
       }
 

@@ -100,7 +100,7 @@ export default async ({ command, mode }) => {
         logger: false,
       }),
 
-      ViteRestart({
+      command === 'serve' && ViteRestart({
         // 通过这个插件，在修改vite.config.js文件则不需要重新运行也生效配置
         restart: ['vite.config.js'],
       }),

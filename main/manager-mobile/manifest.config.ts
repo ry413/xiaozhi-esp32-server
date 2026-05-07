@@ -130,6 +130,7 @@ export default defineManifestConfig({
       subPackages: true,
     },
     usingComponents: true,
+    lazyCodeLoading: 'requiredComponents',
     // __usePrivacyCheck__: true,
     permission: {
       'scope.userLocation': {

@@ -3,22 +3,21 @@
   "layout": "default",
   "style": {
     "navigationStyle": "custom",
-    "navigationBarTitleText": "Login"
+    "navigationBarTitleText": "注册"
   }
 }
 </route>
 
 <script lang="ts" setup>
-import type { LoginData } from '@/api/auth'
-import type { Language } from '@/store/lang'
-import { computed, onMounted, ref } from 'vue'
-import { login, wechatLogin } from '@/api/auth'
+import { computed, onMounted, ref } from 'vue';
+import { register, sendSmsCode } from '@/api/auth';
+import { useConfigStore } from '@/store';
+import { getEnvBaseUrl } from '@/utils';
+import { toast } from '@/utils/toast';
 // 导入国际化相关功能
-import { changeLanguage, getCurrentLanguage, getSupportedLanguages, initI18n, t } from '@/i18n'
-import { useConfigStore, useUserStore } from '@/store'
+import { t, initI18n } from '@/i18n';
 // 导入SM2加密工具
-import { getEnvBaseUrl, sm2Encrypt } from '@/utils'
-import { toast } from '@/utils/toast'
+import { sm2Encrypt } from '@/utils';
 
 // 获取屏幕边界到安全区域距离
 let safeAreaInsets
@@ -42,34 +41,49 @@ safeAreaInsets = systemInfo.safeArea
 systemInfo = uni.getSystemInfoSync()
 safeAreaInsets = systemInfo.safeAreaInsets
 // #endif
-// 表单数据
-const formData = ref({
+
+// 注册表单数据
+interface RegisterData {
+  username: string
+  password: string
+  confirmPassword: string
+  captcha: string
+  captchaId: string
+  areaCode: string
+  mobile: string
+  mobileCaptcha: string
+}
+
+const formData = ref<RegisterData>({
   username: '',
   password: '',
+  confirmPassword: '',
   captcha: '',
   captchaId: '',
   areaCode: '+86',
   mobile: '',
+  mobileCaptcha: '',
 })
 
 // 验证码图片
 const captchaImage = ref('')
 const loading = ref(false)
+const smsLoading = ref(false)
+const smsCountdown = ref(0)
 
-// 登录方式：'username' | 'mobile'
-const loginType = ref<'username' | 'mobile'>('username')
+// 注册方式：'username' | 'mobile'
+const registerType = ref<'username' | 'mobile'>('username')
 
 // 获取配置store
 const configStore = useConfigStore()
-const userStore = useUserStore()
 
 // 区号选择相关
 const showAreaCodeSheet = ref(false)
 const selectedAreaCode = ref('+86')
 const selectedAreaName = ref('中国大陆')
 
-// 计算属性：是否启用手机号登录
-const enableMobileLogin = computed(() => {
+// 计算属性：是否启用手机号注册
+const enableMobileRegister = computed(() => {
   return configStore.config.enableMobileRegister
 })
 
@@ -78,12 +92,18 @@ const areaCodeList = computed(() => {
   return configStore.config.mobileAreaList || [{ name: '中国大陆', key: '+86' }]
 })
 
-// 切换登录方式
-function toggleLoginType() {
-  loginType.value = loginType.value === 'username' ? 'mobile' : 'username'
+// SM2公钥
+const sm2PublicKey = computed(() => {
+  return configStore.config.sm2PublicKey
+})
+
+// 切换注册方式
+function toggleRegisterType() {
+  registerType.value = registerType.value === 'username' ? 'mobile' : 'username'
   // 清空输入框
   formData.value.username = ''
   formData.value.mobile = ''
+  formData.value.mobileCaptcha = ''
 }
 
 // 打开区号选择弹窗
@@ -104,130 +124,122 @@ function closeAreaCodeSheet() {
   showAreaCodeSheet.value = false
 }
 
-// 跳转到注册页面
-function goToRegister() {
-  uni.navigateTo({
-    url: '/pages/register/index',
-  })
-}
-
-// 跳转到忘记密码页面
-function goToForgotPassword() {
-  uni.navigateTo({
-    url: '/pages/forgot-password/index',
-  })
-}
-
-// 跳转到用户协议
-function goToUserAgreement() {
-  const lang = getCurrentLanguage() === 'zh_CN' ? 'zh' : 'en'
-  uni.navigateTo({
-    url: `/pages/login/user-agreement-${lang}`,
-  })
-}
-
-// 跳转到隐私政策
-function goToPrivacyPolicy() {
-  const lang = getCurrentLanguage() === 'zh_CN' ? 'zh' : 'en'
-  uni.navigateTo({
-    url: `/pages/login/privacy-policy-${lang}`,
-  })
-}
-
 // 生成UUID
 function generateUUID() {
   return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, (c) => {
-    const r = Math.random() * 16 | 0
-    const v = c === 'x' ? r : (r & 0x3 | 0x8)
+    const r = (Math.random() * 16) | 0
+    const v = c === 'x' ? r : (r & 0x3) | 0x8
     return v.toString(16)
-  })
-}
-
-// 跳转至服务端设置页面
-function goToServerSetting() {
-  uni.switchTab({
-    url: '/pages/settings/index',
   })
 }
 
 // 获取验证码
 async function refreshCaptcha() {
-  const uuid = generateUUID()
-  formData.value.captchaId = uuid
-  captchaImage.value = `${getEnvBaseUrl()}/user/captcha?uuid=${uuid}&t=${Date.now()}`
+  const uuid = generateUUID();
+  formData.value.captchaId = uuid;
+  captchaImage.value = `${getEnvBaseUrl()}/user/captcha?uuid=${uuid}&t=${Date.now()}`;
 }
 
-async function handleLoginSuccess(response: any) {
-  uni.setStorageSync('token', JSON.stringify(response))
-  await userStore.getUserInfo()
-
-  toast.success(t('message.loginSuccess'))
-
-  setTimeout(() => {
-    uni.reLaunch({
-      url: '/pages/index/index',
-    })
-  }, 1000)
-}
-
-async function handleWechatLogin() {
-  // #ifndef MP-WEIXIN
-  toast.warning('当前平台不支持微信登录')
-  return
-  // #endif
-
-  // #ifdef MP-WEIXIN
-  if (loading.value)
+// 发送短信验证码
+async function sendSmsVerification() {
+  if (!formData.value.mobile) {
+    toast.warning(t('register.enterPhone'))
     return
+  }
+  if (!formData.value.captcha) {
+    toast.warning(t('register.enterCode'))
+    return
+  }
+
+  // 手机号格式验证
+  const phoneRegex = /^1[3-9]\d{9}$/
+  if (!phoneRegex.test(formData.value.mobile)) {
+    toast.warning(t('register.enterPhone'))
+    return
+  }
 
   try {
-    loading.value = true
-    const response = await wechatLogin('mockUserCode1')
-    await handleLoginSuccess(response)
+    smsLoading.value = true
+    await sendSmsCode({
+      phone: `${selectedAreaCode.value}${formData.value.mobile}`,
+      captcha: formData.value.captcha,
+      captchaId: formData.value.captchaId,
+    })
+
+    toast.success(t('register.captchaSendSuccess'))
+
+    // 开始倒计时
+    smsCountdown.value = 60
+    const timer = setInterval(() => {
+      smsCountdown.value--
+      if (smsCountdown.value <= 0) {
+        clearInterval(timer)
+      }
+    }, 1000)
   }
   catch (error: any) {
-    console.error('微信登录失败:', error)
-    toast.error(error?.message || '微信登录失败')
+    // 处理验证码错误 - 从error.message中解析错误码
+    if (error.message.includes('请求错误[10067]')) {
+      toast.warning(t('login.captchaError'))
+    }
+    // 发送失败重新获取图形验证码
+    refreshCaptcha()
   }
   finally {
-    loading.value = false
+    smsLoading.value = false
   }
-  // #endif
 }
 
-// 登录
-async function handleLogin() {
+// 注册
+async function handleRegister() {
   // 表单验证
-  if (loginType.value === 'username') {
-    if (!formData.value.username) {
-      toast.warning(t('login.enterUsername'))
-      return
-    }
-  }
-  else {
+  if (enableMobileRegister.value) {
+    // 手机号注册验证
     if (!formData.value.mobile) {
-      toast.warning(t('login.enterPhone'))
+      toast.warning(t('register.enterPhone'))
       return
     }
     // 手机号格式验证
     const phoneRegex = /^1[3-9]\d{9}$/
     if (!phoneRegex.test(formData.value.mobile)) {
-      toast.warning(t('login.enterPhone'))
+      toast.warning(t('register.enterPhone'))
+      return
+    }
+    if (!formData.value.mobileCaptcha) {
+      toast.warning(t('register.enterCode'))
       return
     }
   }
+  else {
+    // 用户名注册验证
+    if (!formData.value.username) {
+      toast.warning(t('register.enterUsername'))
+      return
+    }
+  }
+
   if (!formData.value.password) {
-    toast.warning(t('login.enterPassword'))
+    toast.warning(t('register.enterPassword'))
     return
   }
+
+  if (!formData.value.confirmPassword) {
+    toast.warning(t('register.confirmPassword'))
+    return
+  }
+
+  if (formData.value.password !== formData.value.confirmPassword) {
+    toast.warning(t('register.confirmPassword'))
+    return
+  }
+
   if (!formData.value.captcha) {
-    toast.warning(t('login.enterCaptcha'))
+    toast.warning(t('register.enterCode'))
     return
   }
 
   // 检查SM2公钥是否配置
-  const sm2PublicKey = configStore.config.sm2PublicKey
-  if (!sm2PublicKey) {
+  if (!sm2PublicKey.value) {
     toast.warning(t('sm2.publicKeyNotConfigured'))
     return
   }
@@ -240,34 +252,43 @@ async function handleLogin() {
     try {
       // 拼接验证码和密码
       const captchaAndPassword = formData.value.captcha + formData.value.password
-      encryptedPassword = sm2Encrypt(sm2PublicKey, captchaAndPassword)
-    }
-    catch (error) {
+      encryptedPassword = sm2Encrypt(sm2PublicKey.value, captchaAndPassword)
+    } catch (error) {
       console.error('密码加密失败:', error)
       toast.warning(t('sm2.encryptionFailed'))
       return
     }
 
-    // 构建登录数据
-    const loginData: LoginData = {
-      username: '',
+    // 构建注册数据
+    const registerData = {
+      username: enableMobileRegister.value ? `${selectedAreaCode.value}${formData.value.mobile}` : formData.value.username,
       password: encryptedPassword,
       captchaId: formData.value.captchaId,
+      areaCode: formData.value.areaCode,
+      mobile: formData.value.mobile,
+      mobileCaptcha: formData.value.mobileCaptcha,
     }
 
-    // 如果是手机号登录，将区号+手机号拼接到username字段
-    if (loginType.value === 'mobile') {
-      loginData.username = `${selectedAreaCode.value}${formData.value.mobile}`
-    }
-    else {
-      loginData.username = formData.value.username
-    }
+    await register(registerData)
+    toast.success(t('message.registerSuccess'))
 
-    const response = await login(loginData)
-    await handleLoginSuccess(response)
+    // 跳转到登录页
+    setTimeout(() => {
+      uni.redirectTo({
+        url: '/pages-sub/login/index'
+      })
+    }, 1000)
   }
   catch (error: any) {
-    // 登录失败重新获取验证码
+    // 处理验证码错误 - 从error.message中解析错误码
+    if (error.message.includes('请求错误[10067]')) {
+      toast.warning(t('login.captchaError'))
+    }
+    // 处理手机号码已注册错误
+    else if (error.message.includes('请求错误[10070]')) {
+      toast.warning(t('message.phoneRegistered'))
+    }
+    // 注册失败重新获取验证码
     refreshCaptcha()
   }
   finally {
@@ -275,23 +296,17 @@ async function handleLogin() {
   }
 }
 
+// 返回登录
+function goBack() {
+  uni.redirectTo({
+    url: '/pages-sub/login/index'
+  })
+}
+
 // 页面加载时获取验证码
 onLoad(() => {
   refreshCaptcha()
 })
-
-// 语言切换相关
-const showLanguageSheet = ref(false)
-const supportedLanguages = getSupportedLanguages()
-
-// 初始化国际化
-initI18n()
-
-// 切换语言
-function handleLanguageChange(lang: Language) {
-  changeLanguage(lang)
-  showLanguageSheet.value = false
-}
 
 // 组件挂载时确保配置已加载
 onMounted(async () => {
@@ -300,45 +315,37 @@ onMounted(async () => {
       await configStore.fetchPublicConfig()
     }
     catch (error) {
-      console.error(t('login.fetchConfigError'), error)
+      console.error('获取配置失败:', error)
     }
   }
+  // 初始化国际化
+  initI18n()
 })
+
+
 </script>
 
 <template>
   <view class="app-container box-border h-screen w-full" :style="{ paddingTop: `${safeAreaInsets?.top}px` }">
     <view class="header">
+      <view class="back-button" @click="goBack">
+        <wd-icon name="arrow-left" custom-class="back-icon" />
+      </view>
       <view class="logo-section">
         <wd-img :width="80" :height="80" round src="/static/logo.png" class="logo" />
         <text class="welcome-text">
-          {{ t('login.welcomeBack') }}
+          {{ t('register.pageTitle') }}
         </text>
         <text class="subtitle">
-          {{ t('login.pleaseLogin') }}
+          {{ t('register.createAccount') }}
         </text>
-      </view>
-    </view>
-
-    <!-- 右上角按钮组 -->
-    <view class="top-right-buttons" :style="{ top: `${safeAreaInsets?.top + 10}px` }">
-      <!-- 语言切换按钮 -->
-      <view class="lang-btn" @click="showLanguageSheet = true">
-        <text class="lang-text-icon">
-          {{ t('login.selectLanguageTip') }}
-        </text>
-      </view>
-
-      <!-- 服务端设置按钮 -->
-      <view class="server-btn" @click="goToServerSetting">
-        <wd-icon name="setting" custom-class="server-icon" />
       </view>
     </view>
 
     <view class="form-container">
       <view class="form">
-        <!-- 手机号登录 -->
-        <template v-if="loginType === 'mobile'">
+        <!-- 手机号注册 -->
+        <template v-if="enableMobileRegister">
           <view class="input-group">
             <view class="input-wrapper mobile-wrapper">
               <view class="area-code-selector" @click="openAreaCodeSheet">
@@ -352,7 +359,7 @@ onMounted(async () => {
                   v-model="formData.mobile"
                   custom-class="styled-input"
                   no-border
-                  :placeholder="t('login.enterPhone')"
+                  :placeholder="t('register.enterPhone')"
                   type="number"
                   :maxlength="11"
                 />
@@ -361,7 +368,7 @@ onMounted(async () => {
           </view>
         </template>
 
-        <!-- 用户名登录 -->
+        <!-- 用户名注册 -->
         <template v-else>
           <view class="input-group">
             <view class="input-wrapper">
@@ -369,7 +376,7 @@ onMounted(async () => {
                 v-model="formData.username"
                 custom-class="styled-input"
                 no-border
-                :placeholder="t('login.enterUsername')"
+                :placeholder="t('register.enterUsername')"
               />
             </view>
           </view>
@@ -378,108 +385,91 @@ onMounted(async () => {
         <view class="input-group">
           <view class="input-wrapper">
             <wd-input
-              v-model="formData.password"
-              custom-class="styled-input"
-              no-border
-              :placeholder="t('login.enterPassword')"
-              clearable
-              show-password
-              :maxlength="20"
-            />
-          </view>
+                v-model="formData.password"
+                custom-class="styled-input"
+                no-border
+                :placeholder="t('register.enterPassword')"
+                show-password
+                :maxlength="20"
+              />
+            </view>
+        </view>
+
+        <view class="input-group">
+          <view class="input-wrapper">
+            <wd-input
+                v-model="formData.confirmPassword"
+                custom-class="styled-input"
+                no-border
+                :placeholder="t('register.confirmPassword')"
+                show-password
+                :maxlength="20"
+              />
+            </view>
         </view>
 
         <view class="input-group">
           <view class="input-wrapper captcha-wrapper">
             <wd-input
-              v-model="formData.captcha"
-              custom-class="styled-input"
-              no-border
-              :placeholder="t('login.enterCaptcha')"
-              :maxlength="6"
-            />
-            <view class="captcha-image" @click="refreshCaptcha">
-              <image :src="captchaImage" class="captcha-img" />
-            </view>
+                v-model="formData.captcha"
+                custom-class="styled-input"
+                no-border
+                :placeholder="t('register.enterCode')"
+                :maxlength="6"
+              />
+              <view class="captcha-image" @click="refreshCaptcha">
+                <image :src="captchaImage" class="captcha-img" />
+              </view>
           </view>
         </view>
+
+        <!-- 手机验证码输入框 -->
+        <view v-if="enableMobileRegister" class="input-group">
+          <view class="input-wrapper sms-wrapper">
+            <wd-input
+                v-model="formData.mobileCaptcha"
+                custom-class="styled-input"
+                no-border
+                :placeholder="t('register.enterCode')"
+                type="number"
+                :maxlength="6"
+              />
+              <wd-button
+                :loading="smsLoading"
+                :disabled="smsCountdown > 0"
+                custom-class="sms-btn"
+                @click="sendSmsVerification"
+              >
+                {{ smsCountdown > 0 ? `${smsCountdown}s` : t('register.getCode') }}
+              </wd-button>
+          </view>
+        </view>
+
         <view
-          class="login-btn"
-          @click="handleLogin"
+          class="register-btn"
+          type="primary"
+          :loading="loading"
+          @click="handleRegister"
         >
-          {{ loading ? t('login.loggingIn') : t('login.loginButton') }}
+          {{ loading ? t('register.registering') : t('register.registerButton') }}
         </view>
 
-        <!-- #ifdef MP-WEIXIN -->
-        <view class="wechat-login-block">
-          <view class="login-divider">
-            <view class="divider-line" />
-            <text class="divider-text">
-              或
-            </text>
-            <view class="divider-line" />
-          </view>
-          <view
-            class="wechat-login-btn"
-            @click="handleWechatLogin"
-          >
-            {{ loading ? t('login.loggingIn') : '微信登录' }}
-          </view>
-        </view>
-        <!-- #endif -->
-
-        <view class="hint-row">
-          <view class="register-hint">
-            <text class="register-link" @click="goToRegister">
-              {{ t('login.noAccount') }}
-            </text>
-          </view>
-
-          <!-- <view class="forgot-password">
-            <text class="forgot-text" @click="goToForgotPassword">
-              {{ t('login.forgotPassword') }}
-            </text>
-          </view> -->
-        </view>
-
-        <view class="policy-links">
-          <text class="policy-link" @click="goToUserAgreement">
-            {{ t('login.userAgreement') }}
+        <view class="login-hint">
+          <text class="hint-text">
+            {{ t('register.haveAccount') }}
           </text>
-          <text class="policy-divider">
-            |
-          </text>
-          <text class="policy-link" @click="goToPrivacyPolicy">
-            {{ t('login.privacyPolicy') }}
+          <text class="login-link" @click="goBack">
+            {{ t('register.loginNow') }}
           </text>
         </view>
 
-        <!-- 登录方式切换 -->
-        <view v-if="enableMobileLogin" class="login-type-switch">
-          <view class="switch-tabs">
-            <view
-              class="switch-tab"
-              :class="{ active: loginType === 'username' }"
-              @click="toggleLoginType"
-            >
-              <wd-icon name="user" />
-            </view>
-            <view
-              class="switch-tab"
-              :class="{ active: loginType === 'mobile' }"
-              @click="toggleLoginType"
-            >
-              <wd-icon name="phone" />
-            </view>
-          </view>
-        </view>
       </view>
     </view>
 
     <!-- 区号选择弹窗 -->
     <wd-action-sheet
       v-model="showAreaCodeSheet"
-      :title="t('login.selectCountry')"
+      :title="t('register.selectCountry')"
       :close-on-click-modal="true"
       @close="closeAreaCodeSheet"
     >
@@ -513,33 +503,13 @@ onMounted(async () => {
             custom-class="confirm-btn"
             @click="closeAreaCodeSheet"
           >
-            {{ t('login.confirm') }}
+            {{ t('register.confirm') }}
           </wd-button>
         </view>
       </view>
     </wd-action-sheet>
 
-    <!-- 语言选择弹窗 -->
-    <wd-action-sheet
-      v-model="showLanguageSheet"
-      :title="t('login.selectLanguage')"
-      :close-on-click-modal="true"
-    >
-      <view class="language-sheet">
-        <scroll-view scroll-y class="language-list">
-          <view
-            v-for="lang in supportedLanguages"
-            :key="lang.code"
-            class="language-item"
-            @click="handleLanguageChange(lang.code)"
-          >
-            <text class="language-name">
-              {{ lang.name }}
-            </text>
-          </view>
-        </scroll-view>
-      </view>
-    </wd-action-sheet>
+
   </view>
 </template>
 
@@ -581,6 +551,31 @@ onMounted(async () => {
   align-items: center;
   justify-content: center;
   padding: 15% 0 40rpx 0;
+  position: relative;
+
+  .back-button {
+    position: absolute;
+    left: 40rpx;
+    top: 60rpx;
+    width: 60rpx;
+    height: 60rpx;
+    background: rgba(255, 255, 255, 0.2);
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    transition: all 0.3s ease;
+
+    &:hover {
+      background: rgba(255, 255, 255, 0.3);
+    }
+
+    :deep(.back-icon) {
+      font-size: 32rpx;
+      color: #ffffff;
+    }
+  }
 
   .logo-section {
     text-align: center;
@@ -630,6 +625,7 @@ onMounted(async () => {
 
       .input-wrapper {
         position: relative;
+        background: #f8f9fa;
         border-radius: 16rpx;
         padding: 20rpx 16rpx;
         border: 2rpx solid #e9ecef;
@@ -661,11 +657,18 @@ onMounted(async () => {
               width: 100%;
               height: 100%;
             }
+          }
+        }
 
-            .captcha-loading {
-              font-size: 20rpx;
-              color: #999;
-            }
+        &.sms-wrapper {
+          :deep(.sms-btn) {
+            margin-left: 20rpx;
+            padding: 0 20rpx;
+            height: 60rpx;
+            border-radius: 8rpx;
+            font-size: 24rpx;
+            white-space: nowrap;
+            min-width: 140rpx;
           }
         }
 
@@ -740,49 +743,7 @@ onMounted(async () => {
       }
     }
 
-    .hint-row {
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-      margin-bottom: 30rpx;
-    }
-
-    .policy-links {
-      display: flex;
-      justify-content: center;
-      align-items: center;
-      gap: 20rpx;
-      margin-bottom: 30rpx;
-
-      .policy-link {
-        color: #667eea;
-        font-size: 26rpx;
-        cursor: pointer;
-
-        &:hover {
-          text-decoration: underline;
-        }
-      }
-
-      .policy-divider {
-        color: #999999;
-        font-size: 26rpx;
-      }
-    }
-
-    .forgot-password {
-      .forgot-text {
-        color: #667eea;
-        font-size: 26rpx;
-        cursor: pointer;
-
-        &:hover {
-          text-decoration: underline;
-        }
-      }
-    }
-
-    .login-btn {
+    :deep(.register-btn) {
       width: 100%;
       height: 80rpx;
       border: none;
@@ -807,60 +768,29 @@ onMounted(async () => {
       }
     }
 
-    .wechat-login-block {
-      margin-bottom: 30rpx;
-    }
-
-    .login-divider {
-      display: flex;
-      align-items: center;
-      gap: 18rpx;
-      margin-bottom: 24rpx;
-    }
-
-    .divider-line {
-      flex: 1;
-      height: 1rpx;
-      background: #e9ecef;
-    }
-
-    .divider-text {
-      font-size: 24rpx;
-      color: #9aa2ad;
-    }
-
-    .wechat-login-btn {
-      width: 100%;
-      height: 80rpx;
-      border-radius: 16rpx;
-      background: #07c160;
-      color: #ffffff;
-      font-size: 30rpx;
-      font-weight: 600;
+    .login-hint {
       text-align: center;
-      line-height: 80rpx;
-      box-shadow: 0 8rpx 22rpx rgba(7, 193, 96, 0.24);
+      margin-bottom: 30rpx;
 
-      &:active {
-        transform: translateY(2rpx);
-        box-shadow: 0 4rpx 12rpx rgba(7, 193, 96, 0.22);
+      .hint-text {
+        color: #666666;
+        font-size: 26rpx;
+        margin-right: 8rpx;
       }
-    }
 
-    .register-hint {
-      .register-link {
+      .login-link {
         color: #667eea;
         font-size: 26rpx;
         font-weight: 500;
         cursor: pointer;
-        // text-decoration: underline;
-        // &:hover {
-        //   text-decoration: underline;
-        // }
+
+        &:hover {
+          text-decoration: underline;
+        }
       }
     }
 
-    .login-type-switch {
+    .register-type-switch {
       margin-top: 20rpx;
       text-align: center;
 
@@ -908,31 +838,6 @@ onMounted(async () => {
   background: #ffffff;
   border-radius: 24rpx 24rpx 0 0;
   overflow: hidden;
-
-  .sheet-header {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    padding: 40rpx 40rpx 20rpx 40rpx;
-    border-bottom: 1rpx solid #f0f0f0;
-
-    .sheet-title {
-      font-size: 36rpx;
-      font-weight: 600;
-      color: #333333;
-    }
-
-    :deep(.close-icon) {
-      font-size: 32rpx;
-      color: #999999;
-      cursor: pointer;
-      padding: 10rpx;
-
-      &:hover {
-        color: #333333;
-      }
-    }
-  }
 
   .area-code-list {
     max-height: 60vh;
@@ -997,100 +902,6 @@ onMounted(async () => {
       border-radius: 16rpx;
       font-size: 32rpx;
       font-weight: 600;
-    }
-  }
-}
-// 右上角按钮组
-.top-right-buttons {
-  position: absolute;
-  right: 20rpx;
-  display: flex;
-  gap: 20rpx;
-  z-index: 999;
-}
-
-// 语言切换按钮
-.lang-btn {
-  width: 48rpx;
-  height: 48rpx;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  cursor: pointer;
-  background: rgba(255, 255, 255, 0.15);
-  border-radius: 24rpx;
-  box-shadow: 0 4rpx 12rpx rgba(0, 0, 0, 0.2);
-
-  &:active {
-    transform: scale(0.95);
-  }
-
-  .lang-text-icon {
-    font-size: 18rpx;
-    color: #ffffff;
-  }
-
-  &:hover {
-    background: rgba(255, 255, 255, 0.25);
-  }
-}
-
-// 服务端设置按钮
-.server-btn {
-  width: 48rpx;
-  height: 48rpx;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  cursor: pointer;
-  background: rgba(255, 255, 255, 0.15);
-  border-radius: 24rpx;
-  box-shadow: 0 4rpx 12rpx rgba(0, 0, 0, 0.2);
-
-  &:active {
-    transform: scale(0.95);
-  }
-
-  .server-icon {
-    font-size: 28rpx;
-    color: #ffffff;
-  }
-
-  &:hover {
-    background: rgba(255, 255, 255, 0.25);
-  }
-}
-
-// 语言选择弹窗样式
-.language-sheet {
-  background: #ffffff;
-  border-radius: 24rpx 24rpx 0 0;
-  overflow: hidden;
-
-  .language-list {
-    max-height: 60vh;
-    padding: 0 40rpx;
-
-    .language-item {
-      display: flex;
-      align-items: center;
-      padding: 32rpx 0;
-      border-bottom: 1rpx solid #f8f9fa;
-      cursor: pointer;
-      transition: background-color 0.3s ease;
-
-      &:hover {
-        background-color: #f8f9fa;
-      }
-
-      &:last-child {
-        border-bottom: none;
-      }
-
-      .language-name {
-        font-size: 32rpx;
-        color: #333333;
-      }
     }
   }
 }

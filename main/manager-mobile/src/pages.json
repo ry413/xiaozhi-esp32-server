@@ -1,4 +1,5 @@
 {
+  "lazyCodeLoading": "requiredComponents",
   "globalStyle": {
     "navigationStyle": "default",
     "navigationBarTitleText": "小智",
@@ -78,63 +79,6 @@
       }
     },
     {
-      "path": "pages/agent/edit",
-      "type": "page"
-    },
-    {
-      "path": "pages/agent/index",
-      "type": "page",
-      "layout": "default",
-      "style": {
-        "navigationBarTitleText": "智能体",
-        "navigationStyle": "custom"
-      }
-    },
-    {
-      "path": "pages/agent/provider",
-      "type": "page",
-      "layout": "default",
-      "style": {
-        "navigationBarTitleText": "编辑源",
-        "navigationStyle": "custom"
-      }
-    },
-    {
-      "path": "pages/agent/speedPitch",
-      "type": "page",
-      "layout": "default",
-      "style": {
-        "navigationBarTitleText": "语音设置",
-        "navigationStyle": "custom"
-      }
-    },
-    {
-      "path": "pages/agent/tools",
-      "type": "page",
-      "layout": "default",
-      "style": {
-        "navigationBarTitleText": "编辑功能",
-        "navigationStyle": "custom"
-      }
-    },
-    {
-      "path": "pages/chat-history/detail",
-      "type": "page",
-      "layout": "default",
-      "style": {
-        "navigationStyle": "custom",
-        "navigationBarTitleText": "聊天详情"
-      }
-    },
-    {
-      "path": "pages/chat-history/index",
-      "type": "page"
-    },
-    {
-      "path": "pages/device/index",
-      "type": "page"
-    },
-    {
       "path": "pages/device-config/index",
       "type": "page",
       "style": {
@@ -149,78 +93,6 @@
       "style": {
         "navigationStyle": "custom",
         "navigationBarTitleText": "导播"
-      }
-    },
-    {
-      "path": "pages/forgot-password/index",
-      "type": "page",
-      "layout": "default",
-      "style": {
-        "navigationStyle": "custom",
-        "navigationBarTitleText": "ForgotPassword"
-      }
-    },
-    {
-      "path": "pages/login/index",
-      "type": "page",
-      "layout": "default",
-      "style": {
-        "navigationStyle": "custom",
-        "navigationBarTitleText": "Login"
-      }
-    },
-    {
-      "path": "pages/login/privacy-policy-en",
-      "type": "page",
-      "layout": "default",
-      "style": {
-        "navigationStyle": "custom",
-        "navigationBarTitleText": "Privacy Policy"
-      }
-    },
-    {
-      "path": "pages/login/privacy-policy-zh",
-      "type": "page",
-      "layout": "default",
-      "style": {
-        "navigationStyle": "custom",
-        "navigationBarTitleText": "隐私政策"
-      }
-    },
-    {
-      "path": "pages/login/user-agreement-en",
-      "type": "page",
-      "layout": "default",
-      "style": {
-        "navigationStyle": "custom",
-        "navigationBarTitleText": "User Agreement"
-      }
-    },
-    {
-      "path": "pages/login/user-agreement-zh",
-      "type": "page",
-      "layout": "default",
-      "style": {
-        "navigationStyle": "custom",
-        "navigationBarTitleText": "用户协议"
-      }
-    },
-    {
-      "path": "pages/maihuo-config/index",
-      "type": "page",
-      "layout": "default",
-      "style": {
-        "navigationStyle": "custom",
-        "navigationBarTitleText": "卖货配置"
-      }
-    },
-    {
-      "path": "pages/register/index",
-      "type": "page",
-      "layout": "default",
-      "style": {
-        "navigationStyle": "custom",
-        "navigationBarTitleText": "注册"
       }
     },
     {
@@ -240,10 +112,6 @@
         "navigationStyle": "custom",
         "navigationBarTitleText": "音色克隆"
       }
-    },
-    {
-      "path": "pages/voiceprint/index",
-      "type": "page"
     }
   ],
   "subPackages": [
@@ -251,11 +119,128 @@
       "root": "pages-sub",
       "pages": [
         {
+          "path": "agent/index",
+          "type": "page",
+          "layout": "default",
+          "style": {
+            "navigationBarTitleText": "智能体",
+            "navigationStyle": "custom"
+          }
+        },
+        {
+          "path": "agent/provider",
+          "type": "page",
+          "layout": "default",
+          "style": {
+            "navigationBarTitleText": "编辑源",
+            "navigationStyle": "custom"
+          }
+        },
+        {
+          "path": "agent/speedPitch",
+          "type": "page",
+          "layout": "default",
+          "style": {
+            "navigationBarTitleText": "语音设置",
+            "navigationStyle": "custom"
+          }
+        },
+        {
+          "path": "agent/tools",
+          "type": "page",
+          "layout": "default",
+          "style": {
+            "navigationBarTitleText": "编辑功能",
+            "navigationStyle": "custom"
+          }
+        },
+        {
+          "path": "chat-history/detail",
+          "type": "page",
+          "layout": "default",
+          "style": {
+            "navigationStyle": "custom",
+            "navigationBarTitleText": "聊天详情"
+          }
+        },
+        {
           "path": "demo/index",
           "type": "page",
           "layout": "default",
           "style": {
             "navigationBarTitleText": "分包页面"
+          }
+        },
+        {
+          "path": "forgot-password/index",
+          "type": "page",
+          "layout": "default",
+          "style": {
+            "navigationStyle": "custom",
+            "navigationBarTitleText": "ForgotPassword"
+          }
+        },
+        {
+          "path": "login/index",
+          "type": "page",
+          "layout": "default",
+          "style": {
+            "navigationStyle": "custom",
+            "navigationBarTitleText": "Login"
+          }
+        },
+        {
+          "path": "login/privacy-policy-en",
+          "type": "page",
+          "layout": "default",
+          "style": {
+            "navigationStyle": "custom",
+            "navigationBarTitleText": "Privacy Policy"
+          }
+        },
+        {
+          "path": "login/privacy-policy-zh",
+          "type": "page",
+          "layout": "default",
+          "style": {
+            "navigationStyle": "custom",
+            "navigationBarTitleText": "隐私政策"
+          }
+        },
+        {
+          "path": "login/user-agreement-en",
+          "type": "page",
+          "layout": "default",
+          "style": {
+            "navigationStyle": "custom",
+            "navigationBarTitleText": "User Agreement"
+          }
+        },
+        {
+          "path": "login/user-agreement-zh",
+          "type": "page",
+          "layout": "default",
+          "style": {
+            "navigationStyle": "custom",
+            "navigationBarTitleText": "用户协议"
+          }
+        },
+        {
+          "path": "maihuo-config/index",
+          "type": "page",
+          "layout": "default",
+          "style": {
+            "navigationStyle": "custom",
+            "navigationBarTitleText": "卖货配置"
+          }
+        },
+        {
+          "path": "register/index",
+          "type": "page",
+          "layout": "default",
+          "style": {
+            "navigationStyle": "custom",
+            "navigationBarTitleText": "注册"
           }
         }
       ]

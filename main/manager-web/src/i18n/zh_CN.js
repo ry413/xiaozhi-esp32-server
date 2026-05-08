@@ -672,7 +672,7 @@ export default {
 
   // 首页文本
   'home.addAgent': '添加智能体',
-  'home.greeting': '你好小智',
+  'home.greeting': '你好小助',
   'home.wish': '让我们度过美好的一天！',
   'home.languageModel': '语言模型',
   'home.voiceModel': '音色模型',

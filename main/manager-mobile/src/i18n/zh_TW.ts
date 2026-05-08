@@ -82,7 +82,7 @@ export default {
   'home.agentName': '智能體',
   'home.modelInfo': '模型信息',
   'home.lastActive': '最近活躍',
-  'home.greeting': '你好，小智',
+  'home.greeting': '你好，小助',
   'home.subtitle': '讓我們度過',
   'home.wonderfulDay': '美好的一天！',
   'home.emptyState': '暫無智能體',

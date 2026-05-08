@@ -101,6 +101,16 @@ function handleTabChange(item: any) {
   console.log('Tab changed:', item)
 }
 
+function handleFabClick() {
+  if (currentTab.value === 'device-management') {
+    deviceRef.value?.openBindActions?.()
+    return
+  }
+  if (currentTab.value === 'voiceprint-management') {
+    voiceprintRef.value?.openAddDialog?.()
+  }
+}
+
 // 下拉刷新
 async function onRefresh() {
   // 角色编辑页面不需要刷新
@@ -213,6 +223,15 @@ onMounted(async () => {
         />
       </view>
     </scroll-view>
+
+    <wd-fab
+      v-if="currentTab === 'device-management' || currentTab === 'voiceprint-management'"
+      type="primary"
+      icon="add"
+      :draggable="true"
+      :expandable="false"
+      @click="handleFabClick"
+    />
   </view>
 </template>
 

@@ -286,10 +286,9 @@ onUnload(() => {
 
 <template>
   <view class="voice-clone-page">
-    <view class="page-header">
-      <view class="page-title">
-        音色克隆
-      </view>
+    <wd-navbar title="音色克隆" safe-area-inset-top fixed placeholder />
+
+    <view class="page-intro">
       <view class="page-subtitle">
         上传样本音频并发起复刻，状态会自动刷新
       </view>
@@ -406,25 +405,19 @@ onUnload(() => {
 <style lang="scss" scoped>
 .voice-clone-page {
   min-height: 100vh;
-  background: linear-gradient(180deg, #f5f8ff 0%, #f8fbff 30%, #ffffff 100%);
+  background: #f5f7fb;
   padding: 24rpx;
   box-sizing: border-box;
 }
 
-.page-header {
-  padding: 16rpx 8rpx 24rpx;
-}
-
-.page-title {
-  font-size: 44rpx;
-  font-weight: 700;
-  color: #232338;
+.page-intro {
+  padding: 8rpx 8rpx 20rpx;
 }
 
 .page-subtitle {
-  margin-top: 8rpx;
   font-size: 24rpx;
   color: #8a94a6;
+  line-height: 1.6;
 }
 
 .search-bar {

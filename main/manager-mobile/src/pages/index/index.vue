@@ -140,9 +140,29 @@ function openCreateDialog() {
     })
 }
 
+function parseDateValue(value?: string | number | Date | null) {
+  if (value instanceof Date)
+    return value
+
+  if (typeof value === 'number')
+    return new Date(value)
+
+  if (!value)
+    return new Date(NaN)
+
+  const raw = String(value).trim()
+  const normalized = /^\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}$/.test(raw)
+    ? raw.replace(' ', 'T')
+    : raw
+
+  return new Date(normalized)
+}
+
 // 格式化时间
 function formatTime(timeStr: string) {
-  const date = new Date(timeStr)
+  const date = parseDateValue(timeStr)
+  if (Number.isNaN(date.getTime()))
+    return timeStr
   const now = new Date()
   const diff = now.getTime() - date.getTime()
 

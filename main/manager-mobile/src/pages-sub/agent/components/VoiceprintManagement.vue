@@ -372,9 +372,8 @@ onMounted(async () => {
 
 // 暴露方法给父组件
 defineExpose({
-  showAddDialog,
-  showEditDialog,
   refresh,
+  openAddDialog,
 })
 </script>
 
@@ -439,11 +438,6 @@ defineExpose({
         </text>
       </view>
     </view>
-
-    <!-- 浮动操作按钮 -->
-    <wd-fab custom-style="z-index:10" type="primary" size="small" :draggable="true" :expandable="false" @click="openAddDialog">
-      <wd-icon name="add" />
-    </wd-fab>
 
     <!-- MessageBox 组件 -->
     <wd-message-box />

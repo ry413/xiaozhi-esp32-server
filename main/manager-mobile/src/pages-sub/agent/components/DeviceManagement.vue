@@ -374,6 +374,9 @@ onMounted(async () => {
 // 暴露方法给父组件
 defineExpose({
   refresh,
+  openBindActions: () => {
+    isBindDevice.value = true
+  },
 })
 </script>
 
@@ -456,9 +459,6 @@ defineExpose({
         </text>
       </view>
     </view>
-
-    <!-- FAB 绑定设备按钮 -->
-    <wd-fab type="primary" size="small" icon="add" :draggable="true" :expandable="false" @click="isBindDevice = true" />
 
     <!-- MessageBox 组件 -->
     <wd-message-box />

@@ -976,32 +976,32 @@ class ConnectionHandler:
 
         # 长对话工具调用规则强化：动态生成基于当前可用工具的提醒
         tool_call_reminder = None
-        if depth == 0 and query is not None and functions is not None:
-            dialogue_length = len(self.dialogue.dialogue)
-            # 当对话历史超过4条消息时，注入规则强化
-            if dialogue_length > 4:
-                tool_summary = self._get_tool_summary(functions)
-                if tool_summary:
-                    # 根据对话长度和偷懒检测，使用不同强度的提醒
-                    if force_reminder:
-                        # 强提醒 - 包含完整规则前缀
-                        tool_call_reminder = (
-                            TOOL_CALLING_RULES +
-                            f"[重要提醒] 多轮未使用工具，检查回复是否遗漏了必要的工具调用！上一轮未使用工具，本轮必须重新判断是否需要工具。"
-                            f"当前可用工具: {tool_summary}。"
-                        )
-                        reminder_level = "强"
-                    else:
-                        # 中等提醒 - 包含规则前缀
-                        tool_call_reminder = (
-                            TOOL_CALLING_RULES +
-                            f"当前可用工具: {tool_summary}。"
-                            f"仅当用户请求涉及实时信息查询或执行操作时调用，日常对话无需调用。"
-                        )
-                        reminder_level = "中"
-                    self.logger.bind(tag=TAG).debug(
-                        f"对话历史较长({dialogue_length}条)，已注入{reminder_level}等级工具调用规则强化，当前可用工具：{tool_summary}"
-                    )
+        # if depth == 0 and query is not None and functions is not None:
+        #     dialogue_length = len(self.dialogue.dialogue)
+        #     # 当对话历史超过4条消息时，注入规则强化
+        #     if dialogue_length > 4:
+        #         tool_summary = self._get_tool_summary(functions)
+        #         if tool_summary:
+        #             # 根据对话长度和偷懒检测，使用不同强度的提醒
+        #             if force_reminder:
+        #                 # 强提醒 - 包含完整规则前缀
+        #                 tool_call_reminder = (
+        #                     TOOL_CALLING_RULES +
+        #                     f"[重要提醒] 多轮未使用工具，检查回复是否遗漏了必要的工具调用！上一轮未使用工具，本轮必须重新判断是否需要工具。"
+        #                     f"当前可用工具: {tool_summary}。"
+        #                 )
+        #                 reminder_level = "强"
+        #             else:
+        #                 # 中等提醒 - 包含规则前缀
+        #                 tool_call_reminder = (
+        #                     TOOL_CALLING_RULES +
+        #                     f"当前可用工具: {tool_summary}。"
+        #                     f"仅当用户请求涉及实时信息查询或执行操作时调用，日常对话无需调用。"
+        #                 )
+        #                 reminder_level = "中"
+        #             self.logger.bind(tag=TAG).debug(
+        #                 f"对话历史较长({dialogue_length}条)，已注入{reminder_level}等级工具调用规则强化，当前可用工具：{tool_summary}"
+        #             )
 
         response_message = []
 

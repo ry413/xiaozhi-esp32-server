@@ -531,9 +531,9 @@ public class AgentServiceImpl extends BaseServiceImpl<AgentDao, AgentEntity> imp
 
         // 设置默认插件
         List<AgentPluginMapping> toInsert = new ArrayList<>();
-        // 播放音乐、查天气、查新闻
+        // 播放音乐、查天气、查新闻、识别退出意图
         String[] pluginIds = new String[] { "SYSTEM_PLUGIN_MUSIC", "SYSTEM_PLUGIN_WEATHER",
-                "SYSTEM_PLUGIN_NEWS_NEWSNOW" };
+                "SYSTEM_PLUGIN_NEWS_NEWSNOW", "SYSTEM_PLUGIN_HANDLE_EXIT_INTENT" };
         for (String pluginId : pluginIds) {
             ModelProviderDTO provider = modelProviderService.getById(pluginId);
             if (provider == null) {

@@ -145,11 +145,29 @@ const consoleAnchorId = computed(() => {
   return last ? `console-${last.id}` : ''
 })
 
+function parseDateValue(value?: string | number | Date | null) {
+  if (value instanceof Date)
+    return value
+
+  if (typeof value === 'number')
+    return new Date(value)
+
+  if (!value)
+    return new Date(NaN)
+
+  const raw = String(value).trim()
+  const normalized = /^\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}$/.test(raw)
+    ? raw.replace(' ', 'T')
+    : raw
+
+  return new Date(normalized)
+}
+
 function formatDisplayTime(value?: string) {
   if (!value)
     return '刚刚'
 
-  const date = new Date(value)
+  const date = parseDateValue(value)
   if (Number.isNaN(date.getTime()))
     return String(value)
 
@@ -176,7 +194,7 @@ function formatAbsoluteTime(value?: string) {
   if (!value)
     return '-'
 
-  const date = new Date(value)
+  const date = parseDateValue(value)
   if (Number.isNaN(date.getTime()))
     return String(value)
 
@@ -222,7 +240,7 @@ function formatMessageTime(value?: string) {
   if (!value)
     return buildTimeText()
 
-  const date = new Date(value)
+  const date = parseDateValue(value)
   if (Number.isNaN(date.getTime()))
     return buildTimeText()
 
@@ -266,6 +284,14 @@ function updateDeviceStatusFromResponse(targetRobots: RobotItem[], deviceStatusM
 
     robot.deviceStatus = isOnline ? 'online' : 'offline'
     robot.online = isOnline
+  })
+}
+
+function sortRobots() {
+  robots.value = [...robots.value].sort((a, b) => {
+    if (a.online !== b.online)
+      return a.online ? -1 : 1
+    return (a.rawBindTime || 0) - (b.rawBindTime || 0)
   })
 }
 
@@ -354,7 +380,7 @@ async function fetchBindDevicesWithStatus(agent: Agent) {
     updatedAt: formatDisplayTime(device.lastConnectedAt || device.createDate),
     online: false,
     deviceStatus: 'offline',
-    rawBindTime: new Date(device.createDate || 0).getTime() || 0,
+    rawBindTime: parseDateValue(device.createDate || 0).getTime() || 0,
   }))
 
   try {
@@ -382,17 +408,18 @@ async function fetchRobotList() {
     }
 
     const robotGroups = await Promise.all(agents.map(agent => fetchBindDevicesWithStatus(agent)))
-    const nextRobots = robotGroups.flat().sort((a, b) => a.rawBindTime - b.rawBindTime)
+    const nextRobots = robotGroups.flat()
     robots.value = nextRobots
+    sortRobots()
 
-    if (!nextRobots.length) {
+    if (!robots.value.length) {
       selectedRobotId.value = ''
       resetLiveStatusDisplay()
       return
     }
 
-    const stillExists = nextRobots.some(item => item.id === selectedRobotId.value)
-    selectedRobotId.value = stillExists ? selectedRobotId.value : nextRobots[0].id
+    const stillExists = robots.value.some(item => item.id === selectedRobotId.value)
+    selectedRobotId.value = stillExists ? selectedRobotId.value : robots.value[0].id
     ensureRobotPlanSelections()
     await fetchLiveStatus()
   }
@@ -568,6 +595,7 @@ async function fetchLiveStatus() {
     if (target && deviceOnline.value !== null) {
       target.online = deviceOnline.value
       target.deviceStatus = deviceOnline.value ? 'online' : 'offline'
+      sortRobots()
     }
 
     if (isLiveRunning.value)
@@ -588,7 +616,7 @@ async function fetchLiveStatus() {
       stopSentMsgTracking()
 
     setConsoleMessagesForDevice(deviceId)
-    stopLiveStatusPolling()
+    scheduleLiveStatusPolling()
   }
   catch {
     if (activeMonitorDeviceId.value === deviceId)
@@ -596,7 +624,7 @@ async function fetchLiveStatus() {
 
     setConsoleMessagesForDevice(deviceId)
     resetLiveStatusDisplay()
-    stopLiveStatusPolling()
+    scheduleLiveStatusPolling()
   }
 }
 

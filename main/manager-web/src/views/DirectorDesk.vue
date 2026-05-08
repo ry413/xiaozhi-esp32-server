@@ -297,6 +297,14 @@ export default {
     this.stopLiveStatusPolling();
   },
   methods: {
+    sortRobots() {
+      this.robots = [...this.robots].sort((a, b) => {
+        if (a.online !== b.online) {
+          return a.online ? -1 : 1;
+        }
+        return (a.rawBindTime || 0) - (b.rawBindTime || 0);
+      });
+    },
     fetchLivePlanList() {
       Api.livePlan.getLivePlanList({ page: 1, limit: 100 }, ({ data }) => {
         if (data && data.code === 0) {
@@ -386,7 +394,8 @@ export default {
               pendingCount -= 1;
 
               if (pendingCount === 0) {
-                this.robots = robotBuckets.sort((a, b) => a.rawBindTime - b.rawBindTime);
+                this.robots = robotBuckets;
+                this.sortRobots();
                 if (!this.robots.length) {
                   this.selectedRobotId = "";
                   this.resetLiveStatusDisplay();
@@ -476,6 +485,7 @@ export default {
         robot.deviceStatus = 'offline';
         robot.online = false;
       });
+      this.sortRobots();
     },
     selectRobot(id) {
       this.selectedRobotId = id;
@@ -827,6 +837,7 @@ export default {
           if (target && this.deviceOnline !== null) {
             target.online = this.deviceOnline;
             target.deviceStatus = this.deviceOnline ? "online" : "offline";
+            this.sortRobots();
           }
 
           if (this.isLiveRunning) {
@@ -839,15 +850,12 @@ export default {
             } else if (!this.sentMsgTimer) {
               this.pollSentMessages();
             }
-            this.scheduleLiveStatusPolling();
-            return;
+          } else if (this.activeMonitorDeviceId === deviceId) {
+            this.stopSentMsgTracking();
+            this.setConsoleMessagesForDevice(deviceId);
           }
 
-          if (this.activeMonitorDeviceId === deviceId) {
-            this.stopSentMsgTracking();
-          }
-          this.setConsoleMessagesForDevice(deviceId);
-          this.stopLiveStatusPolling();
+          this.scheduleLiveStatusPolling();
           return;
         }
 
@@ -856,7 +864,7 @@ export default {
         }
         this.setConsoleMessagesForDevice(deviceId);
         this.resetLiveStatusDisplay();
-        this.stopLiveStatusPolling();
+        this.scheduleLiveStatusPolling();
       });
     },
     handleSendMessage() {

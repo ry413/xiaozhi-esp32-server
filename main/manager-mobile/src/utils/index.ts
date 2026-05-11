@@ -140,7 +140,7 @@ export function getEnvBaseUrl() {
   let baseUrl = import.meta.env.VITE_SERVER_BASEURL
 
   // # 有些同学可能需要在微信小程序里面根据 develop、trial、release 分别设置上传地址，参考代码如下。
-  const VITE_SERVER_BASEURL__WEIXIN_DEVELOP = 'http://127.0.0.1:8002/xiaozhi'
+  const VITE_SERVER_BASEURL__WEIXIN_DEVELOP = 'https://ry.xiaozhuiot.cn/xiaozhi'
   const VITE_SERVER_BASEURL__WEIXIN_TRIAL = 'https://ry.xiaozhuiot.cn/xiaozhi'
   const VITE_SERVER_BASEURL__WEIXIN_RELEASE = 'https://ry.xiaozhuiot.cn/xiaozhi'
 
@@ -173,7 +173,7 @@ export function getEnvBaseUploadUrl() {
   // 请求基准地址
   let baseUploadUrl = import.meta.env.VITE_UPLOAD_BASEURL
 
-  const VITE_UPLOAD_BASEURL__WEIXIN_DEVELOP = 'http://127.0.0.1:8002/xiaozhi/upload'
+  const VITE_UPLOAD_BASEURL__WEIXIN_DEVELOP = 'https://ry.xiaozhuiot.cn/xiaozhi/upload'
   const VITE_UPLOAD_BASEURL__WEIXIN_TRIAL = 'https://ry.xiaozhuiot.cn/xiaozhi/upload'
   const VITE_UPLOAD_BASEURL__WEIXIN_RELEASE = 'https://ry.xiaozhuiot.cn/xiaozhi/upload'
 

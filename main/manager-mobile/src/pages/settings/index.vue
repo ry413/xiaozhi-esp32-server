@@ -412,7 +412,7 @@ onMounted(async () => {
       </view>
 
       <!-- 应用信息 -->
-      <view class="mb-[32rpx]">
+      <!-- <view class="mb-[32rpx]">
         <view class="mb-[24rpx] flex items-center">
           <text class="text-[32rpx] text-[#232338] font-bold">
             {{ t('settings.appInfo') }}
@@ -438,7 +438,7 @@ onMounted(async () => {
             <wd-icon name="arrow-right" custom-class="text-[32rpx] text-[#9d9ea3]" />
           </view>
         </view>
-      </view>
+      </view> -->
 
       <!-- 语言设置 -->
       <view class="mb-[32rpx]">

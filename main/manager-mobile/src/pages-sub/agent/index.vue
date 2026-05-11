@@ -77,18 +77,18 @@ const tabList = [
     icon: '/static/tabbar/device.png',
     activeIcon: '/static/tabbar/device_activate.png',
   },
-  {
-    label: t('agent.chatHistory'),
-    value: 'chat-history',
-    icon: '/static/tabbar/chat.png',
-    activeIcon: '/static/tabbar/chat_activate.png',
-  },
-  {
-    label: t('agent.voiceprintManagement'),
-    value: 'voiceprint-management',
-    icon: '/static/tabbar/microphone.png',
-    activeIcon: '/static/tabbar/microphone_activate.png',
-  },
+  // {
+  //   label: t('agent.chatHistory'),
+  //   value: 'chat-history',
+  //   icon: '/static/tabbar/chat.png',
+  //   activeIcon: '/static/tabbar/chat_activate.png',
+  // },
+  // {
+  //   label: t('agent.voiceprintManagement'),
+  //   value: 'voiceprint-management',
+  //   icon: '/static/tabbar/microphone.png',
+  //   activeIcon: '/static/tabbar/microphone_activate.png',
+  // },
 ]
 
 // 返回上一页

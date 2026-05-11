@@ -150,18 +150,18 @@ const tabList = [
     icon: '/static/tabbar/device.png',
     activeIcon: '/static/tabbar/device_activate.png',
   },
-  {
-    label: '聊天记录',
-    value: 'settings',
-    icon: '/static/tabbar/chat.png',
-    activeIcon: '/static/tabbar/chat_activate.png',
-  },
-  {
-    label: '声纹管理',
-    value: 'profile',
-    icon: '/static/tabbar/voiceprint.png',
-    activeIcon: '/static/tabbar/voiceprint_activate.png',
-  },
+  // {
+  //   label: '聊天记录',
+  //   value: 'settings',
+  //   icon: '/static/tabbar/chat.png',
+  //   activeIcon: '/static/tabbar/chat_activate.png',
+  // },
+  // {
+  //   label: '声纹管理',
+  //   value: 'profile',
+  //   icon: '/static/tabbar/voiceprint.png',
+  //   activeIcon: '/static/tabbar/voiceprint_activate.png',
+  // },
 ]
 function handleCloseTag(id: string) {
   dynamicTags.value = dynamicTags.value.filter(tag => tag.id !== id)

@@ -38,7 +38,7 @@ function goBack() {
         </view>
         <view class="mb-[40rpx] text-center">
           <text class="text-[24rpx] text-[#666666]">
-            更新日期：2026年3月10日
+            更新日期：2026年5月8日
           </text>
         </view>
         <view class="mb-[32rpx]">
@@ -48,17 +48,12 @@ function goBack() {
         </view>
         <view class="mb-[24rpx]">
           <text class="text-[28rpx] text-[#333333] leading-[1.8]">
-            欢迎您使用小智后端服务（以下简称"本服务"）。本服务的运营方为本服务的实际部署者和管理者（以下简称"运营者"或"我们"）。我们深知个人信息对您的重要性，将尽全力保护您的个人信息安全。
+            欢迎您使用小助物联助播语音助手（以下简称"本服务"）。本服务的运营方为本服务的实际部署者和管理者（以下简称"运营者"或"我们"）。我们深知个人信息对您的重要性，将尽全力保护您的个人信息安全。
           </text>
         </view>
         <view class="mb-[24rpx]">
           <text class="text-[28rpx] text-[#333333] leading-[1.8]">
             请您在使用本服务前，仔细阅读并充分理解本隐私政策的全部内容。一旦您开始使用本服务，即表示您已阅读并同意本隐私政策。
-          </text>
-        </view>
-        <view class="mb-[40rpx]">
-          <text class="text-[28rpx] text-[#333333] leading-[1.8]">
-            本隐私政策适用于您通过智控台（管理后台）、API接口及其他方式使用本服务时，我们对您个人信息的收集、存储、使用、共享、保护等行为。
           </text>
         </view>
         <view class="mb-[32rpx]">
@@ -73,7 +68,7 @@ function goBack() {
         </view>
         <view class="mb-[16rpx] ml-[20rpx]">
           <text class="text-[28rpx] text-[#333333] leading-[1.8]">
-            1.1 账号注册信息：当您注册账号时，我们会收集您的手机号码或用户名、密码等信息，用于创建和验证您的账号。
+            1.1 账号信息：当您注册账号时，我们会收集您的用户名、密码或微信openid等信息，用于创建和验证您的账号。
           </text>
         </view>
         <view class="mb-[16rpx] ml-[20rpx]">
@@ -83,62 +78,12 @@ function goBack() {
         </view>
         <view class="mb-[16rpx] ml-[20rpx]">
           <text class="text-[28rpx] text-[#333333] leading-[1.8]">
-            1.3 智能体配置信息：当您创建和配置智能体时，我们会收集您设定的角色模板、语言模型选择、语音参数配置等信息，用于提供个性化的AI交互服务。
+            1.3 日志信息：当您使用本服务时，我们会自动收集产生的日志、操作记录、功能使用情况等，用于服务运维和安全保障。
           </text>
         </view>
         <view class="mb-[16rpx] ml-[20rpx]">
           <text class="text-[28rpx] text-[#333333] leading-[1.8]">
-            1.4 语音交互数据：在您使用语音交互功能时，本服务会通过语音活动检测（VAD）判断您的语音起止状态，并处理您的语音输入数据，将其传输至第三方语音识别（ASR）和语言模型（LLM）服务进行处理，以实现语音交互功能。
-          </text>
-        </view>
-        <view class="mb-[16rpx] ml-[20rpx]">
-          <text class="text-[28rpx] text-[#333333] leading-[1.8]">
-            1.5 图像数据：当您使用视觉模型功能时，我们可能会处理您通过设备摄像头采集的图像数据，并将其传输至第三方视觉模型服务进行分析和理解，用于实现图像识别、场景理解等功能。
-          </text>
-        </view>
-        <view class="mb-[16rpx] ml-[20rpx]">
-          <text class="text-[28rpx] text-[#333333] leading-[1.8]">
-            1.6 对话记忆数据：当您开启记忆功能时，本服务会存储您与智能体的交互历史摘要，用于在后续对话中提供更连贯、个性化的交互体验。
-          </text>
-        </view>
-        <view class="mb-[16rpx] ml-[20rpx]">
-          <text class="text-[28rpx] text-[#333333] leading-[1.8]">
-            1.7 知识库数据：当您使用知识库功能时，我们会收集和存储您上传的文档、文本等知识库内容，用于智能体在对话中进行知识检索和问答。
-          </text>
-        </view>
-        <view class="mb-[16rpx] ml-[20rpx]">
-          <text class="text-[28rpx] text-[#333333] leading-[1.8]">
-            1.8 声纹数据：当您使用声纹识别功能时，我们会收集和存储您的声纹特征样本，用于说话人身份验证和个性化服务。
-          </text>
-        </view>
-        <view class="mb-[16rpx] ml-[20rpx]">
-          <text class="text-[28rpx] text-[#333333] leading-[1.8]">
-            1.9 聊天历史数据：我们会存储您与智能体的对话历史记录，包括文本对话内容、对话时间、交互上下文等信息，用于提供连续性对话体验和历史查询功能。
-          </text>
-        </view>
-        <view class="mb-[16rpx] ml-[20rpx]">
-          <text class="text-[28rpx] text-[#333333] leading-[1.8]">
-            1.10 对话音频数据：在您使用语音交互功能时，我们可能会存储您与智能体交互的音频数据，用于优化语音交互质量和回溯查询。
-          </text>
-        </view>
-        <view class="mb-[16rpx] ml-[20rpx]">
-          <text class="text-[28rpx] text-[#333333] leading-[1.8]">
-            1.11 智能体配置数据：当您配置智能体时，我们会收集您设定的标签、插件配置、上下文提供者设置等信息，用于提供智能体定制化服务。
-          </text>
-        </view>
-        <view class="mb-[16rpx] ml-[20rpx]">
-          <text class="text-[28rpx] text-[#333333] leading-[1.8]">
-            1.12 设备固件数据：当您使用OTA升级功能时，我们会记录设备固件版本、升级历史等信息，用于设备管理和固件追溯。
-          </text>
-        </view>
-        <view class="mb-[16rpx] ml-[20rpx]">
-          <text class="text-[28rpx] text-[#333333] leading-[1.8]">
-            1.13 日志信息：当您使用本服务时，我们会自动收集服务日志信息，包括但不限于访问时间、IP地址、浏览器类型、操作记录等，用于服务运维和安全保障。
-          </text>
-        </view>
-        <view class="mb-[40rpx] ml-[20rpx]">
-          <text class="text-[28rpx] text-[#333333] leading-[1.8]">
-            1.14 验证码信息：当您使用手机号登录时，我们会通过短信服务向您发送验证码，用于身份验证。
+            1.4 其他信息：当您使用本服务时，主动提供或产生的其他信息。
           </text>
         </view>
         <view class="mb-[32rpx]">
@@ -153,7 +98,7 @@ function goBack() {
         </view>
         <view class="mb-[16rpx] ml-[20rpx]">
           <text class="text-[28rpx] text-[#333333] leading-[1.8]">
-            （1）提供、维护和改进本服务，包括账号管理、设备管理、智能体配置等核心功能。
+            （1）提供、维护和改进本服务。
           </text>
         </view>
         <view class="mb-[16rpx] ml-[20rpx]">
@@ -163,27 +108,17 @@ function goBack() {
         </view>
         <view class="mb-[16rpx] ml-[20rpx]">
           <text class="text-[28rpx] text-[#333333] leading-[1.8]">
-            （3）处理您的图像数据，调用第三方视觉模型服务完成图像识别和场景理解。
+            （3）存储和管理您的对话记忆数据，以便在后续交互中提供更连贯的服务体验。
           </text>
         </view>
         <view class="mb-[16rpx] ml-[20rpx]">
           <text class="text-[28rpx] text-[#333333] leading-[1.8]">
-            （4）存储和管理您的对话记忆数据，以便在后续交互中提供更连贯的服务体验。
-          </text>
-        </view>
-        <view class="mb-[16rpx] ml-[20rpx]">
-          <text class="text-[28rpx] text-[#333333] leading-[1.8]">
-            （5）存储和检索您上传的知识库内容，以便智能体在对话中为您提供更准确的知识问答。
-          </text>
-        </view>
-        <view class="mb-[16rpx] ml-[20rpx]">
-          <text class="text-[28rpx] text-[#333333] leading-[1.8]">
-            （6）保障服务的安全性和稳定性，包括身份验证、安全防护、故障排查等。
+            （4）保障服务的安全性和稳定性，包括身份验证、安全防护、故障排查等。
           </text>
         </view>
         <view class="mb-[40rpx] ml-[20rpx]">
           <text class="text-[28rpx] text-[#333333] leading-[1.8]">
-            （7）遵守适用的法律法规和监管要求。
+            （5）遵守适用的法律法规和监管要求。
           </text>
         </view>
         <view class="mb-[24rpx]">
@@ -246,26 +181,6 @@ function goBack() {
             4.4 安全事件处理：如发生个人信息安全事件，我们将按照法律法规的要求，及时向您告知安全事件的基本情况、可能的影响、已采取或将要采取的处置措施等。
           </text>
         </view>
-        <view class="mb-[16rpx] ml-[20rpx]">
-          <text class="text-[28rpx] text-[#333333] leading-[1.8]">
-            4.5 开源项目特别说明：本服务为开源项目，存在两种运营模式：
-          </text>
-        </view>
-        <view class="mb-[8rpx] ml-[40rpx]">
-          <text class="text-[28rpx] text-[#333333] leading-[1.8]">
-            （1）自行部署：如您自行部署本服务，运营者仅为代码提供方，实际的数据存储和处理由您自行负责。
-          </text>
-        </view>
-        <view class="mb-[8rpx] ml-[40rpx]">
-          <text class="text-[28rpx] text-[#333333] leading-[1.8]">
-            （2）测试平台：如您使用运营者部署的测试平台，您的数据将由运营人员负责管理和保护。
-          </text>
-        </view>
-        <view class="mb-[16rpx] ml-[20rpx]">
-          <text class="text-[28rpx] text-[#333333] leading-[1.8]">
-            4.6 数据跨境传输：本服务在提供智能交互功能时，可能需要调用境外第三方AI服务提供商的接口。
-          </text>
-        </view>
         <view class="mb-[32rpx]">
           <text class="text-[30rpx] text-[#1a1a1a] font-bold">
             五、您的权利
@@ -273,12 +188,12 @@ function goBack() {
         </view>
         <view class="mb-[16rpx] ml-[20rpx]">
           <text class="text-[28rpx] text-[#333333] leading-[1.8]">
-            5.1 查询与访问：您可通过智控台查看和管理您的账号信息、设备信息、智能体配置等个人信息。
+            5.1 查询与访问：您可通过本服务查看和管理您的设备信息、智能体配置等个人信息。
           </text>
         </view>
         <view class="mb-[16rpx] ml-[20rpx]">
           <text class="text-[28rpx] text-[#333333] leading-[1.8]">
-            5.2 更正与修改：当您发现个人信息有误时，您可通过智控台自行更正，或联系运营者协助处理。
+            5.2 更正与修改：当您发现个人信息有误时，您可通过本服务自行更正，或联系运营者协助处理。
           </text>
         </view>
         <view class="mb-[16rpx] ml-[20rpx]">
@@ -288,7 +203,7 @@ function goBack() {
         </view>
         <view class="mb-[16rpx] ml-[20rpx]">
           <text class="text-[28rpx] text-[#333333] leading-[1.8]">
-            5.4 账号注销：您可通过智控台的账号设置功能注销账号，或联系运营者进行处理。
+            5.4 账号注销：您可通过本服务的账号设置功能注销账号，或联系运营者进行处理。
           </text>
         </view>
         <view class="mb-[40rpx] ml-[20rpx]">
@@ -323,7 +238,7 @@ function goBack() {
         </view>
         <view class="mb-[16rpx] ml-[20rpx]">
           <text class="text-[28rpx] text-[#333333] leading-[1.8]">
-            7.1 本服务在提供智能交互功能时，需要调用第三方服务，包括但不限于：语音活动检测服务（VAD）、语音识别服务（ASR）、大语言模型服务（LLM）、语音合成服务（TTS）、视觉模型服务、短信验证码服务、MQTT消息代理服务、数据库服务。
+            7.1 本服务在提供智能交互功能时，需要调用第三方服务，包括但不限于：语音活动检测服务（VAD）、语音识别服务（ASR）、大语言模型服务（LLM）、语音合成服务（TTS）、视觉模型服务、MQTT消息代理服务、数据库服务。
           </text>
         </view>
         <view class="mb-[40rpx] ml-[20rpx]">
@@ -333,17 +248,17 @@ function goBack() {
         </view>
         <view class="mb-[32rpx]">
           <text class="text-[30rpx] text-[#1a1a1a] font-bold">
-            八、Cookie及类似技术的使用
+            八、本地存储及类似技术的使用
           </text>
         </view>
         <view class="mb-[16rpx] ml-[20rpx]">
           <text class="text-[28rpx] text-[#333333] leading-[1.8]">
-            8.1 本服务可能使用Cookie及类似技术来保存您的登录状态、记录您的偏好设置等，以便为您提供更好的使用体验。
+            8.1 本服务可能使用本地存储及类似技术来保存您的登录状态、记录您的偏好设置等，以便为您提供更好的使用体验。
           </text>
         </view>
         <view class="mb-[40rpx] ml-[20rpx]">
           <text class="text-[28rpx] text-[#333333] leading-[1.8]">
-            8.2 您可以通过浏览器设置管理Cookie。但请注意，如果禁用Cookie，可能会影响本服务的部分功能。
+            8.2 您可以通过设备系统设置、小程序设置或本服务提供的功能管理相关授权和缓存数据。但请注意，如清除或禁用必要数据，可能会影响本服务的部分功能。
           </text>
         </view>
         <view class="mb-[32rpx]">

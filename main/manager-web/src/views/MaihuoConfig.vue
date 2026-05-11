@@ -429,7 +429,7 @@ const createDefaultPanels = () => ({
   },
   awkward: {
     enabled: false,
-    interval: 120,
+    interval: 5,
     sequential: false,
     interruptEnabled: false,
     templates: [

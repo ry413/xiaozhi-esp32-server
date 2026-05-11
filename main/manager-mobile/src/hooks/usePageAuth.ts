@@ -1,12 +1,19 @@
 import { onLoad } from '@dcloudio/uni-app'
 import { useUserStore } from '@/store'
+import { clearLoginState, hasValidStoredToken } from '@/utils/auth'
 import { needLoginPages as _needLoginPages, getNeedLoginPages } from '@/utils'
 
 const loginRoute = import.meta.env.VITE_LOGIN_URL
 const isDev = import.meta.env.DEV
 function isLogined() {
   const userStore = useUserStore()
-  return !!userStore.userInfo.username
+  if (userStore.userInfo.username && hasValidStoredToken()) {
+    return true
+  }
+  if (userStore.userInfo.username || uni.getStorageSync('token')) {
+    clearLoginState()
+  }
+  return false
 }
 // 检查当前页面是否需要登录
 export function usePageAuth() {

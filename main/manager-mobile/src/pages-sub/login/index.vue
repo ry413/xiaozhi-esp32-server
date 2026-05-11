@@ -17,6 +17,7 @@ import { login, wechatLogin } from '@/api/auth'
 import { changeLanguage, getCurrentLanguage, getSupportedLanguages, initI18n, t } from '@/i18n'
 import { useConfigStore, useUserStore } from '@/store'
 // 导入SM2加密工具
+import { clearInvalidLoginState, isValidToken } from '@/utils/auth'
 import { getEnvBaseUrl, sm2Encrypt } from '@/utils'
 import { toast } from '@/utils/toast'
 
@@ -54,7 +55,10 @@ const formData = ref({
 
 // 验证码图片
 const captchaImage = ref('')
+const captchaLoading = ref(false)
+const captchaLoadFailed = ref(false)
 const loading = ref(false)
+const agreementChecked = ref(false)
 
 // 登录方式：'username' | 'mobile'
 const loginType = ref<'username' | 'mobile'>('username')
@@ -154,12 +158,84 @@ function goToServerSetting() {
 async function refreshCaptcha() {
   const uuid = generateUUID()
   formData.value.captchaId = uuid
-  captchaImage.value = `${getEnvBaseUrl()}/user/captcha?uuid=${uuid}&t=${Date.now()}`
+  captchaLoading.value = true
+  captchaLoadFailed.value = false
+  captchaImage.value = ''
+
+  try {
+    const response = await new Promise<UniNamespace.RequestSuccessCallbackResult>((resolve, reject) => {
+      uni.request({
+        url: `${getEnvBaseUrl()}/user/captcha?uuid=${uuid}&t=${Date.now()}`,
+        method: 'GET',
+        responseType: 'arraybuffer',
+        success: resolve,
+        fail: reject,
+      })
+    })
+
+    if (response.statusCode !== 200 || !(response.data instanceof ArrayBuffer)) {
+      throw new Error(`验证码请求失败：HTTP ${response.statusCode}`)
+    }
+
+    captchaImage.value = `data:image/png;base64,${uni.arrayBufferToBase64(response.data)}`
+  }
+  catch (error) {
+    console.error('验证码加载失败:', error)
+    captchaLoadFailed.value = true
+  }
+  finally {
+    captchaLoading.value = false
+  }
+}
+
+function showLoginError(title: string, error: any) {
+  const message = error?.message || error?.errMsg || String(error || '未知错误')
+  uni.showModal({
+    title,
+    content: message,
+    showCancel: false,
+  })
+}
+
+function ensureAgreementChecked() {
+  if (agreementChecked.value)
+    return true
+
+  toast.warning('请先阅读并同意用户协议和隐私政策')
+  return false
+}
+
+function toggleAgreement() {
+  agreementChecked.value = !agreementChecked.value
+}
+
+function normalizeLoginResponse(response: any) {
+  const authInfo = response?.token
+    ? response
+    : response?.data?.token
+      ? response.data
+      : response?.data?.data?.token
+        ? response.data.data
+        : null
+
+  if (!isValidToken(authInfo?.token)) {
+    console.error('登录响应缺少 token:', response)
+    throw new Error('登录成功响应异常：缺少 token')
+  }
+
+  return authInfo
 }
 
 async function handleLoginSuccess(response: any) {
-  uni.setStorageSync('token', JSON.stringify(response))
-  await userStore.getUserInfo()
+  const authInfo = normalizeLoginResponse(response)
+  uni.setStorageSync('token', JSON.stringify(authInfo))
+
+  try {
+    await userStore.getUserInfo()
+  }
+  catch (error) {
+    console.error('登录后获取用户信息失败:', error)
+  }
 
   toast.success(t('message.loginSuccess'))
 
@@ -179,9 +255,15 @@ async function handleWechatLogin() {
   // #ifdef MP-WEIXIN
   if (loading.value)
     return
+  if (!ensureAgreementChecked())
+    return
 
   try {
     loading.value = true
+    uni.showLoading({
+      title: '登录中',
+      mask: true,
+    })
 
     const loginResult = await uni.login({
       provider: 'weixin',
@@ -197,9 +279,10 @@ async function handleWechatLogin() {
   }
   catch (error: any) {
     console.error('微信登录失败:', error)
-    toast.error(error?.message || '微信登录失败')
+    showLoginError('微信登录失败', error)
   }
   finally {
+    uni.hideLoading()
     loading.value = false
   }
   // #endif
@@ -207,6 +290,9 @@ async function handleWechatLogin() {
 
 // 登录
 async function handleLogin() {
+  if (!ensureAgreementChecked())
+    return
+
   // 表单验证
   if (loginType.value === 'username') {
     if (!formData.value.username) {
@@ -287,6 +373,7 @@ async function handleLogin() {
 
 // 页面加载时获取验证码
 onLoad(() => {
+  clearInvalidLoginState()
   refreshCaptcha()
 })
 
@@ -409,12 +496,41 @@ onMounted(async () => {
               :maxlength="6"
             />
             <view class="captcha-image" @click="refreshCaptcha">
-              <image :src="captchaImage" class="captcha-img" />
+              <image
+                v-if="captchaImage"
+                :src="captchaImage"
+                class="captcha-img"
+              />
+              <text v-else class="captcha-state-text">
+                {{ captchaLoading ? '加载中' : (captchaLoadFailed ? '点击重试' : '') }}
+              </text>
             </view>
           </view>
         </view>
+
+        <view class="agreement-row" @click="toggleAgreement">
+          <view class="agreement-checkbox" :class="{ checked: agreementChecked }">
+            <text v-if="agreementChecked" class="agreement-checkmark">
+              ✓
+            </text>
+          </view>
+          <text class="agreement-text">
+            我已阅读并同意
+          </text>
+          <text class="agreement-link" @click.stop="goToUserAgreement">
+            {{ t('login.userAgreement') }}
+          </text>
+          <text class="agreement-text">
+            和
+          </text>
+          <text class="agreement-link" @click.stop="goToPrivacyPolicy">
+            {{ t('login.privacyPolicy') }}
+          </text>
+        </view>
+
         <view
           class="login-btn"
+          :class="{ disabled: loading || !agreementChecked }"
           @click="handleLogin"
         >
           {{ loading ? t('login.loggingIn') : t('login.loginButton') }}
@@ -431,6 +547,7 @@ onMounted(async () => {
           </view>
           <view
             class="wechat-login-btn"
+            :class="{ disabled: loading || !agreementChecked }"
             @click="handleWechatLogin"
           >
             {{ loading ? t('login.loggingIn') : '微信登录' }}
@@ -438,31 +555,19 @@ onMounted(async () => {
         </view>
         <!-- #endif -->
 
-        <view class="hint-row">
+        <!-- <view class="hint-row">
           <view class="register-hint">
             <text class="register-link" @click="goToRegister">
               {{ t('login.noAccount') }}
             </text>
           </view>
 
-          <!-- <view class="forgot-password">
+          <view class="forgot-password">
             <text class="forgot-text" @click="goToForgotPassword">
               {{ t('login.forgotPassword') }}
             </text>
-          </view> -->
-        </view>
-
-        <view class="policy-links">
-          <text class="policy-link" @click="goToUserAgreement">
-            {{ t('login.userAgreement') }}
-          </text>
-          <text class="policy-divider">
-            |
-          </text>
-          <text class="policy-link" @click="goToPrivacyPolicy">
-            {{ t('login.privacyPolicy') }}
-          </text>
-        </view>
+          </view>
+        </view> -->
 
         <!-- 登录方式切换 -->
         <view v-if="enableMobileLogin" class="login-type-switch">
@@ -672,7 +777,8 @@ onMounted(async () => {
               height: 100%;
             }
 
-            .captcha-loading {
+            .captcha-loading,
+            .captcha-state-text {
               font-size: 20rpx;
               color: #999;
             }
@@ -754,7 +860,54 @@ onMounted(async () => {
       display: flex;
       justify-content: space-between;
       align-items: center;
-      margin-bottom: 30rpx;
+      margin-bottom: 20rpx;
+    }
+
+    .agreement-row {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      flex-wrap: wrap;
+      gap: 8rpx;
+      margin: 0 0 28rpx;
+      padding: 0 8rpx;
+    }
+
+    .agreement-checkbox {
+      width: 28rpx;
+      height: 28rpx;
+      border-radius: 6rpx;
+      border: 2rpx solid #cfd7e6;
+      background: #ffffff;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      flex: 0 0 auto;
+
+      &.checked {
+        border-color: #4d80f0;
+        background: #4d80f0;
+      }
+
+      .agreement-checkmark {
+        color: #ffffff;
+        font-size: 22rpx;
+        line-height: 28rpx;
+        font-weight: 700;
+      }
+    }
+
+    .agreement-text {
+      color: #7b8496;
+      font-size: 24rpx;
+      line-height: 34rpx;
+    }
+
+    .agreement-link {
+      color: #4d80f0;
+      font-size: 24rpx;
+      line-height: 34rpx;
+      font-weight: 500;
     }
 
     .policy-links {
@@ -806,14 +959,14 @@ onMounted(async () => {
       background-color: var(--wot-button-primary-bg-color, var(--wot-color-theme, #4d80f0));
       text-align: center;
       line-height: 80rpx;
+
       &:active {
         transform: translateY(2rpx);
         box-shadow: 0 4rpx 12rpx rgba(102, 126, 234, 0.3);
       }
 
-      &:disabled {
+      &.disabled {
         opacity: 0.6;
-        cursor: not-allowed;
       }
     }
 
@@ -854,6 +1007,10 @@ onMounted(async () => {
       &:active {
         transform: translateY(2rpx);
         box-shadow: 0 4rpx 12rpx rgba(7, 193, 96, 0.22);
+      }
+
+      &.disabled {
+        opacity: 0.6;
       }
     }
 

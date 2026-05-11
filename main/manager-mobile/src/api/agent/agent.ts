@@ -6,6 +6,7 @@ import type {
   RoleTemplate,
 } from './types'
 import { http } from '@/http/request/alova'
+import { clearLoginState, getStoredAuthInfo, isValidToken } from '@/utils/auth'
 import { getEnvBaseUrl } from '@/utils'
 
 // 获取智能体详情
@@ -116,7 +117,12 @@ export function updateAgent(id: string, data: Partial<AgentDetail>) {
 // 智能话术生成
 export function generateAgentScript(prompt: string) {
   return new Promise<string>((resolve, reject) => {
-    const authInfo = JSON.parse(uni.getStorageSync('token') || '{}')
+    const authInfo = getStoredAuthInfo()
+    if (!isValidToken(authInfo.token)) {
+      clearLoginState()
+      reject(new Error('未登录'))
+      return
+    }
     uni.request({
       url: `${getEnvBaseUrl()}/agent/generate-script`,
       method: 'POST',
@@ -146,7 +152,12 @@ export function generateAgentScript(prompt: string) {
 // 获取插件列表
 export function getPluginFunctions() {
   return new Promise<any[]>((resolve, reject) => {
-    const authInfo = JSON.parse(uni.getStorageSync('token') || '{}')
+    const authInfo = getStoredAuthInfo()
+    if (!isValidToken(authInfo.token)) {
+      clearLoginState()
+      reject(new Error('未登录'))
+      return
+    }
     uni.request({
       url: `${getEnvBaseUrl()}/models/provider/plugin/names`,
       method: 'GET',

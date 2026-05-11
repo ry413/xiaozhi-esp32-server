@@ -5,6 +5,7 @@
  * 我这里应为大部分都可以随便进入，所以使用黑名单
  */
 import { useUserStore } from '@/store'
+import { clearLoginState, hasValidStoredToken } from '@/utils/auth'
 import { needLoginPages as _needLoginPages, getLastPage, getNeedLoginPages } from '@/utils'
 
 // TODO Check
@@ -12,7 +13,13 @@ const loginRoute = import.meta.env.VITE_LOGIN_URL
 
 function isLogined() {
   const userStore = useUserStore()
-  return !!userStore.userInfo.username
+  if (userStore.userInfo.username && hasValidStoredToken()) {
+    return true
+  }
+  if (userStore.userInfo.username || uni.getStorageSync('token')) {
+    clearLoginState()
+  }
+  return false
 }
 
 const isDev = import.meta.env.DEV

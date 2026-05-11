@@ -5,6 +5,7 @@ import AdapterUniapp from '@alova/adapter-uniapp'
 import { createAlova } from 'alova'
 import { createServerTokenAuthentication } from 'alova/client'
 import VueHook from 'alova/vue'
+import { clearLoginState, getStoredAuthInfo, isValidToken } from '@/utils/auth'
 import { getEnvBaseUrl } from '@/utils'
 import { toast } from '@/utils/toast'
 import { ContentTypeEnum, ResultEnum, ShowMessage } from './enum'
@@ -82,8 +83,9 @@ const alovaInstance = createAlova({
 
     // 处理认证信息
     if (!ignoreAuth) {
-      const authInfo = JSON.parse(uni.getStorageSync('token') || '{}')
-      if (!authInfo.token) {
+      const authInfo = getStoredAuthInfo()
+      if (!isValidToken(authInfo.token)) {
+        clearLoginState()
         // 跳转到登录页
         uni.reLaunch({ url: '/pages-sub/login/index' })
         throw new Error('[请求错误]：未登录')

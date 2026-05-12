@@ -6,7 +6,7 @@ import type {
   RoleTemplate,
 } from './types'
 import { http } from '@/http/request/alova'
-import { clearLoginState, getStoredAuthInfo, isValidToken } from '@/utils/auth'
+import { clearLoginState, getStoredAuthInfo, isValidToken, markAuthExpired } from '@/utils/auth'
 import { getEnvBaseUrl } from '@/utils'
 
 // 获取智能体详情
@@ -134,6 +134,13 @@ export function generateAgentScript(prompt: string) {
       data: { prompt },
       success: (response) => {
         const body = response.data as any
+        if (response.statusCode === 401 || body?.code === 401) {
+          markAuthExpired()
+          clearLoginState()
+          uni.reLaunch({ url: '/pages-sub/login/index' })
+          reject(new Error(body?.msg || '登录已过期'))
+          return
+        }
         if (response.statusCode !== 200) {
           reject(new Error(`HTTP ${response.statusCode}: ${JSON.stringify(body)}`))
           return
@@ -177,6 +184,13 @@ export function getPluginFunctions() {
           }
         }
         console.log('插件列表接口返回:', body)
+        if (response.statusCode === 401 || body?.code === 401) {
+          markAuthExpired()
+          clearLoginState()
+          uni.reLaunch({ url: '/pages-sub/login/index' })
+          reject(new Error(body?.msg || '登录已过期'))
+          return
+        }
         if (response.statusCode !== 200) {
           reject(new Error(`HTTP ${response.statusCode}: ${JSON.stringify(body)}`))
           return

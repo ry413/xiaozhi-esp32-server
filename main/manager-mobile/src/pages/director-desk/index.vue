@@ -11,10 +11,12 @@
 <script lang="ts" setup>
 import DirectorDeskPanel from '@/components/director-desk/DirectorDeskPanel.vue'
 import MaihuoConfigPanel from '@/components/maihuo-config/MaihuoConfigPanel.vue'
+import { isGuestMode, promptLogin, redirectToLoginIfAuthExpired } from '@/utils/auth'
 
 type DeskTab = 'director' | 'plan'
 
 const activeTab = ref<DeskTab>('director')
+const isGuest = ref(isGuestMode())
 
 const tabs: Array<{ label: string, value: DeskTab }> = [
   { label: '导播台', value: 'director' },
@@ -24,6 +26,14 @@ const tabs: Array<{ label: string, value: DeskTab }> = [
 function switchTab(value: DeskTab) {
   activeTab.value = value
 }
+
+onShow(() => {
+  if (redirectToLoginIfAuthExpired()) {
+    return
+  }
+
+  isGuest.value = isGuestMode()
+})
 </script>
 
 <template>
@@ -42,8 +52,23 @@ function switchTab(value: DeskTab) {
       </view>
     </view>
 
-    <DirectorDeskPanel v-if="activeTab === 'director'" />
-    <MaihuoConfigPanel v-else />
+    <view v-if="isGuest" class="guest-panel">
+      <view class="guest-card">
+        <view class="guest-title">
+          游客模式
+        </view>
+        <view class="guest-desc">
+          导播台和方案配置需要读取你的机器人、直播方案和权益信息。你可以先浏览页面结构，登录后即可使用完整功能。
+        </view>
+        <wd-button type="primary" custom-class="guest-login-btn" @click="promptLogin('登录后可使用导播台和卖货方案配置')">
+          去登录
+        </wd-button>
+      </view>
+    </view>
+    <template v-else>
+      <DirectorDeskPanel v-if="activeTab === 'director'" />
+      <MaihuoConfigPanel v-else />
+    </template>
   </view>
 </template>
 
@@ -94,5 +119,38 @@ function switchTab(value: DeskTab) {
   border-radius: 999rpx;
   background: #336cff;
   transform: translateX(-50%);
+}
+
+.guest-panel {
+  padding: 28rpx;
+}
+
+.guest-card {
+  padding: 40rpx 34rpx;
+  border-radius: 28rpx;
+  background: #ffffff;
+  box-shadow: 0 12rpx 36rpx rgba(76, 98, 146, 0.08);
+}
+
+.guest-title {
+  font-size: 34rpx;
+  font-weight: 700;
+  color: #20283a;
+}
+
+.guest-desc {
+  margin-top: 18rpx;
+  font-size: 26rpx;
+  line-height: 1.7;
+  color: #778197;
+}
+
+:deep(.guest-login-btn) {
+  margin-top: 32rpx;
+  min-width: 220rpx;
+  height: 76rpx;
+  border-radius: 999rpx;
+  background: #336cff;
+  border: none;
 }
 </style>

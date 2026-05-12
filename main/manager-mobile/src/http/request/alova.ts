@@ -5,7 +5,7 @@ import AdapterUniapp from '@alova/adapter-uniapp'
 import { createAlova } from 'alova'
 import { createServerTokenAuthentication } from 'alova/client'
 import VueHook from 'alova/vue'
-import { clearLoginState, getStoredAuthInfo, isValidToken } from '@/utils/auth'
+import { clearLoginState, getStoredAuthInfo, isValidToken, markAuthExpired } from '@/utils/auth'
 import { getEnvBaseUrl } from '@/utils'
 import { toast } from '@/utils/toast'
 import { ContentTypeEnum, ResultEnum, ShowMessage } from './enum'
@@ -119,6 +119,12 @@ const alovaInstance = createAlova({
 
     // 处理 HTTP 状态码错误
     if (statusCode !== 200) {
+      if (statusCode === ResultEnum.Unauthorized) {
+        markAuthExpired()
+        clearLoginState()
+        uni.reLaunch({ url: '/pages-sub/login/index' })
+      }
+
       const errorMessage = ShowMessage(statusCode) || `HTTP请求错误[${statusCode}]`
       console.error('errorMessage===>', errorMessage)
       toast.error(errorMessage)
@@ -131,7 +137,8 @@ const alovaInstance = createAlova({
       // 检查是否为token失效
       if (code === ResultEnum.Unauthorized) {
         // 清除token并跳转到登录页
-        uni.removeStorageSync('token')
+        markAuthExpired()
+        clearLoginState()
         uni.reLaunch({ url: '/pages-sub/login/index' })
         throw new Error(`请求错误[${code}]：${msg}`)
       }

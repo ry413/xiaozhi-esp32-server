@@ -17,7 +17,7 @@ import { login, wechatLogin } from '@/api/auth'
 import { changeLanguage, getCurrentLanguage, getSupportedLanguages, initI18n, t } from '@/i18n'
 import { useConfigStore, useUserStore } from '@/store'
 // 导入SM2加密工具
-import { clearInvalidLoginState, isValidToken } from '@/utils/auth'
+import { clearAuthExpired, clearInvalidLoginState, clearLoginState, isValidToken } from '@/utils/auth'
 import { getEnvBaseUrl, sm2Encrypt } from '@/utils'
 import { toast } from '@/utils/toast'
 
@@ -154,6 +154,14 @@ function goToServerSetting() {
   })
 }
 
+function browseAsGuest() {
+  clearAuthExpired()
+  clearLoginState()
+  uni.switchTab({
+    url: '/pages/index/index',
+  })
+}
+
 // 获取验证码
 async function refreshCaptcha() {
   const uuid = generateUUID()
@@ -228,6 +236,7 @@ function normalizeLoginResponse(response: any) {
 
 async function handleLoginSuccess(response: any) {
   const authInfo = normalizeLoginResponse(response)
+  clearAuthExpired()
   uni.setStorageSync('token', JSON.stringify(authInfo))
 
   try {
@@ -554,6 +563,10 @@ onMounted(async () => {
           </view>
         </view>
         <!-- #endif -->
+
+        <view class="guest-entry" @click="browseAsGuest">
+          先不登录，随便看看
+        </view>
 
         <!-- <view class="hint-row">
           <view class="register-hint">
@@ -971,7 +984,7 @@ onMounted(async () => {
     }
 
     .wechat-login-block {
-      margin-bottom: 30rpx;
+      margin-bottom: 20rpx;
     }
 
     .login-divider {
@@ -1011,6 +1024,20 @@ onMounted(async () => {
 
       &.disabled {
         opacity: 0.6;
+      }
+    }
+
+    .guest-entry {
+      margin: 0 auto 26rpx;
+      padding: 12rpx 0;
+      color: #667eea;
+      font-size: 26rpx;
+      line-height: 36rpx;
+      text-align: center;
+      font-weight: 500;
+
+      &:active {
+        opacity: 0.72;
       }
     }
 

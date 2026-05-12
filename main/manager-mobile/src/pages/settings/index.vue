@@ -15,6 +15,7 @@ import { useMessage, useToast } from 'wot-design-uni'
 import { changeLanguage, getCurrentLanguage, getSupportedLanguages, t } from '@/i18n'
 import { useConfigStore } from '@/store'
 import { clearServerBaseUrlOverride, getEnvBaseUrl, getServerBaseUrlOverride, setServerBaseUrlOverride } from '@/utils'
+import { clearAuthExpired, clearLoginState, goToLogin, isGuestMode, redirectToLoginIfAuthExpired } from '@/utils/auth'
 import { isMp } from '@/utils/platform'
 
 defineOptions({
@@ -32,6 +33,7 @@ const cacheInfo = reactive({
 })
 
 const configStore = useConfigStore()
+const isGuest = ref(isGuestMode())
 
 // 服务端地址设置
 const baseUrlInput = ref('')
@@ -274,16 +276,30 @@ function showAbout() {
 }
 
 function handleLogout() {
+  if (isGuestMode()) {
+    goToLogin()
+    return
+  }
+
   message.confirm({
     title: '退出登录',
     msg: '确定退出当前账号吗？',
     confirmButtonText: '退出',
     cancelButtonText: '取消',
   }).then(() => {
-    uni.removeStorageSync('token')
+    clearAuthExpired()
+    clearLoginState()
     uni.reLaunch({ url: '/pages-sub/login/index' })
   }).catch(() => {})
 }
+
+onShow(() => {
+  if (redirectToLoginIfAuthExpired()) {
+    return
+  }
+
+  isGuest.value = isGuestMode()
+})
 
 onMounted(async () => {
   // 仅在非小程序环境加载服务端地址设置
@@ -496,7 +512,7 @@ onMounted(async () => {
           custom-class="w-full h-[88rpx] rounded-[20rpx] text-[28rpx] font-semibold bg-white border-[#ffd8d8] text-[#e95b5b] active:bg-[#fff5f5]"
           @click="handleLogout"
         >
-          退出登录
+          {{ isGuest ? '登录账号' : '退出登录' }}
         </wd-button>
       </view>
 

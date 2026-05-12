@@ -18,6 +18,7 @@ import { useMessage } from 'wot-design-uni'
 import useZPaging from 'z-paging/components/z-paging/js/hooks/useZPaging.js'
 import { createAgent, deleteAgent, getAgentList } from '@/api/agent/agent'
 import { t } from '@/i18n'
+import { isGuestMode, promptLogin, redirectToLoginIfAuthExpired } from '@/utils/auth'
 import { toast } from '@/utils/toast'
 
 defineOptions({
@@ -53,9 +54,21 @@ const pagingRef = ref()
 useZPaging(pagingRef)
 // 消息组件
 const message = useMessage()
+const isGuest = ref(isGuestMode())
+
+function syncLoginState() {
+  isGuest.value = isGuestMode()
+  return isGuest.value
+}
 
 // z-paging查询列表数据
 async function queryList(pageNo: number, pageSize: number) {
+  if (syncLoginState()) {
+    agentList.value = []
+    pagingRef.value.complete([])
+    return
+  }
+
   try {
     console.log('z-paging获取智能体列表')
 
@@ -76,6 +89,10 @@ async function queryList(pageNo: number, pageSize: number) {
 
 // 创建智能体
 async function handleCreateAgent(agentName: string) {
+  if (!promptLogin('登录后可创建和管理智能体')) {
+    return
+  }
+
   try {
     await createAgent({ agentName: agentName.trim() })
     // 创建成功后刷新列表
@@ -91,6 +108,10 @@ async function handleCreateAgent(agentName: string) {
 
 // 删除智能体
 async function handleDeleteAgent(agent: Agent) {
+  if (!promptLogin('登录后可删除智能体')) {
+    return
+  }
+
   try {
     await deleteAgent(agent.id)
     // 删除成功后刷新列表
@@ -106,6 +127,10 @@ async function handleDeleteAgent(agent: Agent) {
 
 // 进入编辑页面
 function goToEditAgent(agent: Agent) {
+  if (!promptLogin('登录后可编辑智能体配置')) {
+    return
+  }
+
   // 传递智能体ID到编辑页面
   uni.navigateTo({
     url: `/pages-sub/agent/index?agentId=${agent.id}`,
@@ -119,6 +144,10 @@ function handleCardClick(agent: Agent) {
 
 // 打开创建对话框
 function openCreateDialog() {
+  if (!promptLogin('登录后可创建和管理智能体')) {
+    return
+  }
+
   message
     .prompt({
       title: t('home.dialogTitle'),
@@ -178,6 +207,11 @@ function formatTime(timeStr: string) {
 // 页面显示时刷新列表
 onShow(() => {
   console.log('首页 onShow，刷新智能体列表')
+  if (redirectToLoginIfAuthExpired()) {
+    return
+  }
+
+  syncLoginState()
   if (pagingRef.value) {
     pagingRef.value.refresh()
   }
@@ -193,7 +227,7 @@ onMounted(() => {
 <template>
   <z-paging
     ref="pagingRef" v-model="agentList" :refresher-enabled="true" :auto-show-back-to-top="true"
-    :loading-more-enabled="false" :show-loading-more="false" :hide-empty-view="false" :empty-view-text="t('home.emptyState')"
+    :loading-more-enabled="false" :show-loading-more="false" :hide-empty-view="false" :empty-view-text="isGuest ? '登录后可查看智能体列表' : t('home.emptyState')"
     empty-view-img="" :refresher-threshold="80" :back-to-top-style="{
       backgroundColor: '#fff',
       borderRadius: '50%',
@@ -289,11 +323,14 @@ onMounted(() => {
       <view class="empty-state">
         <wd-icon name="robot" custom-class="empty-icon" />
         <text class="empty-text">
-          {{ t('home.emptyState') }}
+          {{ isGuest ? '游客模式' : t('home.emptyState') }}
         </text>
         <text class="empty-desc">
-          {{ t('home.createFirstAgent') }}
+          {{ isGuest ? '你可以先浏览底部几个页面，登录后才能创建智能体、绑定设备和保存配置。' : t('home.createFirstAgent') }}
         </text>
+        <wd-button v-if="isGuest" custom-class="guest-login-btn" type="primary" @click="promptLogin('登录后可查看和管理智能体')">
+          去登录
+        </wd-button>
       </view>
     </template>
 
@@ -585,6 +622,15 @@ onMounted(() => {
     font-size: 26rpx;
     color: #999999;
     line-height: 1.5;
+  }
+
+  :deep(.guest-login-btn) {
+    margin-top: 32rpx;
+    min-width: 220rpx;
+    height: 76rpx;
+    border-radius: 999rpx;
+    background: #336cff;
+    border: none;
   }
 }
 

@@ -20,6 +20,7 @@ import {
   updateVoiceCloneName,
   uploadVoiceCloneSample,
 } from '@/api/voice-clone'
+import { isGuestMode, promptLogin, redirectToLoginIfAuthExpired } from '@/utils/auth'
 import { toast } from '@/utils/toast'
 
 defineOptions({
@@ -39,6 +40,12 @@ const renameSubmitting = ref(false)
 const currentRenameItem = ref<VoiceCloneItem | null>(null)
 const renameValue = ref('')
 const audioContext = ref<UniApp.InnerAudioContext | null>(null)
+const isGuest = ref(isGuestMode())
+
+function syncLoginState() {
+  isGuest.value = isGuestMode()
+  return isGuest.value
+}
 
 const filteredVoiceCloneList = computed(() => {
   const keyword = searchName.value.trim()
@@ -87,6 +94,13 @@ function getTrainStatusType(item: VoiceCloneItem) {
 }
 
 async function fetchVoiceClones(showLoading = true) {
+  if (syncLoginState()) {
+    voiceCloneList.value = []
+    loading.value = false
+    refreshing.value = false
+    return
+  }
+
   try {
     if (showLoading) {
       loading.value = true
@@ -108,6 +122,11 @@ async function fetchVoiceClones(showLoading = true) {
 }
 
 function startAutoRefresh() {
+  if (syncLoginState()) {
+    stopAutoRefresh()
+    return
+  }
+
   stopAutoRefresh()
   refreshTimer.value = setInterval(() => {
     if (!loading.value && !uploadingId.value) {
@@ -124,12 +143,20 @@ function stopAutoRefresh() {
 }
 
 function openRenamePopup(item: VoiceCloneItem) {
+  if (!promptLogin('登录后可管理音色资源')) {
+    return
+  }
+
   currentRenameItem.value = item
   renameValue.value = item.name || ''
   renamePopupVisible.value = true
 }
 
 async function submitRename() {
+  if (!promptLogin('登录后可管理音色资源')) {
+    return
+  }
+
   const target = currentRenameItem.value
   const nextName = renameValue.value.trim()
   if (!target) {
@@ -156,6 +183,10 @@ async function submitRename() {
 }
 
 async function chooseAndUpload(item: VoiceCloneItem) {
+  if (!promptLogin('登录后可上传音色样本')) {
+    return
+  }
+
   try {
     const chooseResult = await new Promise<any>((resolve, reject) => {
       uni.chooseFile({
@@ -202,6 +233,10 @@ async function chooseAndUpload(item: VoiceCloneItem) {
 }
 
 async function handleClone(item: VoiceCloneItem) {
+  if (!promptLogin('登录后可发起音色复刻')) {
+    return
+  }
+
   if (!item.hasVoice) {
     toast.warning('请先上传音频样本')
     return
@@ -231,6 +266,10 @@ function stopAudio() {
 }
 
 async function handlePlay(item: VoiceCloneItem) {
+  if (!promptLogin('登录后可试听音色')) {
+    return
+  }
+
   if (playingId.value === item.id) {
     stopAudio()
     return
@@ -261,6 +300,16 @@ async function handlePlay(item: VoiceCloneItem) {
 }
 
 onPullDownRefresh(() => {
+  if (redirectToLoginIfAuthExpired()) {
+    uni.stopPullDownRefresh()
+    return
+  }
+
+  if (syncLoginState()) {
+    uni.stopPullDownRefresh()
+    return
+  }
+
   refreshing.value = true
   void fetchVoiceClones(false).finally(() => {
     uni.stopPullDownRefresh()
@@ -268,6 +317,18 @@ onPullDownRefresh(() => {
 })
 
 onShow(() => {
+  if (redirectToLoginIfAuthExpired()) {
+    return
+  }
+
+  if (syncLoginState()) {
+    stopAutoRefresh()
+    stopAudio()
+    voiceCloneList.value = []
+    loading.value = false
+    return
+  }
+
   void fetchVoiceClones()
   startAutoRefresh()
 })
@@ -294,7 +355,7 @@ onUnload(() => {
       </view>
     </view>
 
-    <view class="search-bar">
+    <view v-if="!isGuest" class="search-bar">
       <wd-input
         v-model="searchName"
         clearable
@@ -306,7 +367,21 @@ onUnload(() => {
       </wd-button>
     </view>
 
-    <view v-if="loading" class="loading-container">
+    <view v-if="isGuest" class="guest-container">
+      <view class="guest-card">
+        <view class="guest-title">
+          游客模式
+        </view>
+        <view class="guest-desc">
+          音色资源属于账号数据，登录后可上传样本、复刻音色并试听。
+        </view>
+        <wd-button type="primary" custom-class="guest-login-btn" @click="promptLogin('登录后可使用音色克隆功能')">
+          去登录
+        </wd-button>
+      </view>
+    </view>
+
+    <view v-else-if="loading" class="loading-container">
       <wd-loading color="#336cff" />
       <text class="loading-text">加载中...</text>
     </view>
@@ -438,6 +513,39 @@ onUnload(() => {
   align-items: center;
   justify-content: center;
   padding: 120rpx 40rpx;
+}
+
+.guest-container {
+  padding: 28rpx 0;
+}
+
+.guest-card {
+  padding: 40rpx 34rpx;
+  border-radius: 28rpx;
+  background: #ffffff;
+  box-shadow: 0 12rpx 36rpx rgba(76, 98, 146, 0.08);
+}
+
+.guest-title {
+  font-size: 34rpx;
+  font-weight: 700;
+  color: #20283a;
+}
+
+.guest-desc {
+  margin-top: 18rpx;
+  font-size: 26rpx;
+  line-height: 1.7;
+  color: #778197;
+}
+
+:deep(.guest-login-btn) {
+  margin-top: 32rpx;
+  min-width: 220rpx;
+  height: 76rpx;
+  border-radius: 999rpx;
+  background: #336cff;
+  border: none;
 }
 
 .loading-text {

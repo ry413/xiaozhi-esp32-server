@@ -48,10 +48,10 @@ public class SysUserWechatServiceImpl
 
     @Override
     @Transactional(rollbackFor = Exception.class)
-    public void bind(String openid, String unionid, Long userId) {
+    public void bind(String openid, String unionid, String nickname, Long userId) {
         SysUserWechatEntity exist = get(openid);
         if (exist != null) {
-            updateLoginInfo(exist.getId(), unionid);
+            updateLoginInfo(exist.getId(), unionid, nickname);
             return;
         }
 
@@ -59,6 +59,7 @@ public class SysUserWechatServiceImpl
         entity.setAppid(appid);
         entity.setOpenid(openid);
         entity.setUnionid(isBlank(unionid) ? null : unionid);
+        entity.setNickname(isBlank(nickname) ? null : nickname.trim());
         entity.setUserId(userId);
         entity.setCreateDate(new Date());
         entity.setLastLoginDate(new Date());
@@ -69,24 +70,27 @@ public class SysUserWechatServiceImpl
             SysUserWechatEntity now = get(openid);
             if (now == null)
                 throw e;
-            updateLoginInfo(now.getId(), unionid);
+            updateLoginInfo(now.getId(), unionid, nickname);
         }
     }
 
     @Override
-    public void touch(String openid, String unionid) {
+    public void touch(String openid, String unionid, String nickname) {
         log.info("Touch wechat user info for openid: {}", openid);
         SysUserWechatEntity exist = get(openid);
         if (exist == null) {
             log.warn("Cannot touch wechat user info: no such openid {}", openid);
             return;
         }
-        updateLoginInfo(exist.getId(), unionid);
+        updateLoginInfo(exist.getId(), unionid, nickname);
     }
 
-    private void updateLoginInfo(Long id, String unionid) {
+    private void updateLoginInfo(Long id, String unionid, String nickname) {
         UpdateWrapper<SysUserWechatEntity> w1 = new UpdateWrapper<>();
         w1.eq("id", id).set("last_login", new Date());
+        if (!isBlank(nickname)) {
+            w1.set("nickname", nickname.trim());
+        }
         update(w1);
 
         // 补写 unionid

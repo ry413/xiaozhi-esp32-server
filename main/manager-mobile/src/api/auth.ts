@@ -43,9 +43,14 @@ export function login(data: LoginData) {
   })
 }
 
+export interface WechatLoginData {
+  code: string
+  nickname?: string
+}
+
 // 微信小程序登录
-export function wechatLogin(code: string) {
-  return http.Post<LoginResponse>('/user/wechat/login', { code }, {
+export function wechatLogin(data: WechatLoginData) {
+  return http.Post<LoginResponse>('/user/wechat/login', data, {
     meta: {
       ignoreAuth: true,
       toast: true,

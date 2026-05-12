@@ -254,6 +254,6 @@ public class LoginController {
         if (dto == null || dto.getCode() == null || dto.getCode().isBlank()) {
             throw new RenException(ErrorCode.PARAM_VALUE_NULL);
         }
-        return wechatAuthService.loginOrRegister(dto.getCode());
+        return wechatAuthService.loginOrRegister(dto.getCode(), dto.getNickname());
     }
 }

@@ -30,6 +30,9 @@ public class SysUserWechatEntity {
     @Schema(description = "微信UnionID")
     private String unionid;
 
+    @Schema(description = "微信昵称")
+    private String nickname;
+
     @TableField("user_id")
     @Schema(description = "关联用户ID")
     private Long userId;

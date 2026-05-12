@@ -7,5 +7,5 @@ import xiaozhi.common.utils.Result;
 public interface WechatAuthService {
 
     @Schema(description = "微信小程序登录或自动注册")
-    public Result<TokenDTO> loginOrRegister(String code);
+    public Result<TokenDTO> loginOrRegister(String code, String nickname);
 }

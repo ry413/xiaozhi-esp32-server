@@ -59,6 +59,8 @@ const captchaLoading = ref(false)
 const captchaLoadFailed = ref(false)
 const loading = ref(false)
 const agreementChecked = ref(false)
+const wechatNickname = ref('')
+const showWechatNicknamePopup = ref(false)
 
 // 登录方式：'username' | 'mobile'
 const loginType = ref<'username' | 'mobile'>('username')
@@ -267,7 +269,22 @@ async function handleWechatLogin() {
   if (!ensureAgreementChecked())
     return
 
+  showWechatNicknamePopup.value = true
+  // #endif
+}
+
+async function submitWechatLogin() {
+  // #ifndef MP-WEIXIN
+  toast.warning('当前平台不支持微信登录')
+  return
+  // #endif
+
+  // #ifdef MP-WEIXIN
+  if (loading.value)
+    return
+
   try {
+    showWechatNicknamePopup.value = false
     loading.value = true
     uni.showLoading({
       title: '登录中',
@@ -283,7 +300,10 @@ async function handleWechatLogin() {
       return
     }
 
-    const response = await wechatLogin(code)
+    const response = await wechatLogin({
+      code,
+      nickname: wechatNickname.value.trim() || undefined,
+    })
     await handleLoginSuccess(response)
   }
   catch (error: any) {
@@ -668,6 +688,42 @@ onMounted(async () => {
         </scroll-view>
       </view>
     </wd-action-sheet>
+
+    <!-- 微信昵称填写弹窗 -->
+    <!-- #ifdef MP-WEIXIN -->
+    <wd-popup
+      v-model="showWechatNicknamePopup"
+      position="center"
+      custom-style="width: 86%; border-radius: 24rpx;"
+      safe-area-inset-bottom
+    >
+      <view class="wechat-name-popup">
+        <view class="wechat-name-title">
+          设置显示名称
+        </view>
+        <view class="wechat-name-desc">
+          用于在应用内显示你的账号名称。点击输入框可选择微信昵称，也可以跳过。
+        </view>
+        <view class="wechat-nickname-field">
+          <input
+            v-model="wechatNickname"
+            class="wechat-nickname-input"
+            type="nickname"
+            maxlength="32"
+            placeholder="点击选择或输入昵称"
+          >
+        </view>
+        <view class="wechat-name-actions">
+          <wd-button type="info" custom-class="wechat-name-btn" @click="submitWechatLogin">
+            跳过
+          </wd-button>
+          <wd-button type="primary" custom-class="wechat-name-btn" :loading="loading" @click="submitWechatLogin">
+            继续登录
+          </wd-button>
+        </view>
+      </view>
+    </wd-popup>
+    <!-- #endif -->
   </view>
 </template>
 
@@ -1095,6 +1151,54 @@ onMounted(async () => {
       }
     }
   }
+}
+
+.wechat-name-popup {
+  padding: 36rpx 32rpx 32rpx;
+  background: #ffffff;
+  border-radius: 24rpx;
+}
+
+.wechat-name-title {
+  text-align: center;
+  font-size: 34rpx;
+  font-weight: 700;
+  color: #232338;
+}
+
+.wechat-name-desc {
+  margin-top: 16rpx;
+  color: #7b8496;
+  font-size: 26rpx;
+  line-height: 1.6;
+}
+
+.wechat-nickname-field {
+  margin-top: 28rpx;
+  border: 2rpx solid #e9ecef;
+  border-radius: 16rpx;
+  background: #f8f9fa;
+  overflow: hidden;
+}
+
+.wechat-nickname-input {
+  height: 82rpx;
+  padding: 0 24rpx;
+  color: #333333;
+  font-size: 28rpx;
+  box-sizing: border-box;
+}
+
+.wechat-name-actions {
+  display: flex;
+  gap: 18rpx;
+  margin-top: 30rpx;
+}
+
+:deep(.wechat-name-btn) {
+  flex: 1;
+  height: 78rpx;
+  border-radius: 16rpx;
 }
 
 // 区号选择弹窗样式

@@ -39,7 +39,7 @@ public class WechatAuthServiceImpl implements WechatAuthService {
 
     @Override
     @Transactional(rollbackFor = Exception.class)
-    public Result<TokenDTO> loginOrRegister(String code) {
+    public Result<TokenDTO> loginOrRegister(String code, String nickname) {
         // 1) code 换 openid/unionid
         WechatSession session = wechatMiniClient.code2Session(code);
 
@@ -78,11 +78,11 @@ public class WechatAuthServiceImpl implements WechatAuthService {
             userId = saved.getId();
 
             // 3.2 写映射
-            sysUserWechatService.bind(openid, session.getUnionid(), userId);
+            sysUserWechatService.bind(openid, session.getUnionid(), nickname, userId);
         } else {
             log.info("Wechat openid {} mapped to user id {}", openid, userId);
             // 可选：更新 last_login_date、补 unionid
-            sysUserWechatService.touch(openid, session.getUnionid());
+            sysUserWechatService.touch(openid, session.getUnionid(), nickname);
         }
 
         // 4) 沿用你们现成 token 体系

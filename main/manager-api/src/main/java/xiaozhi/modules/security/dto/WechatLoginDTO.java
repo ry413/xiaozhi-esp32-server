@@ -11,4 +11,7 @@ import lombok.Data;
 public class WechatLoginDTO {
     @Schema(description = "wx.login()返回的code")
     private String code;
+
+    @Schema(description = "微信昵称")
+    private String nickname;
 }

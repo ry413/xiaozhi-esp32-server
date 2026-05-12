@@ -12,7 +12,7 @@ public interface SysUserWechatService {
 
     SysUserWechatEntity getByUnionid(String unionid);
 
-    void bind(String openid, String unionid, Long userId);
+    void bind(String openid, String unionid, String nickname, Long userId);
 
-    void touch(String openid, String unionid);
+    void touch(String openid, String unionid, String nickname);
 }

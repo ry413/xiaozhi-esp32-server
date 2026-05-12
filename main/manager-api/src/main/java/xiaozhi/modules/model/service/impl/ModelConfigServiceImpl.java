@@ -1,6 +1,7 @@
 package xiaozhi.modules.model.service.impl;
 
 import java.io.Serializable;
+import java.math.BigDecimal;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -346,6 +347,9 @@ public class ModelConfigServiceImpl extends BaseServiceImpl<ModelConfigDao, Mode
         modelConfigEntity.setModelName(modelConfigBodyDTO.getModelName());
         modelConfigEntity.setSort(modelConfigBodyDTO.getSort());
         modelConfigEntity.setIsEnabled(modelConfigBodyDTO.getIsEnabled());
+        if (modelConfigBodyDTO.getBenefitConsumeMultiplier() != null) {
+            modelConfigEntity.setBenefitConsumeMultiplier(modelConfigBodyDTO.getBenefitConsumeMultiplier());
+        }
         modelConfigEntity.setRemark(modelConfigBodyDTO.getRemark());
         // 3. 处理配置JSON，仅更新非敏感字段和明确修改的敏感字段
         if (modelConfigBodyDTO.getConfigJson() != null && originalEntity.getConfigJson() != null) {
@@ -412,6 +416,9 @@ public class ModelConfigServiceImpl extends BaseServiceImpl<ModelConfigDao, Mode
         ModelConfigEntity modelConfigEntity = ConvertUtils.sourceToTarget(modelConfigBodyDTO, ModelConfigEntity.class);
         modelConfigEntity.setModelType(modelType);
         modelConfigEntity.setIsDefault(0);
+        if (modelConfigEntity.getBenefitConsumeMultiplier() == null) {
+            modelConfigEntity.setBenefitConsumeMultiplier(BigDecimal.ONE);
+        }
         return modelConfigEntity;
     }
 

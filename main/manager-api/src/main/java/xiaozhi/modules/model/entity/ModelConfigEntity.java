@@ -1,5 +1,6 @@
 package xiaozhi.modules.model.entity;
 
+import java.math.BigDecimal;
 import java.util.Date;
 
 import com.baomidou.mybatisplus.annotation.FieldFill;
@@ -33,6 +34,9 @@ public class ModelConfigEntity {
 
     @Schema(description = "是否启用")
     private Integer isEnabled;
+
+    @Schema(description = "权益消费倍率，仅TTS模型生效")
+    private BigDecimal benefitConsumeMultiplier;
 
     @TableField(typeHandler = JacksonTypeHandler.class)
     @Schema(description = "模型配置(JSON格式)")

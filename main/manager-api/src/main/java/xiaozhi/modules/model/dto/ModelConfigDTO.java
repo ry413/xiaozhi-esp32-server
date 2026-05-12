@@ -2,6 +2,7 @@ package xiaozhi.modules.model.dto;
 
 import java.io.Serial;
 import java.io.Serializable;
+import java.math.BigDecimal;
 
 import cn.hutool.json.JSONObject;
 import io.swagger.v3.oas.annotations.media.Schema;
@@ -31,6 +32,9 @@ public class ModelConfigDTO implements Serializable {
 
     @Schema(description = "是否启用")
     private Integer isEnabled;
+
+    @Schema(description = "权益消费倍率，仅TTS模型生效")
+    private BigDecimal benefitConsumeMultiplier;
 
     @Schema(description = "模型配置(JSON格式)")
     private JSONObject configJson;

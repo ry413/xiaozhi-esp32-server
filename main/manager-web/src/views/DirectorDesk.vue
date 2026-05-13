@@ -159,6 +159,14 @@
               <el-card class="message-panel-card" shadow="never">
                 <div class="message-panel-header">
                   <div class="panel-title panel-title--tight">消息面板</div>
+                  <div class="microphone-actions">
+                    <el-button size="mini" type="success" plain @click="handleManualMicrophoneSwitch(true)">
+                      开启麦克风
+                    </el-button>
+                    <el-button size="mini" type="danger" plain @click="handleManualMicrophoneSwitch(false)">
+                      关闭麦克风
+                    </el-button>
+                  </div>
                   <div class="message-toolbar">
                     <el-input
                       v-model.trim="pendingMessage"
@@ -888,6 +896,37 @@ export default {
       }
       panel.scrollTop = panel.scrollHeight;
     },
+    setDeviceMicrophoneEnabled(deviceId, enabled) {
+      const mcpExecuteString = {
+        type: "mcp",
+        payload: {
+          jsonrpc: "2.0",
+          id: 1,
+          method: "tools/call",
+          params: {
+            name: "self.audio_microphone.set_enabled",
+            arguments: {
+              enabled,
+            },
+          },
+        },
+      };
+      Api.device.sendDeviceCommand(deviceId, mcpExecuteString, ({ data }) => {
+        if (data && data.code === 0) {
+          console.log(`${enabled ? "开启" : "关闭"}设备麦克风成功`);
+        } else {
+          console.error(`${enabled ? "开启" : "关闭"}设备麦克风失败:`, data && data.msg);
+        }
+      });
+    },
+    handleManualMicrophoneSwitch(enabled) {
+      if (!this.selectedRobot) {
+        this.$message.warning("请先选择机器人");
+        return;
+      }
+      this.setDeviceMicrophoneEnabled(this.selectedRobot.id, enabled);
+      this.$message.success(enabled ? "已发送开启麦克风命令" : "已发送关闭麦克风命令");
+    },
     startLive() {
         if (!this.selectedRobot) {
           this.$message.warning("请先选择机器人");
@@ -926,6 +965,7 @@ export default {
           Api.liveStreaming.stopLive(targetRobot.mac, ({ data }) => {
             this.startLiveLoading = false;
             if (data && data.code === 0) {
+              this.setDeviceMicrophoneEnabled(targetRobot.id, true);
               this.$message.success("导播已停止");
               if (this.selectedRobot && this.selectedRobot.mac === targetRobot.mac) {
                 this.stopSentMsgTracking();
@@ -975,6 +1015,7 @@ export default {
                   Api.liveStreaming.startLive(params, ({ data }) => {
                     this.startLiveLoading = false;
                     if (data && data.code === 0) {
+                      this.setDeviceMicrophoneEnabled(targetRobot.id, false);
                       this.$message.success("导播已启动");
                       this.$set(this.selectedPlanNoMap, targetRobot.id, targetPlanNo);
                       if (this.selectedRobot && this.selectedRobot.mac === targetRobot.mac) {
@@ -1348,6 +1389,13 @@ export default {
   gap: 16px;
   flex: 1;
   justify-content: flex-end;
+}
+
+.microphone-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-shrink: 0;
 }
 
 .message-input {

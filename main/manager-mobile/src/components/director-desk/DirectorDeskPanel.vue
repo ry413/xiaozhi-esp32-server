@@ -114,6 +114,40 @@ function delay(ms: number) {
   return new Promise(resolve => setTimeout(resolve, ms))
 }
 
+function setDeviceMicrophoneEnabled(deviceId: string, enabled: boolean) {
+  return sendDeviceCommand(deviceId, {
+    type: 'mcp',
+    payload: {
+      jsonrpc: '2.0',
+      id: 1,
+      method: 'tools/call',
+      params: {
+        name: 'self.audio_microphone.set_enabled',
+        arguments: {
+          enabled,
+        },
+      },
+    },
+  })
+}
+
+async function handleManualMicrophoneSwitch(enabled: boolean) {
+  const target = selectedRobot.value
+  if (!target) {
+    toast.warning('请先选择机器人')
+    return
+  }
+
+  try {
+    await setDeviceMicrophoneEnabled(target.id, enabled)
+    toast.success(enabled ? '已开启麦克风' : '已关闭麦克风')
+  }
+  catch (error: any) {
+    console.error(`${enabled ? '开启' : '关闭'}麦克风失败:`, error)
+    toast.error(error?.message || `${enabled ? '开启' : '关闭'}麦克风失败`)
+  }
+}
+
 const planPickerRange = computed(() => {
   return livePlanOptions.value.map(item => item.displayLabel)
 })
@@ -717,6 +751,12 @@ async function handleStartStopLive() {
 
     if (targetIsRunning) {
       await stopLive(targetRobot.mac)
+      try {
+        await setDeviceMicrophoneEnabled(targetRobot.id, true)
+      }
+      catch (error) {
+        console.warn('开启设备麦克风失败:', error)
+      }
       toast.success('导播已停止')
       if (selectedRobot.value?.mac === targetRobot.mac) {
         stopSentMsgTracking()
@@ -755,6 +795,12 @@ async function handleStartStopLive() {
       plan_no: targetPlanNo,
       config_json: plan?.configJson,
     })
+    try {
+      await setDeviceMicrophoneEnabled(targetRobot.id, false)
+    }
+    catch (error) {
+      console.warn('关闭设备麦克风失败:', error)
+    }
 
     toast.success('导播已启动')
     selectedPlanNoMap.value = {
@@ -917,6 +963,15 @@ onUnmounted(() => {
           <view v-if="abnormalStatusList.length" class="abnormal-row">
             <view v-for="item in abnormalStatusList" :key="item.key" class="abnormal-item">
               {{ item.label }}，已持续{{ item.durationText }}
+            </view>
+          </view>
+
+          <view class="microphone-actions">
+            <view class="microphone-btn microphone-btn--on" @click="handleManualMicrophoneSwitch(true)">
+              开启麦克风
+            </view>
+            <view class="microphone-btn microphone-btn--off" @click="handleManualMicrophoneSwitch(false)">
+              关闭麦克风
             </view>
           </view>
         </view>
@@ -1197,6 +1252,33 @@ onUnmounted(() => {
 .plan-row {
   margin-top: 22rpx;
   align-items: stretch;
+}
+
+.microphone-actions {
+  display: flex;
+  gap: 16rpx;
+  margin-top: 22rpx;
+}
+
+.microphone-btn {
+  flex: 1;
+  height: 68rpx;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 16rpx;
+  font-size: 24rpx;
+  font-weight: 600;
+}
+
+.microphone-btn--on {
+  color: #2d8a55;
+  background: rgba(61, 173, 100, 0.12);
+}
+
+.microphone-btn--off {
+  color: #d34f4f;
+  background: rgba(238, 92, 92, 0.12);
 }
 
 .plan-row picker {

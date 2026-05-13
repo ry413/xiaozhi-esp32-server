@@ -64,6 +64,7 @@ const redeemCode = ref('')
 const redeemLoading = ref(false)
 const startLiveLoading = ref(false)
 const listLoading = ref(false)
+const refreshing = ref(false)
 
 const isLiveRunning = ref(false)
 const liveStartedAtText = ref('')
@@ -835,6 +836,22 @@ async function initializePage() {
   ])
 }
 
+async function handleRefresh() {
+  if (refreshing.value)
+    return
+
+  refreshing.value = true
+  try {
+    await initializePage()
+  }
+  catch (error) {
+    console.error('刷新导播台失败:', error)
+  }
+  finally {
+    refreshing.value = false
+  }
+}
+
 onShow(() => {
   void initializePage()
 })
@@ -861,7 +878,15 @@ onUnmounted(() => {
 
 <template>
   <view class="page">
-    <view class="page-body">
+    <scroll-view
+      scroll-y
+      class="page-scroll"
+      enable-back-to-top
+      :refresher-enabled="true"
+      :refresher-triggered="refreshing"
+      @refresherrefresh="handleRefresh"
+    >
+      <view class="page-body">
       <view class="current-robot-card" @click="showRobotPopup = true">
         <view class="section-label">
           当前机器人
@@ -1078,13 +1103,19 @@ onUnmounted(() => {
           </view>
         </scroll-view>
       </view>
-    </view>
+      </view>
+    </scroll-view>
   </view>
 </template>
 
 <style scoped lang="scss">
 .page {
   min-height: 100vh;
+  background: #f5f7fb;
+}
+
+.page-scroll {
+  height: 100vh;
   background: #f5f7fb;
 }
 

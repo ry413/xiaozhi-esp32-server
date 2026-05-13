@@ -61,18 +61,18 @@ function updateTabBarText() {
     })
 
     // 设置配网tabBar文本
-    uni.setTabBarItem({
-      index: 3,
-      text: t('tabBar.deviceConfig'),
-      success: () => {},
-      fail: (err) => {
-        console.log('设置配网tabBar文本失败:', err)
-      },
-    })
+    // uni.setTabBarItem({
+    //   index: 3,
+    //   text: t('tabBar.deviceConfig'),
+    //   success: () => {},
+    //   fail: (err) => {
+    //     console.log('设置配网tabBar文本失败:', err)
+    //   },
+    // })
 
     // 设置系统tabBar文本
     uni.setTabBarItem({
-      index: 4,
+      index: 3,
       text: t('tabBar.settings'),
       success: () => {},
       fail: (err) => {

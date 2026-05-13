@@ -112,7 +112,7 @@ function createFeedbackPanel(latestCount: number, templates: string[]): TextTemp
 function createDanmuPanel() {
   return {
     latestCount: 5,
-    fixedTemplate: '【弹幕】{name} 说：{text}',
+    fixedTemplate: '【弹幕】{name}「{gender}」：{text}',
     keywordReplies: [
       { keyword: '合作', reply: '{name} 想合作，你让他私信主播联系' },
       { keyword: '价格', reply: '{name} 问价格，你可以告诉他今天的优惠' },
@@ -152,11 +152,11 @@ function createDefaultPanels(): SchemePanels {
       ignoreNumericName: true,
       ignoreMaskedName: true,
     },
-    welcome: createFeedbackPanel(3, ['【进场】{name} 进入直播间']),
+    welcome: createFeedbackPanel(3, ['【进场】{name}「{gender}」进入直播间']),
     danmu: createDanmuPanel(),
-    like: createFeedbackPanel(3, ['【点赞】{name} 给你点了 {count} 个赞']),
-    follow: createFeedbackPanel(3, ['【关注】{name} 关注了你']),
-    gift: createFeedbackPanel(3, ['【送礼】{name} 给你送了 {count} 个 {giftName}']),
+    like: createFeedbackPanel(3, ['【点赞】{name}「{gender}」给你点了 {count} 个赞']),
+    follow: createFeedbackPanel(3, ['【关注】{name}「{gender}」关注了你']),
+    gift: createFeedbackPanel(3, ['【送礼】{name}「{gender}」给你送了 {count} 个 {giftName}']),
   }
 }
 

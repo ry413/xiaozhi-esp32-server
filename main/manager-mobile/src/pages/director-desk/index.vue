@@ -11,12 +11,17 @@
 <script lang="ts" setup>
 import DirectorDeskPanel from '@/components/director-desk/DirectorDeskPanel.vue'
 import MaihuoConfigPanel from '@/components/maihuo-config/MaihuoConfigPanel.vue'
+import { useAppShare } from '@/hooks/useAppShare'
 import { isGuestMode, promptLogin, redirectToLoginIfAuthExpired } from '@/utils/auth'
 
 type DeskTab = 'director' | 'plan'
 
 const activeTab = ref<DeskTab>('director')
 const isGuest = ref(isGuestMode())
+
+useAppShare({
+  title: '导播台 - 小助助播',
+})
 
 const tabs: Array<{ label: string, value: DeskTab }> = [
   { label: '导播台', value: 'director' },

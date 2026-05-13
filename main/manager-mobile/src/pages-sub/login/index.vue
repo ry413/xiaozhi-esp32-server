@@ -13,6 +13,7 @@ import type { LoginData } from '@/api/auth'
 import type { Language } from '@/store/lang'
 import { computed, onMounted, ref } from 'vue'
 import { login, wechatLogin } from '@/api/auth'
+import { useAppShare } from '@/hooks/useAppShare'
 // 导入国际化相关功能
 import { changeLanguage, getCurrentLanguage, getSupportedLanguages, initI18n, t } from '@/i18n'
 import { useConfigStore, useUserStore } from '@/store'
@@ -412,6 +413,10 @@ const supportedLanguages = getSupportedLanguages()
 
 // 初始化国际化
 initI18n()
+
+useAppShare({
+  title: '小助助播',
+})
 
 // 切换语言
 function handleLanguageChange(lang: Language) {

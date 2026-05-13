@@ -20,11 +20,16 @@ import {
   updateVoiceCloneName,
   uploadVoiceCloneSample,
 } from '@/api/voice-clone'
+import { useAppShare } from '@/hooks/useAppShare'
 import { isGuestMode, promptLogin, redirectToLoginIfAuthExpired } from '@/utils/auth'
 import { toast } from '@/utils/toast'
 
 defineOptions({
   name: 'VoiceCloneMobile',
+})
+
+useAppShare({
+  title: '音色克隆 - 小助助播',
 })
 
 const loading = ref(false)

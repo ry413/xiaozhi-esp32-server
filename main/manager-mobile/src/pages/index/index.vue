@@ -17,12 +17,17 @@ import { onMounted, ref } from 'vue'
 import { useMessage } from 'wot-design-uni'
 import useZPaging from 'z-paging/components/z-paging/js/hooks/useZPaging.js'
 import { createAgent, deleteAgent, getAgentList } from '@/api/agent/agent'
+import { useAppShare } from '@/hooks/useAppShare'
 import { t } from '@/i18n'
 import { isGuestMode, promptLogin, redirectToLoginIfAuthExpired } from '@/utils/auth'
 import { toast } from '@/utils/toast'
 
 defineOptions({
   name: 'Home',
+})
+
+useAppShare({
+  title: '小助助播',
 })
 
 // 获取屏幕边界到安全区域距离

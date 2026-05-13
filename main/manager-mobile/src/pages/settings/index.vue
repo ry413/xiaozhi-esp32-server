@@ -12,6 +12,7 @@
 import type { Language } from '@/store/lang'
 import { computed, onMounted, reactive, ref } from 'vue'
 import { useMessage, useToast } from 'wot-design-uni'
+import { useAppShare } from '@/hooks/useAppShare'
 import { changeLanguage, getCurrentLanguage, getSupportedLanguages, t } from '@/i18n'
 import { useConfigStore } from '@/store'
 import { clearServerBaseUrlOverride, getEnvBaseUrl, getServerBaseUrlOverride, setServerBaseUrlOverride } from '@/utils'
@@ -20,6 +21,10 @@ import { isMp } from '@/utils/platform'
 
 defineOptions({
   name: 'SettingsPage',
+})
+
+useAppShare({
+  title: '小助助播',
 })
 
 const toast = useToast()
@@ -34,6 +39,9 @@ const cacheInfo = reactive({
 
 const configStore = useConfigStore()
 const isGuest = ref(isGuestMode())
+const showExternalDocGuide = ref(false)
+const FEISHU_DOC_URL = 'https://ccnp5x0z5idv.feishu.cn/wiki/Qjnaw0vfAiYuuEkXktncPlRXn0e'
+const SUPPORT_PHONE = '17727425832'
 
 // 服务端地址设置
 const baseUrlInput = ref('')
@@ -293,6 +301,27 @@ function handleLogout() {
   }).catch(() => {})
 }
 
+function openExternalDocGuide() {
+  uni.setClipboardData({
+    data: FEISHU_DOC_URL,
+    success: () => {
+      showExternalDocGuide.value = true
+    },
+    fail: () => {
+      showExternalDocGuide.value = true
+    },
+  })
+}
+
+function callSupportPhone() {
+  uni.makePhoneCall({
+    phoneNumber: SUPPORT_PHONE,
+    fail: (error) => {
+      console.error('拨打技术支持电话失败:', error)
+    },
+  })
+}
+
 onShow(() => {
   if (redirectToLoginIfAuthExpired()) {
     return
@@ -457,7 +486,7 @@ onMounted(async () => {
       </view> -->
 
       <!-- 语言设置 -->
-      <view class="mb-[32rpx]">
+      <!-- <view class="mb-[32rpx]">
         <view class="mb-[24rpx] flex items-center">
           <text class="text-[32rpx] text-[#232338] font-bold">
             {{ t('settings.languageSettings') }}
@@ -488,10 +517,10 @@ onMounted(async () => {
             </view>
           </view>
         </view>
-      </view>
+      </view> -->
 
       <!-- 语言选择弹窗 -->
-      <wd-action-sheet v-model="showLanguageSheet" :title="t('settings.selectLanguage')" :close-on-click-modal="true">
+      <!-- <wd-action-sheet v-model="showLanguageSheet" :title="t('settings.selectLanguage')" :close-on-click-modal="true">
         <view class="language-sheet">
           <scroll-view scroll-y class="language-list">
             <view
@@ -504,7 +533,52 @@ onMounted(async () => {
             </view>
           </scroll-view>
         </view>
-      </wd-action-sheet>
+      </wd-action-sheet> -->
+
+      <view class="mb-[32rpx]">
+        <view class="mb-[24rpx] flex items-center">
+          <text class="text-[32rpx] text-[#232338] font-bold">
+            关于我们
+          </text>
+        </view>
+
+        <view
+          class="border border-[#eeeeee] rounded-[24rpx] bg-[#fbfbfb] p-[32rpx]"
+          style="box-shadow: 0 4rpx 20rpx rgba(0, 0, 0, 0.06);"
+        >
+          <view
+            class="flex cursor-pointer items-center justify-between border border-[#eeeeee] rounded-[16rpx] bg-[#f5f7fb] p-[24rpx] transition-all active:bg-[#eef3ff]"
+            @click="openExternalDocGuide"
+          >
+            <view>
+              <text class="text-[28rpx] text-[#232338] font-medium">
+                使用教程
+              </text>
+              <text class="mt-[4rpx] block text-[24rpx] text-[#9d9ea3]">
+                复制链接后在浏览器打开
+              </text>
+            </view>
+            <wd-icon name="arrow-right" custom-class="text-[32rpx] text-[#9d9ea3]" />
+          </view>
+
+          <view class="contact-row" @click="callSupportPhone">
+            <view>
+              <text class="text-[28rpx] text-[#232338] font-medium">
+                技术支持
+              </text>
+              <text class="mt-[4rpx] block text-[24rpx] text-[#9d9ea3]">
+                工作日: 09:00 - 18:00
+              </text>
+            </view>
+            <view class="flex items-center">
+              <text class="mr-[16rpx] text-[28rpx] text-[#65686f] font-semibold">
+                {{ SUPPORT_PHONE }}
+              </text>
+              <wd-icon name="call" custom-class="text-[30rpx] text-[#9d9ea3]" />
+            </view>
+          </view>
+        </view>
+      </view>
 
       <view class="mt-[16rpx] mb-[32rpx]">
         <wd-button
@@ -516,6 +590,28 @@ onMounted(async () => {
         </wd-button>
       </view>
 
+      <wd-popup
+        v-model="showExternalDocGuide"
+        position="center"
+        custom-style="width: 86%; border-radius: 28rpx; overflow: visible;"
+        safe-area-inset-bottom
+      >
+        <view class="external-doc-guide">
+          <view class="guide-title">
+            文档链接已复制
+          </view>
+          <view class="guide-desc">
+            请切换到手机浏览器粘贴链接打开。
+          </view>
+          <view class="guide-url">
+            {{ FEISHU_DOC_URL }}
+          </view>
+          <wd-button type="primary" custom-class="guide-btn" @click="showExternalDocGuide = false">
+            知道了
+          </wd-button>
+        </view>
+      </wd-popup>
+
       <!-- 底部安全距离 -->
       <!-- 底部安全距离 -->
       <view style="height: env(safe-area-inset-bottom);" />
@@ -525,6 +621,78 @@ onMounted(async () => {
 
 <style lang="scss" scoped>
 // 保持与 edit.vue 一致的风格，样式主要通过类名控制
+
+.external-doc-guide {
+  position: relative;
+  padding: 48rpx 34rpx 34rpx;
+  border-radius: 28rpx;
+  background: #ffffff;
+  text-align: center;
+}
+
+.guide-arrow {
+  position: absolute;
+  top: -18rpx;
+  right: 32rpx;
+  color: #30333a;
+  font-size: 64rpx;
+  line-height: 1;
+  transform: rotate(-12deg);
+}
+
+.guide-title {
+  color: #232338;
+  font-size: 34rpx;
+  font-weight: 700;
+}
+
+.guide-desc {
+  margin-top: 22rpx;
+  color: #5f6878;
+  font-size: 28rpx;
+  line-height: 1.7;
+}
+
+.guide-url {
+  margin-top: 22rpx;
+  padding: 18rpx 20rpx;
+  border-radius: 16rpx;
+  background: #f5f7fb;
+  color: #8a94a6;
+  font-size: 24rpx;
+  line-height: 1.5;
+  word-break: break-all;
+}
+
+:deep(.guide-btn) {
+  width: 100%;
+  height: 78rpx;
+  margin-top: 28rpx;
+  border-radius: 16rpx;
+}
+
+.contact-row {
+  width: 100%;
+  margin: 16rpx 0 0;
+  padding: 24rpx;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  border: 1rpx solid #eeeeee;
+  border-radius: 16rpx;
+  background: #f5f7fb;
+  box-sizing: border-box;
+  line-height: normal;
+  text-align: left;
+
+  &::after {
+    border: none;
+  }
+
+  &:active {
+    background: #eef3ff;
+  }
+}
 
 // 语言选择弹窗样式
 .language-sheet {

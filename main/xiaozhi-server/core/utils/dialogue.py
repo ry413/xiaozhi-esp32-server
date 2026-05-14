@@ -9,6 +9,7 @@ class Message:
             self,
             role: str,
             content: str = None,
+            reasoning_content: str = None,
             uniq_id: str = None,
             tool_calls=None,
             tool_call_id=None,
@@ -17,6 +18,7 @@ class Message:
         self.uniq_id = uniq_id if uniq_id is not None else str(uuid.uuid4())
         self.role = role
         self.content = content
+        self.reasoning_content = reasoning_content
         self.tool_calls = tool_calls
         self.tool_call_id = tool_call_id
         self.is_temporary = is_temporary  # 标记临时消息（如工具调用提醒）
@@ -33,7 +35,10 @@ class Dialogue:
 
     def getMessages(self, m, dialogue):
         if m.tool_calls is not None:
-            dialogue.append({"role": m.role, "tool_calls": m.tool_calls})
+            item = {"role": m.role, "tool_calls": m.tool_calls}
+            if m.reasoning_content is not None:
+                item["reasoning_content"] = m.reasoning_content
+            dialogue.append(item)
         elif m.role == "tool":
             dialogue.append(
                 {
@@ -45,7 +50,10 @@ class Dialogue:
                 }
             )
         else:
-            dialogue.append({"role": m.role, "content": m.content})
+            item = {"role": m.role, "content": m.content}
+            if m.reasoning_content is not None:
+                item["reasoning_content"] = m.reasoning_content
+            dialogue.append(item)
 
     def get_llm_dialogue(self) -> List[Dict[str, str]]:
         # 直接调用get_llm_dialogue_with_memory，传入None作为memory_str

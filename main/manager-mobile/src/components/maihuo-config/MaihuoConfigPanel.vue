@@ -607,8 +607,9 @@ onMounted(() => {
 
 <template>
   <view class="page">
-    <view class="page-body">
-      <view class="current-scheme-card" @click="showSchemeActions = true">
+    <scroll-view scroll-y class="page-scroll" enable-back-to-top>
+      <view class="page-body">
+        <view class="current-scheme-card" @click="showSchemeActions = true">
         <view class="current-label">
           当前方案
         </view>
@@ -793,16 +794,16 @@ onMounted(() => {
                   只处理最新的几条消息
                 </text>
                 <view class="stepper">
-                  <view class="step-btn" @click="stepNumberField(selectedScheme.panels.manual, 'latestCount', -1, 1)">
+                  <view class="step-btn" @click="stepNumberField(selectedScheme.panels.manual, 'latestCount', -1)">
                     -
                   </view>
                   <input
                     :value="String(selectedScheme.panels.manual.latestCount)"
                     class="step-input"
                     type="number"
-                    @input="updateNumberField(selectedScheme.panels.manual, 'latestCount', $event.detail.value, 1)"
+                    @input="updateNumberField(selectedScheme.panels.manual, 'latestCount', $event.detail.value)"
                   >
-                  <view class="step-btn" @click="stepNumberField(selectedScheme.panels.manual, 'latestCount', 1, 1)">
+                  <view class="step-btn" @click="stepNumberField(selectedScheme.panels.manual, 'latestCount', 1)">
                     +
                   </view>
                 </view>
@@ -840,16 +841,16 @@ onMounted(() => {
                   只处理最新的几条消息
                 </text>
                 <view class="stepper">
-                  <view class="step-btn" @click="stepNumberField((selectedScheme.panels as any)[activeTab], 'latestCount', -1, 1)">
+                  <view class="step-btn" @click="stepNumberField((selectedScheme.panels as any)[activeTab], 'latestCount', -1)">
                     -
                   </view>
                   <input
                     :value="String((selectedScheme.panels as any)[activeTab].latestCount)"
                     class="step-input"
                     type="number"
-                    @input="updateNumberField((selectedScheme.panels as any)[activeTab], 'latestCount', $event.detail.value, 1)"
+                    @input="updateNumberField((selectedScheme.panels as any)[activeTab], 'latestCount', $event.detail.value)"
                   >
-                  <view class="step-btn" @click="stepNumberField((selectedScheme.panels as any)[activeTab], 'latestCount', 1, 1)">
+                  <view class="step-btn" @click="stepNumberField((selectedScheme.panels as any)[activeTab], 'latestCount', 1)">
                     +
                   </view>
                 </view>
@@ -876,16 +877,16 @@ onMounted(() => {
                   只处理最新的几条消息
                 </text>
                 <view class="stepper">
-                  <view class="step-btn" @click="stepNumberField(selectedScheme.panels.danmu, 'latestCount', -1, 1)">
+                  <view class="step-btn" @click="stepNumberField(selectedScheme.panels.danmu, 'latestCount', -1)">
                     -
                   </view>
                   <input
                     :value="String(selectedScheme.panels.danmu.latestCount)"
                     class="step-input"
                     type="number"
-                    @input="updateNumberField(selectedScheme.panels.danmu, 'latestCount', $event.detail.value, 1)"
+                    @input="updateNumberField(selectedScheme.panels.danmu, 'latestCount', $event.detail.value)"
                   >
-                  <view class="step-btn" @click="stepNumberField(selectedScheme.panels.danmu, 'latestCount', 1, 1)">
+                  <view class="step-btn" @click="stepNumberField(selectedScheme.panels.danmu, 'latestCount', 1)">
                     +
                   </view>
                 </view>
@@ -941,8 +942,9 @@ onMounted(() => {
             </view>
           </view>
         </view>
-      </template>
-    </view>
+        </template>
+      </view>
+    </scroll-view>
 
     <view v-if="showSchemeActions" class="scheme-popup-mask" @click="showSchemeActions = false">
       <view class="scheme-popup" @click.stop>
@@ -1070,7 +1072,12 @@ onMounted(() => {
 
 <style scoped lang="scss">
 .page {
-  min-height: 100vh;
+  height: 100%;
+  background: #f5f7fb;
+}
+
+.page-scroll {
+  height: 100%;
   background: #f5f7fb;
 }
 

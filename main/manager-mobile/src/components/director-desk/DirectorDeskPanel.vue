@@ -1110,12 +1110,12 @@ onUnmounted(() => {
 
 <style scoped lang="scss">
 .page {
-  min-height: 100vh;
+  height: 100%;
   background: #f5f7fb;
 }
 
 .page-scroll {
-  height: 100vh;
+  height: 100%;
   background: #f5f7fb;
 }
 

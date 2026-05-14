@@ -28,8 +28,21 @@ const tabs: Array<{ label: string, value: DeskTab }> = [
   { label: '方案配置', value: 'plan' },
 ]
 
+const activeTabIndex = computed(() => {
+  const index = tabs.findIndex(item => item.value === activeTab.value)
+  return index < 0 ? 0 : index
+})
+
 function switchTab(value: DeskTab) {
   activeTab.value = value
+}
+
+function handleSwiperChange(event: any) {
+  const index = Number(event?.detail?.current || 0)
+  const target = tabs[index]
+  if (target) {
+    activeTab.value = target.value
+  }
 }
 
 onShow(() => {
@@ -70,22 +83,36 @@ onShow(() => {
         </wd-button>
       </view>
     </view>
-    <template v-else>
-      <DirectorDeskPanel v-if="activeTab === 'director'" />
-      <MaihuoConfigPanel v-else />
-    </template>
+    <swiper
+      v-else
+      class="desk-swiper"
+      :current="activeTabIndex"
+      :duration="260"
+      @change="handleSwiperChange"
+    >
+      <swiper-item class="desk-swiper-item">
+        <DirectorDeskPanel />
+      </swiper-item>
+      <swiper-item class="desk-swiper-item">
+        <MaihuoConfigPanel />
+      </swiper-item>
+    </swiper>
   </view>
 </template>
 
 <style scoped lang="scss">
 .director-shell {
+  height: 100vh;
   min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
   background: #f4f6fb;
 }
 
 .sub-tabs {
-  position: sticky;
-  top: 0;
+  flex: none;
+  position: relative;
   z-index: 20;
   height: 76rpx;
   padding: 0 28rpx;
@@ -124,6 +151,17 @@ onShow(() => {
   border-radius: 999rpx;
   background: #336cff;
   transform: translateX(-50%);
+}
+
+.desk-swiper {
+  flex: 1;
+  height: auto;
+  min-height: 0;
+}
+
+.desk-swiper-item {
+  height: 100%;
+  overflow: hidden;
 }
 
 .guest-panel {

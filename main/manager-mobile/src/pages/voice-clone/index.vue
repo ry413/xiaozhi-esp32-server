@@ -40,11 +40,15 @@ const refreshTimer = ref<ReturnType<typeof setInterval> | null>(null)
 const uploadingId = ref('')
 const cloningId = ref('')
 const playingId = ref('')
+const recordingId = ref('')
+const recordingStartAt = ref(0)
+const recordingTarget = ref<VoiceCloneItem | null>(null)
 const renamePopupVisible = ref(false)
 const renameSubmitting = ref(false)
 const currentRenameItem = ref<VoiceCloneItem | null>(null)
 const renameValue = ref('')
 const audioContext = ref<UniApp.InnerAudioContext | null>(null)
+const recorderManager = uni.getRecorderManager()
 const isGuest = ref(isGuestMode())
 
 function syncLoginState() {
@@ -187,21 +191,43 @@ async function submitRename() {
   }
 }
 
+function chooseAudioFile() {
+  return new Promise<any>((resolve, reject) => {
+    // #ifdef MP-WEIXIN
+    const chooseMessageFile = (uni as any).chooseMessageFile || (typeof wx !== 'undefined' ? wx.chooseMessageFile : null)
+    if (!chooseMessageFile) {
+      reject(new Error('当前微信版本不支持选择文件'))
+      return
+    }
+
+    chooseMessageFile({
+      count: 1,
+      type: 'file',
+      extension: ['mp3', 'wav'],
+      success: resolve,
+      fail: reject,
+    })
+    // #endif
+
+    // #ifndef MP-WEIXIN
+    uni.chooseFile({
+      count: 1,
+      type: 'all',
+      extension: ['mp3', 'wav'],
+      success: resolve,
+      fail: reject,
+    })
+    // #endif
+  })
+}
+
 async function chooseAndUpload(item: VoiceCloneItem) {
   if (!promptLogin('登录后可上传音色样本')) {
     return
   }
 
   try {
-    const chooseResult = await new Promise<any>((resolve, reject) => {
-      uni.chooseFile({
-        count: 1,
-        type: 'all',
-        extension: ['mp3', 'wav'],
-        success: resolve,
-        fail: reject,
-      })
-    })
+    const chooseResult = await chooseAudioFile()
 
     const tempFile = chooseResult.tempFiles?.[0]
     const filePath = tempFile?.path || chooseResult.tempFilePaths?.[0]
@@ -237,6 +263,57 @@ async function chooseAndUpload(item: VoiceCloneItem) {
   }
 }
 
+async function uploadRecordedAudio(item: VoiceCloneItem, filePath: string) {
+  uploadingId.value = item.id
+  await uploadVoiceCloneSample({
+    id: item.id,
+    filePath,
+    fileName: `record-${Date.now()}.mp3`,
+  })
+  toast.success('录音上传成功')
+  await fetchVoiceClones(false)
+}
+
+function resetRecordingState() {
+  recordingId.value = ''
+  recordingStartAt.value = 0
+  recordingTarget.value = null
+}
+
+function handleRecordAudio(item: VoiceCloneItem) {
+  if (!promptLogin('登录后可录制音色样本')) {
+    return
+  }
+
+  if (recordingId.value) {
+    if (recordingId.value !== item.id) {
+      toast.warning('请先停止当前录音')
+      return
+    }
+    recorderManager.stop()
+    return
+  }
+
+  try {
+    stopAudio()
+    recordingId.value = item.id
+    recordingTarget.value = item
+    recordingStartAt.value = Date.now()
+    recorderManager.start({
+      duration: 120000,
+      sampleRate: 16000,
+      numberOfChannels: 1,
+      encodeBitRate: 48000,
+      format: 'mp3',
+    })
+    toast.success('开始录音，再次点击停止并上传')
+  }
+  catch (error: any) {
+    resetRecordingState()
+    toast.error(error?.message || '录音启动失败')
+  }
+}
+
 async function handleClone(item: VoiceCloneItem) {
   if (!promptLogin('登录后可发起音色复刻')) {
     return
@@ -269,6 +346,40 @@ function stopAudio() {
   }
   playingId.value = ''
 }
+
+recorderManager.onStop(async (result) => {
+  const target = recordingTarget.value
+  const duration = Date.now() - recordingStartAt.value
+  resetRecordingState()
+
+  if (!target) {
+    return
+  }
+  if (duration < 3000) {
+    toast.warning('录音太短，请至少录制3秒')
+    return
+  }
+  if (!result.tempFilePath) {
+    toast.error('录音文件生成失败')
+    return
+  }
+
+  try {
+    await uploadRecordedAudio(target, result.tempFilePath)
+  }
+  catch (error: any) {
+    toast.error(error?.message || '录音上传失败')
+  }
+  finally {
+    uploadingId.value = ''
+  }
+})
+
+recorderManager.onError((error) => {
+  console.error('录音失败:', error)
+  resetRecordingState()
+  toast.error('录音失败')
+})
 
 async function handlePlay(item: VoiceCloneItem) {
   if (!promptLogin('登录后可试听音色')) {
@@ -339,11 +450,17 @@ onShow(() => {
 })
 
 onHide(() => {
+  if (recordingId.value) {
+    recorderManager.stop()
+  }
   stopAutoRefresh()
   stopAudio()
 })
 
 onUnload(() => {
+  if (recordingId.value) {
+    recorderManager.stop()
+  }
   stopAutoRefresh()
   stopAudio()
 })
@@ -440,6 +557,15 @@ onUnload(() => {
           </wd-button>
           <wd-button size="small" :loading="uploadingId === item.id" @click="chooseAndUpload(item)">
             上传音频
+          </wd-button>
+          <wd-button
+            size="small"
+            plain
+            :type="recordingId === item.id ? 'danger' : 'info'"
+            :loading="uploadingId === item.id && recordingId !== item.id"
+            @click="handleRecordAudio(item)"
+          >
+            {{ recordingId === item.id ? '停止录制' : '录制音频' }}
           </wd-button>
           <wd-button
             size="small"

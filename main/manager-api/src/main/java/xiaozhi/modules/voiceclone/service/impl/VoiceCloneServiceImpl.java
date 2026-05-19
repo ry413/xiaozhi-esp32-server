@@ -443,13 +443,7 @@ public class VoiceCloneServiceImpl extends BaseServiceImpl<VoiceCloneDao, VoiceC
                 : new VoiceEnrollmentService(apiKey);
 
         VoiceEnrollmentParam customParam = buildCosyvoiceEnrollmentParam(config);
-        String currentVoiceId = entity.getVoiceId();
-
-        if (isCosyvoiceRealVoiceId(currentVoiceId)) {
-            service.updateVoice(currentVoiceId, publicAudioUrl, customParam);
-            pollCosyvoiceStatus(service, currentVoiceId, entity);
-            return;
-        }
+        String previousVoiceId = entity.getVoiceId();
 
         String prefix = buildCosyvoicePrefix(entity, config);
         Voice createdVoice = service.createVoice(targetModel, prefix, publicAudioUrl, customParam);
@@ -457,10 +451,12 @@ public class VoiceCloneServiceImpl extends BaseServiceImpl<VoiceCloneDao, VoiceC
             throw new RenException("CosyVoice创建音色失败，未返回voiceId");
         }
 
-        entity.setVoiceId(createdVoice.getVoiceId());
+        String newVoiceId = createdVoice.getVoiceId();
+        entity.setVoiceId(newVoiceId);
         entity.setTrainError("");
         baseDao.updateById(entity);
-        pollCosyvoiceStatus(service, createdVoice.getVoiceId(), entity);
+        deleteRemoteCloneVoice(service, previousVoiceId);
+        pollCosyvoiceStatus(service, newVoiceId, entity);
     }
 
     private VoiceEnrollmentParam buildCosyvoiceEnrollmentParam(Map<String, Object> config) {
@@ -615,9 +611,20 @@ public class VoiceCloneServiceImpl extends BaseServiceImpl<VoiceCloneDao, VoiceC
             VoiceEnrollmentService service = StringUtils.isNotBlank(cloneModelName)
                     ? new VoiceEnrollmentService(apiKey, cloneModelName)
                     : new VoiceEnrollmentService(apiKey);
-            service.deleteVoice(entity.getVoiceId());
+            deleteRemoteCloneVoice(service, entity.getVoiceId());
         } catch (Exception e) {
             log.warn("删除远端 CosyVoice 音色失败, id={}, voiceId={}", entity.getId(), entity.getVoiceId(), e);
+        }
+    }
+
+    private void deleteRemoteCloneVoice(VoiceEnrollmentService service, String voiceId) {
+        if (service == null || !isCosyvoiceRealVoiceId(voiceId)) {
+            return;
+        }
+        try {
+            service.deleteVoice(voiceId);
+        } catch (Exception e) {
+            log.warn("删除远端 CosyVoice 音色失败, voiceId={}", voiceId, e);
         }
     }
 

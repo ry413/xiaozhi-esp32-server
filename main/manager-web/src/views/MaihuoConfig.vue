@@ -427,12 +427,12 @@ const createDefaultPanels = () => ({
     ],
   },
   awkward: {
-    enabled: false,
+    enabled: true,
     interval: 5,
     sequential: false,
     interruptEnabled: false,
     templates: [
-      "现在冷场了，从你上次冷场聊的话题从找一个点接着聊。你可以这样开头'刚才我们聊到...'",
+      "现在冷场了，从你上次冷场聊的话题从找一个点接着聊。",
       "随便强调一下直播间福利和限时活动",
       "问观众还有什么问题或者想看的内容，调动一下氛围",
     ],
@@ -442,8 +442,8 @@ const createDefaultPanels = () => ({
     fixedTemplate: "【Admin】{text}",
   },
   basic: {
-    ignoreNumericName: true,
-    ignoreMaskedName: true,
+    ignoreNumericName: false,
+    ignoreMaskedName: false,
   },
   welcome: createFeedbackPanel(3, ['【进场】{name}「{gender}」进入直播间']),
   danmu: createDanmuPanel(),

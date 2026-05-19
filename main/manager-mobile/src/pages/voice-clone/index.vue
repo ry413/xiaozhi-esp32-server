@@ -43,6 +43,9 @@ const playingId = ref('')
 const recordingId = ref('')
 const recordingStartAt = ref(0)
 const recordingTarget = ref<VoiceCloneItem | null>(null)
+const recordDiscarding = ref(false)
+const recordPopupVisible = ref(false)
+const recordPermissionChecking = ref(false)
 const renamePopupVisible = ref(false)
 const renameSubmitting = ref(false)
 const currentRenameItem = ref<VoiceCloneItem | null>(null)
@@ -138,10 +141,10 @@ function startAutoRefresh() {
 
   stopAutoRefresh()
   refreshTimer.value = setInterval(() => {
-    if (!loading.value && !uploadingId.value) {
+    if (!loading.value && !uploadingId.value && !cloningId.value && !recordingId.value) {
       void fetchVoiceClones(false)
     }
-  }, 10000)
+  }, 5000)
 }
 
 function stopAutoRefresh() {
@@ -278,9 +281,26 @@ function resetRecordingState() {
   recordingId.value = ''
   recordingStartAt.value = 0
   recordingTarget.value = null
+  recordDiscarding.value = false
 }
 
-function handleRecordAudio(item: VoiceCloneItem) {
+function ensureRecordPermission() {
+  return new Promise<void>((resolve, reject) => {
+    // #ifdef MP-WEIXIN
+    uni.authorize({
+      scope: 'scope.record',
+      success: () => resolve(),
+      fail: (error) => reject(error),
+    })
+    // #endif
+
+    // #ifndef MP-WEIXIN
+    resolve()
+    // #endif
+  })
+}
+
+async function openRecordPopup(item: VoiceCloneItem) {
   if (!promptLogin('登录后可录制音色样本')) {
     return
   }
@@ -290,14 +310,47 @@ function handleRecordAudio(item: VoiceCloneItem) {
       toast.warning('请先停止当前录音')
       return
     }
+    recordPopupVisible.value = true
+    return
+  }
+
+  try {
+    recordPermissionChecking.value = true
+    await ensureRecordPermission()
+    stopAudio()
+    recordingTarget.value = item
+    recordPopupVisible.value = true
+  }
+  catch {
+    const result = await uni.showModal({
+      title: '需要麦克风权限',
+      content: '录制音频需要使用麦克风，请在设置中允许麦克风权限。',
+      confirmText: '去设置',
+      cancelText: '取消',
+    })
+    if (result.confirm)
+      uni.openSetting()
+  }
+  finally {
+    recordPermissionChecking.value = false
+  }
+}
+
+function startRecording() {
+  const target = recordingTarget.value
+  if (!target) {
+    toast.warning('请选择要录制的音色')
+    return
+  }
+
+  if (recordingId.value) {
     recorderManager.stop()
     return
   }
 
   try {
     stopAudio()
-    recordingId.value = item.id
-    recordingTarget.value = item
+    recordingId.value = target.id
     recordingStartAt.value = Date.now()
     recorderManager.start({
       duration: 120000,
@@ -306,12 +359,22 @@ function handleRecordAudio(item: VoiceCloneItem) {
       encodeBitRate: 48000,
       format: 'mp3',
     })
-    toast.success('开始录音，再次点击停止并上传')
+    toast.success('开始录音')
   }
   catch (error: any) {
     resetRecordingState()
     toast.error(error?.message || '录音启动失败')
   }
+}
+
+function cancelRecording() {
+  if (recordingId.value) {
+    recordDiscarding.value = true
+    recorderManager.stop()
+    return
+  }
+  recordPopupVisible.value = false
+  recordingTarget.value = null
 }
 
 async function handleClone(item: VoiceCloneItem) {
@@ -327,8 +390,12 @@ async function handleClone(item: VoiceCloneItem) {
   try {
     cloningId.value = item.id
     await cloneVoiceAudio(item.id)
+    const target = voiceCloneList.value.find(voice => voice.id === item.id)
+    if (target) {
+      target.trainStatus = 1
+      target.trainError = null
+    }
     toast.success('已提交复刻任务')
-    await fetchVoiceClones(false)
   }
   catch (error: any) {
     toast.error(error?.message || '复刻失败')
@@ -348,18 +415,42 @@ function stopAudio() {
 }
 
 recorderManager.onStop(async (result) => {
+  const shouldDiscard = recordDiscarding.value
   const target = recordingTarget.value
   const duration = Date.now() - recordingStartAt.value
   resetRecordingState()
 
+  if (shouldDiscard) {
+    recordPopupVisible.value = false
+    toast.success('已取消录音')
+    return
+  }
+
   if (!target) {
     return
   }
-  if (duration < 3000) {
-    toast.warning('录音太短，请至少录制3秒')
+  if (duration < 8000) {
+    recordingTarget.value = target
+    uni.showModal({
+      title: '录音太短',
+      content: '请至少录制 8 秒清晰人声后再上传。',
+      showCancel: false,
+      confirmText: '知道了',
+    })
+    return
+  }
+  if (duration > 60000) {
+    recordingTarget.value = target
+    uni.showModal({
+      title: '录音太长',
+      content: '请录制 60 秒以内的音频后再上传。',
+      showCancel: false,
+      confirmText: '知道了',
+    })
     return
   }
   if (!result.tempFilePath) {
+    recordingTarget.value = target
     toast.error('录音文件生成失败')
     return
   }
@@ -372,12 +463,14 @@ recorderManager.onStop(async (result) => {
   }
   finally {
     uploadingId.value = ''
+    recordPopupVisible.value = false
   }
 })
 
 recorderManager.onError((error) => {
   console.error('录音失败:', error)
   resetRecordingState()
+  recordPopupVisible.value = false
   toast.error('录音失败')
 })
 
@@ -537,10 +630,10 @@ onUnload(() => {
           <text>{{ item.languages || '-' }}</text>
         </view>
 
-        <view class="clone-card__info">
+        <!-- <view class="clone-card__info">
           <text class="clone-card__label">音色ID</text>
           <text class="clone-card__value">{{ item.voiceId || '-' }}</text>
-        </view>
+        </view> -->
 
         <view class="clone-card__info">
           <text class="clone-card__label">创建时间</text>
@@ -562,10 +655,10 @@ onUnload(() => {
             size="small"
             plain
             :type="recordingId === item.id ? 'danger' : 'info'"
-            :loading="uploadingId === item.id && recordingId !== item.id"
-            @click="handleRecordAudio(item)"
+            :loading="recordPermissionChecking || (uploadingId === item.id && recordingId !== item.id)"
+            @click="openRecordPopup(item)"
           >
-            {{ recordingId === item.id ? '停止录制' : '录制音频' }}
+            {{ recordingId === item.id ? '录制中' : '录制音频' }}
           </wd-button>
           <wd-button
             size="small"
@@ -602,6 +695,36 @@ onUnload(() => {
           <wd-button type="primary" custom-class="popup-btn" :loading="renameSubmitting" @click="submitRename">
             保存
           </wd-button>
+        </view>
+      </view>
+    </wd-popup>
+
+    <wd-popup
+      v-model="recordPopupVisible"
+      position="center"
+      custom-style="width: 88%; max-width: 640rpx; border-radius: 24rpx;"
+      safe-area-inset-bottom
+      @close="cancelRecording"
+    >
+      <view class="popup-wrap record-popup">
+        <view class="popup-title">
+          录制音频样本
+        </view>
+        <view class="record-target">
+          {{ recordingTarget?.name || '当前音色' }}
+        </view>
+        <view class="record-desc">
+          请录制 8 - 30秒清晰人声。
+        </view>
+        <view
+          class="record-main-btn"
+          :class="{ 'record-main-btn--recording': !!recordingId }"
+          @click="startRecording"
+        >
+          {{ recordingId ? '停止录制并上传' : '开始录制' }}
+        </view>
+        <view class="record-cancel-btn" @click="cancelRecording">
+          {{ recordingId ? '取消录音' : '取消' }}
         </view>
       </view>
     </wd-popup>
@@ -792,5 +915,64 @@ onUnload(() => {
 
 .popup-btn {
   flex: 1;
+}
+
+.record-popup {
+  text-align: center;
+}
+
+.record-popup :deep(.popup-title) {
+  margin-bottom: 18rpx;
+}
+
+.record-target {
+  margin-bottom: 18rpx;
+  padding: 14rpx 18rpx;
+  border-radius: 16rpx;
+  background: #f5f7fb;
+  font-size: 28rpx;
+  font-weight: 600;
+  color: #273042;
+  word-break: break-all;
+}
+
+.record-desc {
+  margin-bottom: 28rpx;
+  color: #7a8498;
+  font-size: 24rpx;
+  line-height: 1.6;
+  text-align: left;
+}
+
+.record-main-btn {
+  height: 92rpx;
+  border-radius: 999rpx;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: #336cff;
+  color: #fff;
+  font-size: 30rpx;
+  font-weight: 700;
+  box-shadow: 0 16rpx 34rpx rgba(51, 108, 255, 0.24);
+}
+
+.record-main-btn--recording {
+  background: #e95b5b;
+  box-shadow: 0 16rpx 34rpx rgba(233, 91, 91, 0.24);
+}
+
+.record-cancel-btn {
+  margin: 22rpx auto 0;
+  width: 240rpx;
+  height: 66rpx;
+  border-radius: 999rpx;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: #f1f3f8;
+  color: #4f5667;
+  font-size: 26rpx;
+  font-weight: 600;
 }
 </style>

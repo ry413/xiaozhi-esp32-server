@@ -194,6 +194,8 @@ export default {
             switch (row.trainStatus) {
                 case 0:
                     return '待复刻';
+                case 1:
+                    return '训练中';
                 case 2:
                     return '训练成功';
                 case 3:

@@ -3,7 +3,7 @@ import type { Agent } from '@/api/agent/types'
 import type { Device } from '@/api/device/types'
 import { onHide, onShow, onUnload } from '@dcloudio/uni-app'
 import { computed, onMounted, onUnmounted, ref } from 'vue'
-import { getMyBenefits, redeemActivationCode } from '@/api/activation-code/activation-code'
+import { getMyBenefits } from '@/api/activation-code/activation-code'
 import { getAgentList } from '@/api/agent/agent'
 import { getBindDevices, getDeviceAutoStartPlan, getDeviceStatus, sendDeviceCommand, updateDeviceAutoStartPlan } from '@/api/device'
 import { getLivePlanDetail, getLivePlanList } from '@/api/live-plan/live-plan'
@@ -60,9 +60,9 @@ const benefitValue = ref('-')
 const canStartLiveByBenefits = ref(false)
 const benefitMembershipActive = ref(false)
 const benefitMembershipEndAt = ref('')
+const benefitMembershipDailyRemainingSeconds = ref(0)
+const benefitBalanceSeconds = ref(0)
 
-const redeemCode = ref('')
-const redeemLoading = ref(false)
 const startLiveLoading = ref(false)
 const autoStartPlanLoading = ref(false)
 const listLoading = ref(false)
@@ -347,22 +347,27 @@ async function fetchUserBenefits() {
     const benefit: any = await getMyBenefits()
     benefitMembershipActive.value = benefit?.membershipActive === true
     benefitMembershipEndAt.value = benefit?.membershipEndAt || ''
+    const balanceSeconds = Number(benefit?.balanceSeconds) || 0
+    benefitBalanceSeconds.value = balanceSeconds
 
     if (benefitMembershipActive.value && benefitMembershipEndAt.value) {
-      benefitLabel.value = '有效期'
-      benefitValue.value = formatAbsoluteTime(benefitMembershipEndAt.value)
+      const dailyRemainingSeconds = Number(benefit?.membershipDailyRemainingSeconds) || 0
+      benefitMembershipDailyRemainingSeconds.value = dailyRemainingSeconds
+      benefitLabel.value = '剩余可用时长'
+      benefitValue.value = `月卡今日 ${formatBenefitDuration(dailyRemainingSeconds)} / 点卡 ${formatBenefitDuration(balanceSeconds)}`
       canStartLiveByBenefits.value = true
       return
     }
 
-    const balanceSeconds = Number(benefit?.balanceSeconds) || 0
     benefitLabel.value = '剩余可用时长'
-    benefitValue.value = formatBenefitDuration(balanceSeconds)
+    benefitValue.value = `点卡 ${formatBenefitDuration(balanceSeconds)}`
     canStartLiveByBenefits.value = balanceSeconds > 0
   }
   catch {
     benefitMembershipActive.value = false
     benefitMembershipEndAt.value = ''
+    benefitMembershipDailyRemainingSeconds.value = 0
+    benefitBalanceSeconds.value = 0
     benefitLabel.value = '有效期'
     benefitValue.value = '-'
     canStartLiveByBenefits.value = false
@@ -665,13 +670,16 @@ async function fetchLiveStatus() {
 
     if (!benefitMembershipActive.value && liveData?.benefit_balance_seconds !== undefined) {
       const balanceSeconds = Number(liveData.benefit_balance_seconds) || 0
+      benefitBalanceSeconds.value = balanceSeconds
       benefitLabel.value = '剩余可用时长'
-      benefitValue.value = formatBenefitDuration(balanceSeconds)
+      benefitValue.value = `点卡 ${formatBenefitDuration(balanceSeconds)}`
       canStartLiveByBenefits.value = balanceSeconds > 0
     }
     else if (benefitMembershipActive.value && benefitMembershipEndAt.value) {
-      benefitLabel.value = '有效期'
-      benefitValue.value = formatAbsoluteTime(benefitMembershipEndAt.value)
+      if (liveData?.benefit_balance_seconds !== undefined)
+        benefitBalanceSeconds.value = Number(liveData.benefit_balance_seconds) || 0
+      benefitLabel.value = '剩余可用时长'
+      benefitValue.value = `月卡今日 ${formatBenefitDuration(benefitMembershipDailyRemainingSeconds.value)} / 点卡 ${formatBenefitDuration(benefitBalanceSeconds.value)}`
       canStartLiveByBenefits.value = true
     }
 
@@ -729,30 +737,6 @@ async function refreshSelectedRobotState(robotId: string) {
   await fetchLiveStatus()
   if (selectedRobotId.value === robotId)
     await fetchAutoStartPlan(robotId)
-}
-
-async function handleRedeem() {
-  if (!redeemCode.value) {
-    toast.warning('请输入激活码')
-    return
-  }
-
-  if (redeemLoading.value)
-    return
-
-  try {
-    redeemLoading.value = true
-    await redeemActivationCode(redeemCode.value)
-    redeemCode.value = ''
-    toast.success('兑换成功')
-    await fetchUserBenefits()
-  }
-  catch (error: any) {
-    toast.error(error?.message || '兑换失败')
-  }
-  finally {
-    redeemLoading.value = false
-  }
 }
 
 async function handleSendMessage() {
@@ -928,6 +912,16 @@ async function initializePage() {
   await fetchRobotList()
 }
 
+defineExpose({
+  refreshPlans: async () => {
+    await fetchLivePlanData()
+    ensureRobotPlanSelection(selectedRobotId.value)
+    await fetchAutoStartPlan(selectedRobotId.value)
+  },
+  refreshBenefits: fetchUserBenefits,
+  refresh: initializePage,
+})
+
 async function handleRefresh() {
   if (refreshing.value)
     return
@@ -1033,18 +1027,6 @@ onUnmounted(() => {
               <text class="benefit-value">
                 {{ benefitValue }}
               </text>
-            </view>
-
-            <view class="redeem-row">
-              <input
-                v-model.trim="redeemCode"
-                class="redeem-input"
-                placeholder="输入激活码后兑换"
-                @confirm="handleRedeem"
-              >
-              <view class="redeem-btn" @click="handleRedeem">
-                {{ redeemLoading ? '兑换中...' : '兑换' }}
-              </view>
             </view>
           </view>
 
@@ -1342,14 +1324,6 @@ onUnmounted(() => {
   color: #4b5568;
 }
 
-.redeem-row {
-  display: flex;
-  align-items: center;
-  gap: 16rpx;
-  margin-top: 18rpx;
-}
-
-.redeem-input,
 .message-input,
 .plan-selector {
   box-sizing: border-box;
@@ -1358,7 +1332,6 @@ onUnmounted(() => {
   background: #fff;
 }
 
-.redeem-input,
 .message-input {
   flex: 1;
   height: 68rpx;
@@ -1367,7 +1340,6 @@ onUnmounted(() => {
   color: #1f2430;
 }
 
-.redeem-btn,
 .send-btn,
 .start-btn {
   display: flex;
@@ -1413,7 +1385,6 @@ onUnmounted(() => {
   line-height: 1.45;
 }
 
-.redeem-btn,
 .send-btn {
   min-width: 120rpx;
   padding: 0 22rpx;

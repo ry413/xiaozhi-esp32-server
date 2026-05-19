@@ -9,15 +9,19 @@
 </route>
 
 <script lang="ts" setup>
+import BenefitsPanel from '@/components/director-desk/BenefitsPanel.vue'
 import DirectorDeskPanel from '@/components/director-desk/DirectorDeskPanel.vue'
 import MaihuoConfigPanel from '@/components/maihuo-config/MaihuoConfigPanel.vue'
 import { useAppShare } from '@/hooks/useAppShare'
 import { isGuestMode, promptLogin, redirectToLoginIfAuthExpired } from '@/utils/auth'
 
-type DeskTab = 'director' | 'plan'
+type DeskTab = 'director' | 'plan' | 'benefits'
 
 const activeTab = ref<DeskTab>('director')
 const isGuest = ref(isGuestMode())
+const directorPanelRef = ref<InstanceType<typeof DirectorDeskPanel> | null>(null)
+const planDirty = ref(false)
+const benefitDirty = ref(false)
 
 useAppShare({
   title: '导播台 - 小助助播',
@@ -26,6 +30,7 @@ useAppShare({
 const tabs: Array<{ label: string, value: DeskTab }> = [
   { label: '导播台', value: 'director' },
   { label: '方案配置', value: 'plan' },
+  { label: '权益', value: 'benefits' },
 ]
 
 const activeTabIndex = computed(() => {
@@ -35,6 +40,10 @@ const activeTabIndex = computed(() => {
 
 function switchTab(value: DeskTab) {
   activeTab.value = value
+  if (value === 'director') {
+    void refreshDirectorPlansIfNeeded()
+    void refreshDirectorBenefitsIfNeeded()
+  }
 }
 
 function handleSwiperChange(event: any) {
@@ -42,7 +51,35 @@ function handleSwiperChange(event: any) {
   const target = tabs[index]
   if (target) {
     activeTab.value = target.value
+    if (target.value === 'director') {
+      void refreshDirectorPlansIfNeeded()
+      void refreshDirectorBenefitsIfNeeded()
+    }
   }
+}
+
+function handlePlansChanged() {
+  planDirty.value = true
+}
+
+function handleBenefitsChanged() {
+  benefitDirty.value = true
+}
+
+async function refreshDirectorPlansIfNeeded() {
+  if (!planDirty.value || isGuest.value)
+    return
+
+  planDirty.value = false
+  await directorPanelRef.value?.refreshPlans?.()
+}
+
+async function refreshDirectorBenefitsIfNeeded() {
+  if (!benefitDirty.value || isGuest.value)
+    return
+
+  benefitDirty.value = false
+  await directorPanelRef.value?.refreshBenefits?.()
 }
 
 onShow(() => {
@@ -91,10 +128,13 @@ onShow(() => {
       @change="handleSwiperChange"
     >
       <swiper-item class="desk-swiper-item">
-        <DirectorDeskPanel />
+        <DirectorDeskPanel ref="directorPanelRef" />
       </swiper-item>
       <swiper-item class="desk-swiper-item">
-        <MaihuoConfigPanel />
+        <MaihuoConfigPanel @plans-changed="handlePlansChanged" />
+      </swiper-item>
+      <swiper-item class="desk-swiper-item">
+        <BenefitsPanel @benefits-changed="handleBenefitsChanged" />
       </swiper-item>
     </swiper>
   </view>

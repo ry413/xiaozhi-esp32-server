@@ -117,7 +117,7 @@ function createDanmuPanel() {
       { keyword: '合作', reply: '{name} 想合作，你让他私信主播联系' },
       { keyword: '价格', reply: '{name} 问价格，你可以告诉他今天的优惠' },
     ],
-    blockedKeywords: ['垃圾', '100遍', '音量', '退款', '无聊'],
+    blockedKeywords: ["垃圾", "100遍", "伊斯兰教", "基督教", "佛教", "股票", "风水", "算命", "比特币", "区块链", "主席", "书记", "习大大", "习近平", "毛泽东", "邓小平", "江泽民", "胡锦涛", "你妈", "傻逼", "举报", "共产党", "违规", "无人", "少羽", "音乐", "运营", "管理员", "开发者", "音量", "退款", "无聊"],
   }
 }
 
@@ -134,7 +134,7 @@ function createDefaultPanels(): SchemePanels {
       ],
     },
     awkward: {
-      enabled: false,
+      enabled: true,
       interval: 5,
       sequential: false,
       interruptEnabled: false,
@@ -149,8 +149,8 @@ function createDefaultPanels(): SchemePanels {
       fixedTemplate: '【Admin】{text}',
     },
     basic: {
-      ignoreNumericName: true,
-      ignoreMaskedName: true,
+      ignoreNumericName: false,
+      ignoreMaskedName: false,
     },
     welcome: createFeedbackPanel(3, ['【进场】{name}「{gender}」进入直播间']),
     danmu: createDanmuPanel(),

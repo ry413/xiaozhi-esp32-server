@@ -69,7 +69,6 @@ class LLMProvider(LLMProviderBase):
         if model_key_msg:
             logger.bind(tag=TAG).error(model_key_msg)
         self.client = openai.OpenAI(api_key=self.api_key, base_url=self.base_url, timeout=custom_timeout)
-        self.last_reasoning_content = None
 
     @staticmethod
     def normalize_dialogue(dialogue):
@@ -91,7 +90,6 @@ class LLMProvider(LLMProviderBase):
 
     def response(self, session_id, dialogue, **kwargs):
         dialogue = self.normalize_dialogue(dialogue)
-        self.last_reasoning_content = None
 
         request_params = {
             "model": self.model_name,
@@ -117,20 +115,13 @@ class LLMProvider(LLMProviderBase):
         responses = self.client.chat.completions.create(**request_params)
 
         is_active = True
-        reasoning_parts = []
         try:            
             for chunk in responses:
                 try:
                     delta = chunk.choices[0].delta if getattr(chunk, "choices", None) else None
                     content = getattr(delta, "content", "") if delta else ""
-                    reasoning_content = (
-                        getattr(delta, "reasoning_content", "") if delta else ""
-                    )
                 except IndexError:
                     content = ""
-                    reasoning_content = ""
-                if reasoning_content:
-                    reasoning_parts.append(reasoning_content)
                 if content:
                     if "<think>" in content:
                         is_active = False
@@ -141,12 +132,10 @@ class LLMProvider(LLMProviderBase):
                     if is_active:
                         yield content
         finally:
-            self.last_reasoning_content = "".join(reasoning_parts) or None
             responses.close()
 
     def response_with_functions(self, session_id, dialogue, functions=None, **kwargs):
         dialogue = self.normalize_dialogue(dialogue)
-        self.last_reasoning_content = None
 
         request_params = {
             "model": self.model_name,
@@ -171,15 +160,11 @@ class LLMProvider(LLMProviderBase):
 
         stream = self.client.chat.completions.create(**request_params)
 
-        reasoning_parts = []
         try:
             for chunk in stream:
                 if getattr(chunk, "choices", None):
                     delta = chunk.choices[0].delta
                     content = getattr(delta, "content", "")
-                    reasoning_content = getattr(delta, "reasoning_content", "")
-                    if reasoning_content:
-                        reasoning_parts.append(reasoning_content)
                     tool_calls = getattr(delta, "tool_calls", None)
                     yield content, tool_calls
                 elif isinstance(getattr(chunk, "usage", None), CompletionUsage):
@@ -190,5 +175,4 @@ class LLMProvider(LLMProviderBase):
                         f"共计 {getattr(usage_info, 'total_tokens', '未知')}"
                     )
         finally:
-            self.last_reasoning_content = "".join(reasoning_parts) or None
             stream.close()

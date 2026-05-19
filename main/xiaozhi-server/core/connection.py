@@ -1164,15 +1164,7 @@ class ConnectionHandler:
                 if len(response_message) > 0:
                     streamed_text = "".join(response_message)
                     self.tts.store_tts_text(current_sentence_id, streamed_text)
-                    self.dialogue.put(
-                        Message(
-                            role="assistant",
-                            content=streamed_text,
-                            reasoning_content=getattr(
-                                self.llm, "last_reasoning_content", None
-                            ),
-                        )
-                    )
+                    self.dialogue.put(Message(role="assistant", content=streamed_text))
                 response_message.clear()
 
                 # 收集所有工具调用的 Future
@@ -1229,15 +1221,7 @@ class ConnectionHandler:
                 f"大模型回复 [{self._get_log_context()}]: {text_buff}"
             )
             self.tts.store_tts_text(current_sentence_id, text_buff)
-            self.dialogue.put(
-                Message(
-                    role="assistant",
-                    content=text_buff,
-                    reasoning_content=getattr(
-                        self.llm, "last_reasoning_content", None
-                    ),
-                )
-            )
+            self.dialogue.put(Message(role="assistant", content=text_buff))
 
             # 更新工具调用统计：如果没有调用工具，增加计数
             if depth == 0 and not tool_call_flag:
@@ -1332,15 +1316,7 @@ class ConnectionHandler:
                 }
                 for idx, (_, tool_call_data) in enumerate(need_llm_tools)
             ]
-            self.dialogue.put(
-                Message(
-                    role="assistant",
-                    tool_calls=all_tool_calls,
-                    reasoning_content=getattr(
-                        self.llm, "last_reasoning_content", None
-                    ),
-                )
-            )
+            self.dialogue.put(Message(role="assistant", tool_calls=all_tool_calls))
 
             for result, tool_call_data in need_llm_tools:
                 text = result.result

@@ -28,6 +28,7 @@ class TTSProvider(TTSProviderBase):
         self.region = config.get("region")
         self.output_file = config.get("output_dir")
         self.audio_file_type = config.get("format", "wav")
+        self.sample_rate = int(config.get("sample_rate", 24000))
 
         # 音频参数配置
         speed = config.get("speed", "0")
@@ -145,7 +146,8 @@ class TTSProvider(TTSProviderBase):
             "Codec": self.audio_file_type,  # 音频编码格式
             "Volume": self.volume,  # 音量
             "Speed": self.speed,  # 语速
-            "SampleRate": self.conn.sample_rate,  # 采样率部分支持24000
+            # 测试脚本等场景可能不会挂载真实连接对象。
+            "SampleRate": getattr(self.conn, "sample_rate", self.sample_rate),
         }
 
         try:

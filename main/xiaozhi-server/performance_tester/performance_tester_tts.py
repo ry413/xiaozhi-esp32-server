@@ -2,6 +2,7 @@ import asyncio
 import logging
 import os
 import time
+from types import SimpleNamespace
 from typing import Dict
 import yaml
 from tabulate import tabulate
@@ -43,6 +44,9 @@ class TTSPerformanceTester:
 
             module_type = config.get("type", tts_name)
             tts = create_tts_instance(module_type, config, delete_audio_file=True)
+            tts.conn = SimpleNamespace(
+                sample_rate=int(config.get("sample_rate", 24000))
+            )
 
             print(f"测试 TTS: {tts_name}")
 

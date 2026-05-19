@@ -144,4 +144,13 @@ public interface DeviceService extends BaseService<DeviceEntity> {
      * @param deviceId 设备ID
      */
     void setDeviceWallpaperIds(String deviceId, List<Integer> wallpaperIds);
+
+    /**
+     * 设置设备自动启动方案编号
+     *
+     * @param userId 用户ID
+     * @param deviceId 设备ID
+     * @param planNo 方案编号
+     */
+    void updateAutoStartPlanNo(Long userId, String deviceId, String planNo);
 }

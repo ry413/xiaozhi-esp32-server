@@ -45,6 +45,9 @@ public class DeviceEntity {
     @Schema(description = "智能体ID")
     private String agentId;
 
+    @Schema(description = "自动启动方案编号")
+    private String autoStartPlanNo;
+
     @Schema(description = "固件版本号")
     private String appVersion;
 

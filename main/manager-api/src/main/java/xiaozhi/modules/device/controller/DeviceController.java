@@ -28,6 +28,7 @@ import xiaozhi.common.redis.RedisUtils;
 import xiaozhi.common.user.UserDetail;
 import xiaozhi.common.utils.Result;
 import xiaozhi.modules.device.dto.DeviceManualAddDTO;
+import xiaozhi.modules.device.dto.DeviceAutoStartPlanDTO;
 import xiaozhi.modules.device.dto.DeviceRegisterDTO;
 import xiaozhi.modules.device.dto.DeviceToolsCallReqDTO;
 import xiaozhi.modules.device.dto.DeviceUnBindDTO;
@@ -35,6 +36,8 @@ import xiaozhi.modules.device.dto.DeviceUpdateDTO;
 import xiaozhi.modules.device.entity.DeviceEntity;
 import xiaozhi.modules.device.service.DeviceService;
 import xiaozhi.modules.device.vo.DeviceOwnerVO;
+import xiaozhi.modules.liveplan.entity.LivePlanEntity;
+import xiaozhi.modules.liveplan.service.LivePlanService;
 import xiaozhi.modules.security.user.SecurityUser;
 import xiaozhi.modules.sys.dto.SysUserDTO;
 import xiaozhi.modules.sys.service.SysParamsService;
@@ -49,14 +52,16 @@ public class DeviceController {
     private final SysParamsService sysParamsService;
     private final RestTemplate restTemplate;
     private final SysUserService sysUserService;
+    private final LivePlanService livePlanService;
 
     public DeviceController(DeviceService deviceService, RedisUtils redisUtils, SysParamsService sysParamsService,
-            RestTemplate restTemplate, SysUserService sysUserService) {
+            RestTemplate restTemplate, SysUserService sysUserService, LivePlanService livePlanService) {
         this.deviceService = deviceService;
         this.redisUtils = redisUtils;
         this.sysParamsService = sysParamsService;
         this.restTemplate = restTemplate;
         this.sysUserService = sysUserService;
+        this.livePlanService = livePlanService;
     }
 
     @PostMapping("/bind/{agentId}/{deviceCode}")
@@ -349,5 +354,45 @@ public class DeviceController {
         owner.setId(user.getId());
         owner.setUsername(user.getUsername());
         return new Result<DeviceOwnerVO>().ok(owner);
+    }
+
+    @PutMapping("/auto-start-plan/{deviceId}")
+    @Operation(summary = "设置设备自动启动方案")
+    @RequiresPermissions("sys:role:normal")
+    public Result<Void> updateAutoStartPlan(@PathVariable String deviceId,
+            @Valid @RequestBody DeviceAutoStartPlanDTO dto) {
+        UserDetail user = SecurityUser.getUser();
+        deviceService.updateAutoStartPlanNo(user.getId(), deviceId, dto.getPlanNo());
+        return new Result<>();
+    }
+
+    @GetMapping("/auto-start-plan/{deviceId}")
+    @Operation(summary = "获取设备自动启动方案详情")
+    @RequiresPermissions("sys:role:normal")
+    public Result<LivePlanEntity> getAutoStartPlan(@PathVariable String deviceId) {
+        DeviceEntity entity = deviceService.selectById(deviceId);
+        UserDetail user = SecurityUser.getUser();
+        if (entity == null || !user.getId().equals(entity.getUserId())) {
+            return new Result<LivePlanEntity>().error("设备不存在");
+        }
+        if (StringUtils.isBlank(entity.getAutoStartPlanNo())) {
+            return new Result<LivePlanEntity>().ok(null);
+        }
+        return new Result<LivePlanEntity>()
+                .ok(livePlanService.getMineByPlanNo(user.getId(), entity.getAutoStartPlanNo()));
+    }
+
+    @GetMapping("/auto-start-plan/thalora/{deviceId}")
+    @Operation(summary = "给thalora端使用的获取设备自动启动方案详情")
+    public Result<LivePlanEntity> thaloraGetAutoStartPlan(@PathVariable String deviceId) {
+        DeviceEntity entity = deviceService.selectById(deviceId);
+        if (entity == null || entity.getUserId() == null) {
+            return new Result<LivePlanEntity>().error("设备不存在");
+        }
+        if (StringUtils.isBlank(entity.getAutoStartPlanNo())) {
+            return new Result<LivePlanEntity>().ok(null);
+        }
+        return new Result<LivePlanEntity>()
+                .ok(livePlanService.getMineByPlanNo(entity.getUserId(), entity.getAutoStartPlanNo()));
     }
 }

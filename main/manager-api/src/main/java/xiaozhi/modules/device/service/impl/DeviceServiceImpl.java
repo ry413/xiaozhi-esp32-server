@@ -320,6 +320,20 @@ public class DeviceServiceImpl extends BaseServiceImpl<DeviceDao, DeviceEntity> 
     }
 
     @Override
+    public void updateAutoStartPlanNo(Long userId, String deviceId, String planNo) {
+        DeviceEntity device = baseDao.selectById(deviceId);
+        if (device == null || !userId.equals(device.getUserId())) {
+            throw new RenException(ErrorCode.DEVICE_NOT_EXIST);
+        }
+
+        UpdateWrapper<DeviceEntity> wrapper = new UpdateWrapper<>();
+        wrapper.eq("id", deviceId)
+                .eq("user_id", userId)
+                .set("auto_start_plan_no", StringUtils.isBlank(planNo) ? null : planNo.trim());
+        baseDao.update(null, wrapper);
+    }
+
+    @Override
     public void deleteByUserId(Long userId) {
         UpdateWrapper<DeviceEntity> wrapper = new UpdateWrapper<>();
         wrapper.eq("user_id", userId);

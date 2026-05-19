@@ -5,7 +5,7 @@ import { onHide, onShow, onUnload } from '@dcloudio/uni-app'
 import { computed, onMounted, onUnmounted, ref } from 'vue'
 import { getMyBenefits, redeemActivationCode } from '@/api/activation-code/activation-code'
 import { getAgentList } from '@/api/agent/agent'
-import { getBindDevices, getDeviceStatus, sendDeviceCommand } from '@/api/device'
+import { getBindDevices, getDeviceAutoStartPlan, getDeviceStatus, sendDeviceCommand, updateDeviceAutoStartPlan } from '@/api/device'
 import { getLivePlanDetail, getLivePlanList } from '@/api/live-plan/live-plan'
 import { getLiveStatus, getSentMsg, sendManualMsg, startLive, stopLive } from '@/api/live-streaming/live-streaming'
 import { toast } from '@/utils/toast'
@@ -48,6 +48,7 @@ const showRobotPopup = ref(false)
 
 const livePlanOptions = ref<LivePlanOption[]>([])
 const selectedPlanNoMap = ref<Record<string, string>>({})
+const autoStartPlanNoMap = ref<Record<string, string>>({})
 
 const pendingMessage = ref('')
 const consoleMessages = ref<ConsoleMessage[]>([])
@@ -63,6 +64,7 @@ const benefitMembershipEndAt = ref('')
 const redeemCode = ref('')
 const redeemLoading = ref(false)
 const startLiveLoading = ref(false)
+const autoStartPlanLoading = ref(false)
 const listLoading = ref(false)
 const refreshing = ref(false)
 
@@ -109,6 +111,16 @@ const currentSelectedPlanNo = computed({
       [selectedRobotId.value]: value || '',
     }
   },
+})
+
+const currentAutoStartPlanNo = computed(() => {
+  if (!selectedRobotId.value)
+    return ''
+  return autoStartPlanNoMap.value[selectedRobotId.value] || ''
+})
+
+const isCurrentPlanAutoStart = computed(() => {
+  return !!currentSelectedPlanNo.value && currentAutoStartPlanNo.value === currentSelectedPlanNo.value
 })
 
 function delay(ms: number) {
@@ -392,13 +404,53 @@ function ensureRobotPlanSelections() {
 
 function setRobotPlanSelectionByPlanNo(robotId?: string, planNo?: string) {
   if (!robotId || !planNo)
-    return
+    return false
   const matchedPlan = livePlanOptions.value.find(item => String(item.planNo) === String(planNo))
   if (!matchedPlan)
-    return
+    return false
   selectedPlanNoMap.value = {
     ...selectedPlanNoMap.value,
     [robotId]: matchedPlan.planNo,
+  }
+  return true
+}
+
+async function fetchAutoStartPlan(robotId?: string) {
+  if (!robotId)
+    return
+
+  try {
+    const plan: any = await getDeviceAutoStartPlan(robotId)
+    const planNo = plan?.planNo || plan?.plan_no || ''
+    if (!planNo) {
+      autoStartPlanNoMap.value = {
+        ...autoStartPlanNoMap.value,
+        [robotId]: '',
+      }
+      return
+    }
+
+    const matched = livePlanOptions.value.find(item => String(item.planNo) === String(planNo))
+    if (!matched) {
+      await updateDeviceAutoStartPlan(robotId, '')
+      autoStartPlanNoMap.value = {
+        ...autoStartPlanNoMap.value,
+        [robotId]: '',
+      }
+      return
+    }
+
+    setRobotPlanSelectionByPlanNo(robotId, matched.planNo)
+    autoStartPlanNoMap.value = {
+      ...autoStartPlanNoMap.value,
+      [robotId]: matched.planNo,
+    }
+  }
+  catch {
+    autoStartPlanNoMap.value = {
+      ...autoStartPlanNoMap.value,
+      [robotId]: '',
+    }
   }
 }
 
@@ -457,6 +509,7 @@ async function fetchRobotList() {
     selectedRobotId.value = stillExists ? selectedRobotId.value : robots.value[0].id
     ensureRobotPlanSelections()
     await fetchLiveStatus()
+    await fetchAutoStartPlan(selectedRobotId.value)
   }
   catch (error: any) {
     robots.value = []
@@ -669,7 +722,13 @@ function selectRobot(id: string) {
   showRobotPopup.value = false
   stopSentMsgTracking()
   setConsoleMessagesForDevice(selectedRobot.value?.mac || '')
-  void fetchLiveStatus()
+  void refreshSelectedRobotState(id)
+}
+
+async function refreshSelectedRobotState(robotId: string) {
+  await fetchLiveStatus()
+  if (selectedRobotId.value === robotId)
+    await fetchAutoStartPlan(robotId)
 }
 
 async function handleRedeem() {
@@ -821,6 +880,39 @@ async function handleStartStopLive() {
   }
 }
 
+async function handleToggleAutoStartPlan() {
+  if (!selectedRobot.value) {
+    toast.warning('请先选择机器人')
+    return
+  }
+
+  const targetPlanNo = currentSelectedPlanNo.value
+  if (!targetPlanNo) {
+    toast.warning('请选择导播方案')
+    return
+  }
+
+  if (autoStartPlanLoading.value)
+    return
+
+  try {
+    autoStartPlanLoading.value = true
+    const nextPlanNo = isCurrentPlanAutoStart.value ? '' : targetPlanNo
+    await updateDeviceAutoStartPlan(selectedRobot.value.id, nextPlanNo)
+    autoStartPlanNoMap.value = {
+      ...autoStartPlanNoMap.value,
+      [selectedRobot.value.id]: nextPlanNo,
+    }
+    toast.success(nextPlanNo ? '已开启开机自动导播' : '已关闭开机自动导播')
+  }
+  catch (error: any) {
+    toast.error(error?.message || '设置开机自动导播失败')
+  }
+  finally {
+    autoStartPlanLoading.value = false
+  }
+}
+
 function handlePlanChange(event: any) {
   const index = Number(event?.detail?.value)
   const target = livePlanOptions.value[index]
@@ -832,8 +924,8 @@ async function initializePage() {
   await Promise.all([
     fetchLivePlanData(),
     fetchUserBenefits(),
-    fetchRobotList(),
   ])
+  await fetchRobotList()
 }
 
 async function handleRefresh() {
@@ -971,6 +1063,22 @@ onUnmounted(() => {
             <view class="start-btn" @click="handleStartStopLive">
               {{ startLiveLoading ? (isLiveRunning ? '停止中...' : '启动中...') : (isLiveRunning ? '停止导播' : '启动导播') }}
             </view>
+          </view>
+
+          <view class="auto-start-row">
+            <view class="auto-start-text">
+              <view class="auto-start-title">
+                开机自动导播
+              </view>
+              <view class="auto-start-desc">
+                {{ isCurrentPlanAutoStart ? '当前方案已设为开机自动启动' : '开启后设备上线时自动启动当前方案' }}
+              </view>
+            </view>
+            <wd-switch
+              :model-value="isCurrentPlanAutoStart"
+              :disabled="autoStartPlanLoading"
+              @change="handleToggleAutoStartPlan"
+            />
           </view>
 
           <view v-if="liveStartedAtText || liveRuntimeText || roomStatusText !== '-'" class="status-row">
@@ -1272,6 +1380,37 @@ onUnmounted(() => {
   color: #fff;
   background: #5d90ea;
   flex-shrink: 0;
+}
+
+.auto-start-row {
+  margin-top: 16rpx;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 20rpx;
+  min-height: 76rpx;
+  padding: 16rpx 20rpx;
+  border-radius: 16rpx;
+  border: 2rpx solid #d8e4ff;
+  background: #f5f8ff;
+}
+
+.auto-start-text {
+  min-width: 0;
+  flex: 1;
+}
+
+.auto-start-title {
+  color: #4f7fe8;
+  font-size: 23rpx;
+  font-weight: 600;
+}
+
+.auto-start-desc {
+  margin-top: 6rpx;
+  color: #8892a8;
+  font-size: 20rpx;
+  line-height: 1.45;
 }
 
 .redeem-btn,

@@ -90,3 +90,30 @@ export function sendDeviceCommand(deviceId: string, data: Record<string, any>) {
     },
   })
 }
+
+/**
+ * 设置设备开机自动导播方案
+ * @param deviceId 设备ID
+ * @param planNo 直播方案ID
+ */
+export function updateDeviceAutoStartPlan(deviceId: string, planNo: string) {
+  return http.Put(`/device/auto-start-plan/${deviceId}`, {
+    planNo,
+  })
+}
+
+/**
+ * 获取设备开机自动导播方案
+ * @param deviceId 设备ID
+ */
+export function getDeviceAutoStartPlan(deviceId: string) {
+  return http.Get<any | null>(`/device/auto-start-plan/${deviceId}`, {
+    meta: {
+      ignoreAuth: false,
+      toast: false,
+    },
+    cacheFor: {
+      expire: 0,
+    },
+  })
+}

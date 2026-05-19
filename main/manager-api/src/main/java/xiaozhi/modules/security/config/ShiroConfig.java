@@ -93,6 +93,7 @@ public class ShiroConfig {
         filterMap.put("/device/directChat/**", "server");
         filterMap.put("/device/online/**", "server");
         filterMap.put("/device/owner/**", "server");
+        filterMap.put("/device/auto-start-plan/thalora/**", "server");
         filterMap.put("/agent/chat-history/report", "server");
         filterMap.put("/agent/llm-report/report", "server");
         filterMap.put("/agent/chat-history/download/**", "anon");

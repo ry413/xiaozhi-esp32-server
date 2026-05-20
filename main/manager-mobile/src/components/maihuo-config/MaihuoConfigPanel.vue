@@ -478,6 +478,15 @@ function removeListItem(list: string[], index: number) {
   list.splice(index, 1)
 }
 
+function moveListItem<T>(list: T[], index: number, delta: number) {
+  const nextIndex = index + delta
+  if (nextIndex < 0 || nextIndex >= list.length)
+    return
+
+  const [item] = list.splice(index, 1)
+  list.splice(nextIndex, 0, item)
+}
+
 function getTemplatePlaceholder(tabName: string) {
   const map: Record<string, string> = {
     welcome: '新增欢迎话术',
@@ -732,8 +741,16 @@ onMounted(() => {
                 </text>
                 <view v-for="(item, index) in selectedScheme.panels.timed.templates" :key="`timed-${index}`" class="template-item">
                   <input v-model="selectedScheme.panels.timed.templates[index]" class="template-input" maxlength="200">
-                  <view class="remove-btn" @click="removeListItem(selectedScheme.panels.timed.templates, index)">
-                    ×
+                  <view class="row-actions">
+                    <view class="sort-btn" :class="{ 'sort-btn--disabled': index === 0 }" @click="moveListItem(selectedScheme.panels.timed.templates, index, -1)">
+                      ↑
+                    </view>
+                    <view class="sort-btn" :class="{ 'sort-btn--disabled': index === selectedScheme.panels.timed.templates.length - 1 }" @click="moveListItem(selectedScheme.panels.timed.templates, index, 1)">
+                      ↓
+                    </view>
+                    <view class="remove-btn" @click="removeListItem(selectedScheme.panels.timed.templates, index)">
+                      ×
+                    </view>
                   </view>
                 </view>
                 <view class="add-template-btn" @click="addTextListItem(selectedScheme.panels.timed.templates, '新增模板')">
@@ -786,8 +803,16 @@ onMounted(() => {
                 </text>
                 <view v-for="(item, index) in selectedScheme.panels.awkward.templates" :key="`awkward-${index}`" class="template-item">
                   <input v-model="selectedScheme.panels.awkward.templates[index]" class="template-input" maxlength="200">
-                  <view class="remove-btn" @click="removeListItem(selectedScheme.panels.awkward.templates, index)">
-                    ×
+                  <view class="row-actions">
+                    <view class="sort-btn" :class="{ 'sort-btn--disabled': index === 0 }" @click="moveListItem(selectedScheme.panels.awkward.templates, index, -1)">
+                      ↑
+                    </view>
+                    <view class="sort-btn" :class="{ 'sort-btn--disabled': index === selectedScheme.panels.awkward.templates.length - 1 }" @click="moveListItem(selectedScheme.panels.awkward.templates, index, 1)">
+                      ↓
+                    </view>
+                    <view class="remove-btn" @click="removeListItem(selectedScheme.panels.awkward.templates, index)">
+                      ×
+                    </view>
                   </view>
                 </view>
                 <view class="add-template-btn" @click="addTextListItem(selectedScheme.panels.awkward.templates, '新增模板')">
@@ -869,8 +894,16 @@ onMounted(() => {
                 </text>
                 <view v-for="(item, index) in (selectedScheme.panels as any)[activeTab].templates" :key="`${activeTab}-${index}`" class="template-item">
                   <input v-model="(selectedScheme.panels as any)[activeTab].templates[index]" class="template-input" maxlength="200">
-                  <view class="remove-btn" @click="removeListItem((selectedScheme.panels as any)[activeTab].templates, index)">
-                    ×
+                  <view class="row-actions">
+                    <view class="sort-btn" :class="{ 'sort-btn--disabled': index === 0 }" @click="moveListItem((selectedScheme.panels as any)[activeTab].templates, index, -1)">
+                      ↑
+                    </view>
+                    <view class="sort-btn" :class="{ 'sort-btn--disabled': index === (selectedScheme.panels as any)[activeTab].templates.length - 1 }" @click="moveListItem((selectedScheme.panels as any)[activeTab].templates, index, 1)">
+                      ↓
+                    </view>
+                    <view class="remove-btn" @click="removeListItem((selectedScheme.panels as any)[activeTab].templates, index)">
+                      ×
+                    </view>
                   </view>
                 </view>
                 <view class="add-template-btn" @click="addTextListItem((selectedScheme.panels as any)[activeTab].templates, getTemplatePlaceholder(activeTab))">
@@ -916,8 +949,16 @@ onMounted(() => {
                 <view v-for="(item, index) in selectedScheme.panels.danmu.keywordReplies" :key="`reply-${index}`" class="keyword-item">
                   <input v-model="item.keyword" class="keyword-input" placeholder="关键词" maxlength="40">
                   <input v-model="item.reply" class="template-input keyword-reply-input" placeholder="回复内容" maxlength="160">
-                  <view class="remove-btn" @click="removeKeywordReply(index)">
-                    ×
+                  <view class="row-actions">
+                    <view class="sort-btn" :class="{ 'sort-btn--disabled': index === 0 }" @click="moveListItem(selectedScheme.panels.danmu.keywordReplies, index, -1)">
+                      ↑
+                    </view>
+                    <view class="sort-btn" :class="{ 'sort-btn--disabled': index === selectedScheme.panels.danmu.keywordReplies.length - 1 }" @click="moveListItem(selectedScheme.panels.danmu.keywordReplies, index, 1)">
+                      ↓
+                    </view>
+                    <view class="remove-btn" @click="removeKeywordReply(index)">
+                      ×
+                    </view>
                   </view>
                 </view>
                 <view class="add-template-btn" @click="addKeywordReply">
@@ -930,8 +971,16 @@ onMounted(() => {
                 </text>
                 <view v-for="(item, index) in selectedScheme.panels.danmu.blockedKeywords" :key="`blocked-${index}`" class="template-item">
                   <input v-model="selectedScheme.panels.danmu.blockedKeywords[index]" class="template-input" maxlength="60">
-                  <view class="remove-btn" @click="removeListItem(selectedScheme.panels.danmu.blockedKeywords, index)">
-                    ×
+                  <view class="row-actions">
+                    <view class="sort-btn" :class="{ 'sort-btn--disabled': index === 0 }" @click="moveListItem(selectedScheme.panels.danmu.blockedKeywords, index, -1)">
+                      ↑
+                    </view>
+                    <view class="sort-btn" :class="{ 'sort-btn--disabled': index === selectedScheme.panels.danmu.blockedKeywords.length - 1 }" @click="moveListItem(selectedScheme.panels.danmu.blockedKeywords, index, 1)">
+                      ↓
+                    </view>
+                    <view class="remove-btn" @click="removeListItem(selectedScheme.panels.danmu.blockedKeywords, index)">
+                      ×
+                    </view>
                   </view>
                 </view>
                 <view class="add-template-btn" @click="addTextListItem(selectedScheme.panels.danmu.blockedKeywords, '新增屏蔽词')">
@@ -1338,6 +1387,10 @@ onMounted(() => {
   margin-bottom: 16rpx;
 }
 
+.keyword-item {
+  flex-wrap: wrap;
+}
+
 .template-input,
 .keyword-input,
 .long-textarea {
@@ -1381,17 +1434,44 @@ onMounted(() => {
   line-height: 1.6;
 }
 
+.row-actions {
+  display: flex;
+  align-items: center;
+  gap: 8rpx;
+  flex-shrink: 0;
+}
+
+.keyword-item .row-actions {
+  margin-left: auto;
+}
+
+.sort-btn,
 .remove-btn {
   width: 50rpx;
   height: 50rpx;
   border-radius: 50%;
-  background: #eef1f6;
-  color: #f16a67;
-  font-size: 30rpx;
   display: flex;
   align-items: center;
   justify-content: center;
   flex-shrink: 0;
+}
+
+.sort-btn {
+  background: #f4f7ff;
+  color: #5d90ea;
+  border: 2rpx solid #dce7ff;
+  font-size: 24rpx;
+  box-sizing: border-box;
+}
+
+.sort-btn--disabled {
+  opacity: 0.35;
+}
+
+.remove-btn {
+  background: #eef1f6;
+  color: #f16a67;
+  font-size: 30rpx;
 }
 
 .add-template-btn,

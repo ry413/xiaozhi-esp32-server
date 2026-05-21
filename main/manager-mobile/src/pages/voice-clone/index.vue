@@ -564,7 +564,7 @@ onUnload(() => {
   <view class="voice-clone-page">
     <wd-navbar title="音色克隆" safe-area-inset-top fixed placeholder />
 
-    <view class="page-intro">
+    <!-- <view class="page-intro">
       <view class="page-subtitle">
         上传样本音频并发起复刻，状态会自动刷新
       </view>
@@ -580,7 +580,7 @@ onUnload(() => {
       <wd-button size="small" type="primary" @click="fetchVoiceClones">
         查询
       </wd-button>
-    </view>
+    </view> -->
 
     <view v-if="isGuest" class="guest-container">
       <view class="guest-card">
@@ -634,11 +634,11 @@ onUnload(() => {
           <text class="clone-card__label">音色ID</text>
           <text class="clone-card__value">{{ item.voiceId || '-' }}</text>
         </view> -->
-
+<!-- 
         <view class="clone-card__info">
           <text class="clone-card__label">创建时间</text>
           <text class="clone-card__value">{{ item.createDate || '-' }}</text>
-        </view>
+        </view> -->
 
         <view v-if="item.trainError" class="clone-card__error">
           {{ item.trainError }}

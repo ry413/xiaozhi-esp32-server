@@ -25,7 +25,7 @@ interface RobotItem {
   updatedAt: string
   online: boolean
   deviceStatus: 'online' | 'offline'
-  rawBindTime: number
+  rawUpdatedTime: number
 }
 
 interface LivePlanOption {
@@ -338,7 +338,7 @@ function sortRobots() {
   robots.value = [...robots.value].sort((a, b) => {
     if (a.online !== b.online)
       return a.online ? -1 : 1
-    return (a.rawBindTime || 0) - (b.rawBindTime || 0)
+    return (b.rawUpdatedTime || 0) - (a.rawUpdatedTime || 0)
   })
 }
 
@@ -461,19 +461,22 @@ async function fetchAutoStartPlan(robotId?: string) {
 
 async function fetchBindDevicesWithStatus(agent: Agent) {
   const devices = await getBindDevices(agent.id)
-  const mappedList: RobotItem[] = (devices || []).map((device: Device) => ({
-    id: device.id,
-    agentId: agent.id,
-    mac: device.macAddress,
-    model: device.board,
-    agentName: agent.agentName,
-    name: `${device.board || 'Unknown'} - ${agent.agentName || '未命名智能体'}`,
-    meta: `${device.macAddress || '-'} | ${device.board || '-'} | ${device.appVersion || '-'}`,
-    updatedAt: formatDisplayTime(device.lastConnectedAt || device.createDate),
-    online: false,
-    deviceStatus: 'offline',
-    rawBindTime: parseDateValue(device.createDate || 0).getTime() || 0,
-  }))
+  const mappedList: RobotItem[] = (devices || []).map((device: Device) => {
+    const updatedAtSource = device.lastConnectedAt || device.updateDate || device.createDate
+    return {
+      id: device.id,
+      agentId: agent.id,
+      mac: device.macAddress,
+      model: device.board,
+      agentName: agent.agentName,
+      name: `${device.board || 'Unknown'} - ${agent.agentName || '未命名智能体'}`,
+      meta: `${device.macAddress || '-'} | ${device.board || '-'} | ${device.appVersion || '-'}`,
+      updatedAt: formatDisplayTime(updatedAtSource),
+      online: false,
+      deviceStatus: 'offline',
+      rawUpdatedTime: parseDateValue(updatedAtSource || 0).getTime() || 0,
+    }
+  })
 
   try {
     const rawStatus: any = await getDeviceStatus(agent.id)

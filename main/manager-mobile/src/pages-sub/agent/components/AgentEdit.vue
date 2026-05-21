@@ -1,8 +1,7 @@
 <script lang="ts" setup>
 import type { AgentDetail, ModelOption, PluginDefinition, RoleTemplate } from '@/api/agent/types'
 import { computed, nextTick, onMounted, ref, watch } from 'vue'
-import { useMessage } from 'wot-design-uni'
-import { generateAgentScript, getAgentDetail, getAgentTags, getAllLanguage, getModelOptions, getPluginFunctions, getRoleTemplates, updateAgent, updateAgentTags } from '@/api/agent/agent'
+import { optimizePrompt, getAgentDetail, getAgentTags, getAllLanguage, getModelOptions, getPluginFunctions, getRoleTemplates, updateAgent, updateAgentTags } from '@/api/agent/agent'
 import { t } from '@/i18n'
 import { usePluginStore, useProvider, useSpeedPitch } from '@/store'
 import { toast } from '@/utils/toast'
@@ -122,6 +121,11 @@ const allFunctions = ref<PluginDefinition[]>([])
 const dynamicTags = ref([])
 const inputValue = ref('')
 const inputVisible = ref(false)
+const scriptGenerating = ref(false)
+const scriptOptimizeResult = ref<{
+  readiness?: 'insufficient' | 'usable_but_thin' | 'ready'
+  missingInfoHint?: string
+}>({})
 const languageOptions = ref([])
 const isVisibleReport = ref(false)
 const tempSummaryMemory = ref('')
@@ -134,7 +138,6 @@ const playingVoiceId = ref<string>('')
 const pluginStore = usePluginStore()
 const speedPitchStore = useSpeedPitch()
 const providerStore = useProvider()
-const message = useMessage()
 
 // tabs
 const tabList = [
@@ -189,37 +192,54 @@ function openContextProviderDialog() {
   })
 }
 
-function handleGenerateScript() {
-  message.prompt({
-    title: '智能话术',
-    msg: '',
-    inputPlaceholder: '请输入你希望生成的话术要求',
-    inputValue: '',
-    confirmButtonText: '生成',
-    cancelButtonText: '取消',
-  }).then(async ({ value }: any) => {
-    const inputPrompt = String(value || '').trim()
-    if (!inputPrompt) {
-      toast.warning('请输入生成要求')
+function copySystemPrompt() {
+  const prompt = String(formData.value.systemPrompt || '')
+  if (!prompt.trim()) {
+    toast.warning('角色介绍为空')
+    return
+  }
+
+  uni.setClipboardData({
+    data: prompt,
+    success: () => toast.success('已复制角色介绍'),
+    fail: () => toast.error('复制失败'),
+  })
+}
+
+async function handleOptimizePrompt() {
+  const inputPrompt = String(formData.value.systemPrompt || '').trim()
+  if (!inputPrompt) {
+    toast.warning('请先填写角色介绍')
+    return
+  }
+
+  if (scriptGenerating.value)
+    return
+
+  try {
+    scriptGenerating.value = true
+    scriptOptimizeResult.value = {}
+    const result = await optimizePrompt(inputPrompt)
+    console.log('智能优化接口返回:', result)
+    if (!result.business_prompt) {
+      console.error('智能话术生成失败: 接口返回空内容')
+      toast.error('智能优化失败')
       return
     }
-
-    try {
-      const script = await generateAgentScript(inputPrompt)
-      console.log('智能话术接口返回:', script)
-      if (!script) {
-        console.error('智能话术生成失败: 接口返回空内容')
-        toast.error('智能话术生成失败')
-        return
-      }
-      formData.value.systemPrompt = script
-      toast.success('智能话术已生成')
+    formData.value.systemPrompt = result.business_prompt
+    scriptOptimizeResult.value = {
+      readiness: result.readiness,
+      missingInfoHint: result.missing_info_hint,
     }
-    catch (error: any) {
-      console.error('智能话术生成失败:', error)
-      toast.error(error?.message || '智能话术生成失败')
-    }
-  }).catch(() => {})
+    toast.success('智能优化完成')
+  }
+  catch (error: any) {
+    console.error('智能优化失败:', error)
+    toast.error(error?.message || '智能优化失败')
+  }
+  finally {
+    scriptGenerating.value = false
+  }
 }
 
 function handleRegulate() {
@@ -896,9 +916,14 @@ onMounted(async () => {
       </view> -->
 
       <view class="mb-[24rpx] last:mb-0">
-        <text class="mb-[12rpx] block text-[28rpx] text-[#232338] font-medium">
-          {{ t('agent.roleDescription') }}
-        </text>
+        <view class="mb-[12rpx] flex items-center justify-between gap-[16rpx]">
+          <text class="text-[28rpx] text-[#232338] font-medium">
+            {{ t('agent.roleDescription') }}
+          </text>
+          <wd-button class="!bg-[rgba(51,108,255,0.1)] !text-[#336cff]" size="small" @click="copySystemPrompt">
+            复制介绍
+          </wd-button>
+        </view>
         <textarea
           v-model="formData.systemPrompt"
           :maxlength="2000"
@@ -908,9 +933,17 @@ onMounted(async () => {
         <view class="mt-[8rpx] text-right text-[22rpx] text-[#9d9ea3]">
           {{ (formData.systemPrompt || '').length }}/2000
         </view>
-        <wd-button class="mt-[16rpx] !bg-[rgba(51,108,255,0.1)] !text-[#336cff]" size="small" @click="handleGenerateScript">
-          智能话术
-        </wd-button>
+        <view class="mt-[16rpx] flex items-center gap-[16rpx]">
+          <wd-button class="!bg-[rgba(51,108,255,0.1)] !text-[#336cff]" size="small" :loading="scriptGenerating" @click="handleOptimizePrompt">
+            智能优化
+          </wd-button>
+          <text v-if="scriptOptimizeResult.readiness" class="text-[22rpx] text-[#9d9ea3]">
+            {{ scriptOptimizeResult.readiness === 'ready' ? '信息较完整' : scriptOptimizeResult.readiness === 'usable_but_thin' ? '可用但信息偏少' : '信息不足' }}
+          </text>
+        </view>
+        <view v-if="scriptOptimizeResult.missingInfoHint" class="mt-[12rpx] rounded-[12rpx] bg-[#f3f6ff] p-[16rpx] text-[24rpx] text-[#5778ff] leading-[1.6]">
+          {{ scriptOptimizeResult.missingInfoHint }}
+        </view>
       </view>
 
       <view class="mb-[24rpx] last:mb-0">
@@ -1210,7 +1243,6 @@ onMounted(async () => {
       @close="onPickerCancel('promptTemplate')"
       @select="({ item }) => onPickerConfirm('promptTemplate', item.value, item.name)"
     />
-    <wd-message-box />
   </view>
 </template>
 

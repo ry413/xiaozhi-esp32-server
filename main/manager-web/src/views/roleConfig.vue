@@ -117,7 +117,7 @@
                       />
                       <el-button
                         class="smart-script-btn"
-                        @click="handleGenerateScript"
+                        @click="handleOptimizePrompt"
                       >
                         智能话术
                       </el-button>
@@ -634,16 +634,16 @@ export default {
       });
       
     },
-    handleGenerateScript() {
-      this.$prompt("请输入你希望生成的话术要求", "智能话术", {
-        confirmButtonText: "生成",
+    handleOptimizePrompt() {
+      this.$prompt("请输入你希望优化的话术要求", "智能话术优化", {
+        confirmButtonText: "优化",
         cancelButtonText: "取消",
         inputType: "textarea",
         inputValue: this.generateScriptDraft,
         inputPlaceholder: "请输入你的产品名称, 产品特点, 产品价格等信息, 例如: 我是卖土豆的, 土豆很便宜, 两块钱一袋, 一袋五十个, 特点是特别圆, 口感细腻, 如同吃鸽子蛋.",
         inputValidator: (value) => {
           if (!value || !value.trim()) {
-            return "请输入生成要求";
+            return "请输入优化要求";
           }
           return true;
         },
@@ -663,7 +663,7 @@ export default {
           instance.confirmButtonLoading = true;
           instance.confirmButtonText = "生成中...";
 
-          Api.agent.generateAgentScript(inputPrompt, ({ data }) => {
+          Api.agent.optimizePrompt(inputPrompt, ({ data }) => {
             instance.confirmButtonLoading = false;
             instance.confirmButtonText = "生成";
 
@@ -672,14 +672,14 @@ export default {
               this.generateScriptDraft = "";
               done();
               this.$message.success({
-                message: "智能话术已生成",
+                message: "智能话术已优化",
                 showClose: true,
               });
               return;
             }
 
             this.$message.error({
-              message: (data && data.msg) || "智能话术生成失败",
+              message: (data && data.msg) || "智能话术优化失败",
               showClose: true,
             });
           });

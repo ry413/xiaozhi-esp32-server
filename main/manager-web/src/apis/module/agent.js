@@ -432,9 +432,9 @@ export default {
                 });
             }).send();
     },
-    generateAgentScript(inputPrompt, callback) {
+    optimizePrompt(inputPrompt, callback) {
         RequestService.sendRequest()
-            .url(`${getServiceUrl()}/agent/generate-script`)
+            .url(`${getServiceUrl()}/agent/optimize-prompt`)
             .method('POST')
             .data({ prompt: inputPrompt })
             .success((res) => {
@@ -446,7 +446,7 @@ export default {
             })
             .networkFail(() => {
                 RequestService.reAjaxFun(() => {
-                    this.generateAgentScript(inputPrompt, callback);
+                    this.optimizePrompt(inputPrompt, callback);
                 });
             }).send();
     },

@@ -1,6 +1,7 @@
 <script lang="ts" setup>
 import { onShow } from '@dcloudio/uni-app'
 import { computed, onMounted, ref } from 'vue'
+import { generateAgentScript } from '@/api/agent/agent'
 import { updatePlanConfig } from '@/api/live-streaming/live-streaming'
 import { addLivePlan, deleteLivePlan, getDouyinRoomId, getLivePlanList, updateLivePlan } from '@/api/live-plan/live-plan'
 import { toast } from '@/utils/toast'
@@ -92,6 +93,11 @@ const showSchemeActions = ref(false)
 const showEditPopup = ref(false)
 const editingField = ref<'name' | 'roomId' | ''>('')
 const editingValue = ref('')
+const showGenerateScriptPopup = ref(false)
+const generateScriptPrompt = ref('')
+const generateScriptLoading = ref(false)
+const showGeneratedScriptsPopup = ref(false)
+const generatedAwkwardTemplates = ref<string[]>([])
 
 const selectedScheme = computed(() => {
   return schemes.value.find(item => item.id === selectedSchemeId.value) || null
@@ -524,6 +530,57 @@ function resetScheme() {
   activeTab.value = 'timed'
 }
 
+function openGenerateScriptPopup() {
+  if (!selectedScheme.value) {
+    toast.warning('请先选择方案')
+    return
+  }
+  generateScriptPrompt.value = ''
+  showGenerateScriptPopup.value = true
+}
+
+async function confirmGenerateScript() {
+  const prompt = generateScriptPrompt.value.trim()
+  if (!prompt) {
+    toast.warning('请输入生成要求')
+    return
+  }
+  if (generateScriptLoading.value)
+    return
+
+  try {
+    generateScriptLoading.value = true
+    const templates = await generateAgentScript(prompt)
+    if (!templates.length) {
+      toast.warning('未生成可用话术')
+      return
+    }
+    generatedAwkwardTemplates.value = templates
+    showGenerateScriptPopup.value = false
+    showGeneratedScriptsPopup.value = true
+  }
+  catch (error: any) {
+    toast.error(error?.message || '生成话术失败')
+  }
+  finally {
+    generateScriptLoading.value = false
+  }
+}
+
+function applyGeneratedScripts(mode: 'append' | 'replace') {
+  if (!selectedScheme.value)
+    return
+
+  if (mode === 'replace')
+    selectedScheme.value.panels.awkward.templates = [...generatedAwkwardTemplates.value]
+  else
+    selectedScheme.value.panels.awkward.templates.push(...generatedAwkwardTemplates.value)
+
+  activeTab.value = 'awkward'
+  showGeneratedScriptsPopup.value = false
+  toast.success(mode === 'replace' ? '已替换防冷场模板' : '已追加到防冷场模板')
+}
+
 async function handleSaveScheme() {
   if (!selectedScheme.value?.planNo) {
     toast.warning('请先选择方案')
@@ -557,10 +614,6 @@ async function handleSaveScheme() {
   finally {
     savePlanLoading.value = false
   }
-}
-
-function handleSmartScript() {
-  toast.info('智能话术移动版后续接入')
 }
 
 function readClipboardText() {
@@ -671,11 +724,17 @@ onMounted(() => {
             <view class="action-btn action-btn--plain" @click="editField('roomId')">
               编辑直播间id
             </view>
-            <view class="action-btn action-btn--plain" @click="handleExportConfig">
-              导出方案
+            <view class="action-btn action-btn--split">
+              <view class="split-action" @click="handleExportConfig">
+                导出
+              </view>
+              <view class="split-divider" />
+              <view class="split-action" @click="handleImportConfig">
+                导入
+              </view>
             </view>
-            <view class="action-btn action-btn--plain" @click="handleImportConfig">
-              导入方案
+            <view class="action-btn action-btn--soft" @click="openGenerateScriptPopup">
+              生成话术
             </view>
           </view>
         </view>
@@ -1124,6 +1183,63 @@ onMounted(() => {
         </view>
       </view>
     </wd-popup>
+
+    <wd-popup
+      v-model="showGenerateScriptPopup"
+      position="center"
+      custom-style="width: 88%; max-width: 640rpx; border-radius: 24rpx;"
+      safe-area-inset-bottom
+    >
+      <view class="edit-popup">
+        <view class="edit-popup__title">
+          生成防冷场话术
+        </view>
+        <textarea
+          v-model="generateScriptPrompt"
+          class="script-popup__textarea"
+          :maxlength="1000"
+          placeholder="请输入商品信息，例如可以复制智能体角色定义中的内容，当前只生成防冷场话术模板，生成完成后建议检查或手动修改"
+          placeholder-class="script-popup__placeholder"
+        />
+        <view class="script-popup__count">
+          {{ generateScriptPrompt.length }}/1000
+        </view>
+        <view class="edit-popup__actions">
+          <view class="edit-popup__btn edit-popup__btn--ghost" @click="showGenerateScriptPopup = false">
+            取消
+          </view>
+          <view class="edit-popup__btn edit-popup__btn--primary" @click="confirmGenerateScript">
+            {{ generateScriptLoading ? '生成中...' : '生成' }}
+          </view>
+        </view>
+      </view>
+    </wd-popup>
+
+    <wd-popup
+      v-model="showGeneratedScriptsPopup"
+      position="center"
+      custom-style="width: 88%; max-width: 640rpx; border-radius: 24rpx;"
+      safe-area-inset-bottom
+    >
+      <view class="edit-popup">
+        <view class="edit-popup__title">
+          生成结果
+        </view>
+        <scroll-view scroll-y class="generated-list">
+          <view v-for="(item, index) in generatedAwkwardTemplates" :key="`generated-${index}`" class="generated-item">
+            {{ item }}
+          </view>
+        </scroll-view>
+        <view class="edit-popup__actions">
+          <view class="edit-popup__btn edit-popup__btn--ghost" @click="applyGeneratedScripts('append')">
+            追加到现有模板
+          </view>
+          <view class="edit-popup__btn edit-popup__btn--primary" @click="applyGeneratedScripts('replace')">
+            替换现有模板
+          </view>
+        </view>
+      </view>
+    </wd-popup>
   </view>
 </template>
 
@@ -1254,6 +1370,28 @@ onMounted(() => {
   background: #fff;
   color: #485168;
   border: 2rpx solid #e3e8f4;
+}
+
+.action-btn--split {
+  overflow: hidden;
+  padding: 0;
+  background: #fff;
+  color: #485168;
+  border: 2rpx solid #e3e8f4;
+}
+
+.split-action {
+  flex: 1;
+  height: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.split-divider {
+  width: 2rpx;
+  height: 36rpx;
+  background: #e3e8f4;
 }
 
 .priority-card {
@@ -1752,6 +1890,46 @@ onMounted(() => {
   background: #fff;
   font-size: 24rpx;
   color: #1f2430;
+}
+
+.script-popup__textarea {
+  box-sizing: border-box;
+  width: 100%;
+  height: 260rpx;
+  min-width: 100%;
+  padding: 20rpx;
+  border: 2rpx solid #dfe5f0;
+  border-radius: 16rpx;
+  background: #fff;
+  color: #1f2430;
+  font-size: 24rpx;
+  line-height: 1.6;
+}
+
+.script-popup__placeholder {
+  color: #a8afbd;
+}
+
+.script-popup__count {
+  margin-top: 10rpx;
+  text-align: right;
+  color: #a8afbd;
+  font-size: 22rpx;
+}
+
+.generated-list {
+  max-height: 420rpx;
+  margin-top: 8rpx;
+}
+
+.generated-item {
+  margin-bottom: 14rpx;
+  padding: 18rpx 20rpx;
+  border-radius: 14rpx;
+  background: #f6f8fc;
+  color: #303749;
+  font-size: 24rpx;
+  line-height: 1.6;
 }
 
 .edit-popup__actions {

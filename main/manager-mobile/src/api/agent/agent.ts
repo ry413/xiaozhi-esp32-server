@@ -114,9 +114,35 @@ export function updateAgent(id: string, data: Partial<AgentDetail>) {
   })
 }
 
-// 智能话术生成
-export function generateAgentScript(prompt: string) {
-  return new Promise<string>((resolve, reject) => {
+export interface AgentScriptOptimizeResult {
+  business_prompt: string
+  readiness?: 'insufficient' | 'usable_but_thin' | 'ready'
+  missing_info_hint?: string
+}
+
+function normalizeScriptTemplateList(data: any) {
+  let result = data
+  if (typeof result === 'string') {
+    try {
+      result = JSON.parse(result)
+    }
+    catch {
+      result = [result]
+    }
+  }
+
+  if (Array.isArray(result))
+    return result.map(item => String(item)).filter(Boolean)
+
+  if (Array.isArray(result?.templates))
+    return result.templates.map((item: any) => String(item)).filter(Boolean)
+
+  return []
+}
+
+// 优化角色提示词
+export function optimizePrompt(prompt: string) {
+  return new Promise<AgentScriptOptimizeResult>((resolve, reject) => {
     const authInfo = getStoredAuthInfo()
     if (!isValidToken(authInfo.token)) {
       clearLoginState()
@@ -124,8 +150,9 @@ export function generateAgentScript(prompt: string) {
       return
     }
     uni.request({
-      url: `${getEnvBaseUrl()}/agent/generate-script`,
+      url: `${getEnvBaseUrl()}/agent/optimize-prompt`,
       method: 'POST',
+      timeout: 120000,
       header: {
         'Content-Type': 'application/json',
         'Accept': 'application/json, text/plain, */*',
@@ -149,7 +176,63 @@ export function generateAgentScript(prompt: string) {
           reject(new Error(body?.msg || `接口返回异常: ${JSON.stringify(body)}`))
           return
         }
-        resolve(String(body.data || ''))
+        let result = body.data
+        if (typeof result === 'string') {
+          try {
+            result = JSON.parse(result)
+          }
+          catch {
+            result = { business_prompt: result }
+          }
+        }
+        resolve({
+          business_prompt: String(result?.business_prompt || ''),
+          readiness: result?.readiness,
+          missing_info_hint: result?.missing_info_hint,
+        })
+      },
+      fail: reject,
+    })
+  })
+}
+
+// 生成卖货话术模板
+export function generateAgentScript(prompt: string) {
+  return new Promise<string[]>((resolve, reject) => {
+    const authInfo = getStoredAuthInfo()
+    if (!isValidToken(authInfo.token)) {
+      clearLoginState()
+      reject(new Error('未登录'))
+      return
+    }
+    uni.request({
+      url: `${getEnvBaseUrl()}/agent/generate-script`,
+      method: 'POST',
+      timeout: 120000,
+      header: {
+        'Content-Type': 'application/json',
+        'Accept': 'application/json, text/plain, */*',
+        'Authorization': `Bearer ${authInfo.token}`,
+      },
+      data: { prompt },
+      success: (response) => {
+        const body = response.data as any
+        if (response.statusCode === 401 || body?.code === 401) {
+          markAuthExpired()
+          clearLoginState()
+          uni.reLaunch({ url: '/pages-sub/login/index' })
+          reject(new Error(body?.msg || '登录已过期'))
+          return
+        }
+        if (response.statusCode !== 200) {
+          reject(new Error(`HTTP ${response.statusCode}: ${JSON.stringify(body)}`))
+          return
+        }
+        if (!body || body.code !== 0) {
+          reject(new Error(body?.msg || `接口返回异常: ${JSON.stringify(body)}`))
+          return
+        }
+        resolve(normalizeScriptTemplateList(body.data))
       },
       fail: reject,
     })

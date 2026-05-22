@@ -216,6 +216,16 @@ async function handleOptimizePrompt() {
   if (scriptGenerating.value)
     return
 
+  const confirmResult = await uni.showModal({
+    title: '确认智能优化',
+    content: '智能优化会优化并覆盖当前角色介绍的内容，耗时可能较长，是否继续？',
+    confirmText: '继续优化',
+    cancelText: '取消',
+    confirmColor: '#336cff',
+  })
+  if (!confirmResult.confirm)
+    return
+
   try {
     scriptGenerating.value = true
     scriptOptimizeResult.value = {}
@@ -935,7 +945,7 @@ onMounted(async () => {
         </view>
         <view class="mt-[16rpx] flex items-center gap-[16rpx]">
           <wd-button class="!bg-[rgba(51,108,255,0.1)] !text-[#336cff]" size="small" :loading="scriptGenerating" @click="handleOptimizePrompt">
-            智能优化
+            智能优化以上内容
           </wd-button>
           <text v-if="scriptOptimizeResult.readiness" class="text-[22rpx] text-[#9d9ea3]">
             {{ scriptOptimizeResult.readiness === 'ready' ? '信息较完整' : scriptOptimizeResult.readiness === 'usable_but_thin' ? '可用但信息偏少' : '信息不足' }}

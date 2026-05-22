@@ -279,6 +279,7 @@ public class VoiceCloneServiceImpl extends BaseServiceImpl<VoiceCloneDao, VoiceC
             throw new RenException(ErrorCode.VOICE_CLONE_MODEL_CONFIG_NOT_FOUND);
         }
         String type = String.valueOf(modelConfig.getConfigJson().get("type"));
+        String previousVoiceSourceUrl = entity.getVoiceSourceUrl();
 
         // 读取音频文件并转为字节数组
         byte[] voiceData = voiceFile.getBytes();
@@ -294,6 +295,10 @@ public class VoiceCloneServiceImpl extends BaseServiceImpl<VoiceCloneDao, VoiceC
 
         // 保存到数据库
         baseDao.updateById(entity);
+
+        if (COSYVOICE_CLONE_STREAM.equals(type)) {
+            deleteCloneSampleBySourceUrl(previousVoiceSourceUrl);
+        }
     }
 
     @Override
@@ -625,6 +630,18 @@ public class VoiceCloneServiceImpl extends BaseServiceImpl<VoiceCloneDao, VoiceC
             service.deleteVoice(voiceId);
         } catch (Exception e) {
             log.warn("删除远端 CosyVoice 音色失败, voiceId={}", voiceId, e);
+        }
+    }
+
+    private void deleteCloneSampleBySourceUrl(String sourceUrl) {
+        String objectKey = resolveCloneSampleObjectKey(sourceUrl);
+        if (StringUtils.isBlank(objectKey)) {
+            return;
+        }
+        try {
+            cosClient.deleteObject(cosProperties.getBucket(), objectKey);
+        } catch (Exception e) {
+            log.warn("删除旧音频样本 COS 文件失败, objectKey={}", objectKey, e);
         }
     }
 

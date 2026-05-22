@@ -111,12 +111,12 @@
                 justify-content: space-between;
                 margin-top: 20px;
               ">
-              <div v-if="allowUserRegister" style="cursor: pointer" @click="goToRegister">
+              <!-- <div v-if="allowUserRegister" style="cursor: pointer" @click="goToRegister">
                 {{ $t("login.register") }}
               </div>
               <div style="cursor: pointer" @click="goToForgetPassword" v-if="enableMobileRegister">
                 {{ $t("login.forgetPassword") }}
-              </div>
+              </div> -->
             </div>
           </div>
           <div class="login-btn" @click="login">{{ $t("login.login") }}</div>

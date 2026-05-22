@@ -168,6 +168,10 @@ export function optimizePrompt(prompt: string) {
           reject(new Error(body?.msg || '登录已过期'))
           return
         }
+        if (response.statusCode === 504) {
+          reject(new Error('服务器繁忙，请稍后重试'))
+          return
+        }
         if (response.statusCode !== 200) {
           reject(new Error(`HTTP ${response.statusCode}: ${JSON.stringify(body)}`))
           return
@@ -222,6 +226,10 @@ export function generateAgentScript(prompt: string) {
           clearLoginState()
           uni.reLaunch({ url: '/pages-sub/login/index' })
           reject(new Error(body?.msg || '登录已过期'))
+          return
+        }
+        if (response.statusCode === 504) {
+          reject(new Error('服务器繁忙，请稍后重试'))
           return
         }
         if (response.statusCode !== 200) {

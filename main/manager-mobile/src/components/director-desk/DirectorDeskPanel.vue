@@ -827,11 +827,25 @@ async function handleStartStopLive() {
           },
         },
       })
+
+      await sendDeviceCommand(targetRobot.id, {
+        type: 'mcp',
+        payload: {
+          jsonrpc: '2.0',
+          id: 1,
+          method: 'tools/call',
+          params: {
+            name: 'self.notify_thalora_instance',
+            arguments: {},
+          },
+        },
+      })
     }
     catch {
       // ignore command failure, continue starting live
     }
 
+    // 两秒等提示词模板加载
     await delay(2000)
 
     const plan: any = await getLivePlanDetail(targetPlanNo)

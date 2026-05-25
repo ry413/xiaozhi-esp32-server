@@ -41,7 +41,7 @@ function parseDateValue(value?: string | number | Date | null) {
     return new Date(value)
 
   if (!value)
-    return new Date(NaN)
+    return new Date(Number.NaN)
 
   const raw = String(value).trim()
   const normalized = /^\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}$/.test(raw)
@@ -79,6 +79,14 @@ function formatBenefitDuration(value: number) {
     return `${hours}小时${minutes % 60}分`
 
   return `${minutes}分`
+}
+
+function getErrorMessage(error: unknown, fallback: string) {
+  if (typeof error === 'string')
+    return error
+  if (error instanceof Error && error.message)
+    return error.message
+  return fallback
 }
 
 async function fetchBenefits() {
@@ -126,7 +134,9 @@ async function handleRedeem() {
     emit('benefitsChanged')
   }
   catch (error: any) {
-    toast.error(error?.message || '兑换失败')
+    const errorMessage = getErrorMessage(error, '兑换失败')
+    console.error('兑换失败: ', errorMessage)
+    toast.error(errorMessage)
   }
   finally {
     redeemLoading.value = false

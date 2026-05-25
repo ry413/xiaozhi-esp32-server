@@ -167,7 +167,7 @@ async function handleSendSmsCode() {
     }, 1000);
   } catch (error: any) {
     // 处理验证码错误
-    if (error.message.includes("请求错误[10067]")) {
+    if (error.code === 10067) {
       toast.warning(t("login.captchaError"));
     }
     // 发送失败重新获取图形验证码
@@ -259,7 +259,7 @@ async function handleResetPassword() {
     }, 1000);
   } catch (error: any) {
     // 处理验证码错误
-    if (error.message.includes("请求错误[10067]")) {
+    if (error.code === 10067) {
       toast.warning(t("login.captchaError"));
     }
     // 重置失败重新获取验证码

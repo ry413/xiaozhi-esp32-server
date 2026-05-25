@@ -5,8 +5,8 @@ import AdapterUniapp from '@alova/adapter-uniapp'
 import { createAlova } from 'alova'
 import { createServerTokenAuthentication } from 'alova/client'
 import VueHook from 'alova/vue'
-import { clearLoginState, getStoredAuthInfo, isValidToken, markAuthExpired } from '@/utils/auth'
 import { getEnvBaseUrl } from '@/utils'
+import { clearLoginState, getStoredAuthInfo, isValidToken, markAuthExpired } from '@/utils/auth'
 import { toast } from '@/utils/toast'
 import { ContentTypeEnum, ResultEnum, ShowMessage } from './enum'
 
@@ -18,6 +18,13 @@ const langMap: Record<Language, string> = {
   de: 'de',
   vi: 'vi',
   pt_BR: 'pt-BR',
+}
+
+function createBusinessError(code: number | string, msg: string, data?: unknown) {
+  const error = new Error(msg || '请求失败') as Error & { code: number | string, data?: unknown }
+  error.code = code
+  error.data = data
+  return error
 }
 
 /**
@@ -107,7 +114,6 @@ const alovaInstance = createAlova({
     const {
       statusCode,
       data: rawData,
-      errMsg,
     } = response as UniNamespace.RequestSuccessCallbackResult
 
     console.log(response)
@@ -128,7 +134,7 @@ const alovaInstance = createAlova({
       const errorMessage = ShowMessage(statusCode) || `HTTP请求错误[${statusCode}]`
       console.error('errorMessage===>', errorMessage)
       toast.error(errorMessage)
-      throw new Error(`${errorMessage}：${errMsg}`)
+      throw new Error(errorMessage)
     }
 
     // 处理业务逻辑错误
@@ -140,17 +146,13 @@ const alovaInstance = createAlova({
         markAuthExpired()
         clearLoginState()
         uni.reLaunch({ url: '/pages-sub/login/index' })
-        throw new Error(`请求错误[${code}]：${msg}`)
-      }
-
-      if (config.meta?.isExposeError) {
-        return Promise.reject(msg)
+        throw createBusinessError(code, msg, data)
       }
 
       if (config.meta?.toast !== false) {
         toast.warning(msg)
       }
-      throw new Error(`请求错误[${code}]：${msg}`)
+      throw createBusinessError(code, msg, data)
     }
     // 处理成功响应，返回业务数据
     return data

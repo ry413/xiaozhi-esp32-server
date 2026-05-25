@@ -178,8 +178,8 @@ async function sendSmsVerification() {
     }, 1000)
   }
   catch (error: any) {
-    // 处理验证码错误 - 从error.message中解析错误码
-    if (error.message.includes('请求错误[10067]')) {
+    // 处理验证码错误
+    if (error.code === 10067) {
       toast.warning(t('login.captchaError'))
     }
     // 发送失败重新获取图形验证码
@@ -280,12 +280,12 @@ async function handleRegister() {
     }, 1000)
   }
   catch (error: any) {
-    // 处理验证码错误 - 从error.message中解析错误码
-    if (error.message.includes('请求错误[10067]')) {
+    // 处理验证码错误
+    if (error.code === 10067) {
       toast.warning(t('login.captchaError'))
     }
     // 处理手机号码已注册错误
-    else if (error.message.includes('请求错误[10070]')) {
+    else if (error.code === 10070) {
       toast.warning(t('message.phoneRegistered'))
     }
     // 注册失败重新获取验证码

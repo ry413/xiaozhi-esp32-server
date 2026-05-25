@@ -350,7 +350,6 @@ export function getMcpAddress(agentId: string) {
     meta: {
       ignoreAuth: false,
       toast: false,
-      isExposeError: true,
     },
   })
 }
@@ -422,7 +421,6 @@ export function updateAgentTags(agentId: string, data) {
   return http.Put(`/agent/${agentId}/tags`, data, {
     meta: {
       ignoreAuth: false,
-      isExposeError: true,
     },
   })
 }

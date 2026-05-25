@@ -62,7 +62,6 @@ export function getDouyinRoomId(input: string) {
     meta: {
       ignoreAuth: false,
       toast: false,
-      isExposeError: true,
     },
     cacheFor: {
       expire: 0,

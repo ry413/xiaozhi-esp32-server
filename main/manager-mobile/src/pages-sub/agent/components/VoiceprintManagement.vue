@@ -1,10 +1,10 @@
 <script lang="ts" setup>
+import type { ChatHistory, CreateSpeakerData, VoicePrint } from '../../api/voiceprint'
 import { computed, onMounted, ref } from 'vue'
 import { useMessage } from 'wot-design-uni'
 import { useToast } from 'wot-design-uni/components/wd-toast'
 import { t } from '@/i18n'
 import { getEnvBaseUrl } from '@/utils'
-import type { ChatHistory, CreateSpeakerData, VoicePrint } from '../../api/voiceprint'
 import { createVoicePrint, deleteVoicePrint, getAudioDownloadId, getChatHistory, getVoicePrintList, updateVoicePrint } from '../../api/voiceprint'
 
 defineOptions({
@@ -166,7 +166,7 @@ function openAddDialog() {
     }
     catch (error: any) {
       // 捕捉声纹接口未配置错误
-      if (error.message && error.message.includes('请求错误[10054]')) {
+      if (error.code === 10054) {
         toast.error(t('voiceprint.voiceprintInterfaceNotConfigured'))
       }
       else {

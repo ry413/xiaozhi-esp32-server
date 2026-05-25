@@ -1,7 +1,7 @@
 <script lang="ts" setup>
 import type { AgentDetail, ModelOption, PluginDefinition, RoleTemplate } from '@/api/agent/types'
 import { computed, nextTick, onMounted, ref, watch } from 'vue'
-import { optimizePrompt, getAgentDetail, getAgentTags, getAllLanguage, getModelOptions, getPluginFunctions, getRoleTemplates, updateAgent, updateAgentTags } from '@/api/agent/agent'
+import { getAgentDetail, getAgentTags, getAllLanguage, getModelOptions, getPluginFunctions, getRoleTemplates, optimizePrompt, uncannyValleyOptimizePrompt, updateAgent, updateAgentTags } from '@/api/agent/agent'
 import { t } from '@/i18n'
 import { usePluginStore, useProvider, useSpeedPitch } from '@/store'
 import { toast } from '@/utils/toast'
@@ -99,6 +99,21 @@ const promptTemplateOptions = [
   { name: '无提示词模板', value: 'base-prompt-empty.txt' },
 ]
 
+const optimizeModeOptions = {
+  standard: {
+    name: '优化方法一',
+    promptTemplateName: '卖货主播',
+    promptTemplateValue: 'agent-base-prompt.txt',
+    description: '此方法适配了‘卖货主播’，将自动切换。',
+  },
+  uncannyValley: {
+    name: '优化方法二',
+    promptTemplateName: '无提示词模板',
+    promptTemplateValue: 'base-prompt-empty.txt',
+    description: '此方法适配了‘无提示词模板’，将自动切换。',
+  },
+} as const
+
 // 选择器显示状态
 const pickerShow = ref<{
   [key: string]: boolean
@@ -122,6 +137,7 @@ const dynamicTags = ref([])
 const inputValue = ref('')
 const inputVisible = ref(false)
 const scriptGenerating = ref(false)
+const scriptGeneratingMode = ref<'standard' | 'uncannyValley' | ''>('')
 const scriptOptimizeResult = ref<{
   readiness?: 'insufficient' | 'usable_but_thin' | 'ready'
   missingInfoHint?: string
@@ -206,7 +222,7 @@ function copySystemPrompt() {
   })
 }
 
-async function handleOptimizePrompt() {
+async function handleOptimizePrompt(mode: 'standard' | 'uncannyValley') {
   const inputPrompt = String(formData.value.systemPrompt || '').trim()
   if (!inputPrompt) {
     toast.warning('请先填写角色介绍')
@@ -216,9 +232,10 @@ async function handleOptimizePrompt() {
   if (scriptGenerating.value)
     return
 
+  const modeOption = optimizeModeOptions[mode]
   const confirmResult = await uni.showModal({
-    title: '确认智能优化',
-    content: '智能优化会优化并覆盖当前角色介绍的内容，耗时可能较长，是否继续？',
+    title: modeOption.name,
+    content: `${modeOption.description}\n\n智能优化会覆盖当前角色介绍的内容，耗时可能较长，是否继续？`,
     confirmText: '继续优化',
     cancelText: '取消',
     confirmColor: '#336cff',
@@ -228,19 +245,32 @@ async function handleOptimizePrompt() {
 
   try {
     scriptGenerating.value = true
+    scriptGeneratingMode.value = mode
     scriptOptimizeResult.value = {}
-    const result = await optimizePrompt(inputPrompt)
-    console.log('智能优化接口返回:', result)
-    if (!result.business_prompt) {
-      console.error('智能话术生成失败: 接口返回空内容')
-      toast.error('智能优化失败')
-      return
+
+    if (mode === 'uncannyValley') {
+      const result = await uncannyValleyOptimizePrompt(inputPrompt)
+      if (!result) {
+        return
+      }
+      formData.value.systemPrompt = result
     }
-    formData.value.systemPrompt = result.business_prompt
-    scriptOptimizeResult.value = {
-      readiness: result.readiness,
-      missingInfoHint: result.missing_info_hint,
+    else {
+      const result = await optimizePrompt(inputPrompt)
+      if (!result.business_prompt) {
+        console.error('智能话术生成失败: 接口返回空内容')
+        toast.error('智能优化失败')
+        return
+      }
+      formData.value.systemPrompt = result.business_prompt
+      scriptOptimizeResult.value = {
+        readiness: result.readiness,
+        missingInfoHint: result.missing_info_hint,
+      }
     }
+    formData.value.promptTemplate = modeOption.promptTemplateValue
+    displayNames.value.promptTemplate = modeOption.promptTemplateName
+
     toast.success('智能优化完成')
   }
   catch (error: any) {
@@ -249,6 +279,7 @@ async function handleOptimizePrompt() {
   }
   finally {
     scriptGenerating.value = false
+    scriptGeneratingMode.value = ''
   }
 }
 
@@ -864,7 +895,7 @@ onMounted(async () => {
           :placeholder="t('agent.inputAgentName')"
         >
       </view>
-
+<!-- 
       <view class="mb-[24rpx] last:mb-0">
         <text class="mb-[12rpx] block text-[28rpx] text-[#232338] font-medium">
           {{ t('agent.agentTag') }}
@@ -887,9 +918,9 @@ onMounted(async () => {
             {{ t('agent.addAgentTag') }}
           </wd-button>
         </view>
-      </view>
+      </view> -->
 
-      <view class="mb-[24rpx] last:mb-0">
+      <!-- <view class="mb-[24rpx] last:mb-0">
         <text class="mb-[12rpx] block text-[28rpx] text-[#232338] font-medium">
           {{ t('agent.roleMode') }}
         </text>
@@ -906,7 +937,7 @@ onMounted(async () => {
             {{ template.agentName }}
           </view>
         </view>
-      </view>
+      </view> -->
 
       <!-- <view class="mb-[24rpx] last:mb-0">
         <text class="mb-[12rpx] block text-[28rpx] text-[#232338] font-medium">
@@ -926,6 +957,18 @@ onMounted(async () => {
       </view> -->
 
       <view class="mb-[24rpx] last:mb-0">
+        <text class="mb-[12rpx] block text-[28rpx] text-[#232338] font-medium">
+          提示词模板
+        </text>
+        <view class="flex cursor-pointer items-center justify-between border border-[#eeeeee] rounded-[12rpx] bg-[#f5f7fb] p-[20rpx] transition-all duration-300 active:bg-[#eef3ff]" @click="openPicker('promptTemplate')">
+          <text class="mx-[16rpx] flex-1 text-right text-[26rpx] text-[#65686f]">
+            {{ displayNames.promptTemplate }}
+          </text>
+          <wd-icon name="arrow-right" custom-class="text-[20rpx] text-[#9d9ea3]" />
+        </view>
+      </view>
+
+      <view class="mb-[24rpx] last:mb-0">
         <view class="mb-[12rpx] flex items-center justify-between gap-[16rpx]">
           <text class="text-[28rpx] text-[#232338] font-medium">
             {{ t('agent.roleDescription') }}
@@ -943,9 +986,24 @@ onMounted(async () => {
         <view class="mt-[8rpx] text-right text-[22rpx] text-[#9d9ea3]">
           {{ (formData.systemPrompt || '').length }}/2000
         </view>
-        <view class="mt-[16rpx] flex items-center gap-[16rpx]">
-          <wd-button class="!bg-[rgba(51,108,255,0.1)] !text-[#336cff]" size="small" :loading="scriptGenerating" @click="handleOptimizePrompt">
-            智能优化以上内容
+        <view class="mt-[16rpx] flex flex-wrap items-center gap-[16rpx]">
+          <wd-button
+            class="!bg-[rgba(51,108,255,0.1)] !text-[#336cff]"
+            size="small"
+            :disabled="scriptGenerating"
+            :loading="scriptGeneratingMode === 'standard'"
+            @click="handleOptimizePrompt('standard')"
+          >
+            优化方法一
+          </wd-button>
+          <wd-button
+            class="!bg-[rgba(255,77,109,0.1)] !text-[#d9365e]"
+            size="small"
+            :disabled="scriptGenerating"
+            :loading="scriptGeneratingMode === 'uncannyValley'"
+            @click="handleOptimizePrompt('uncannyValley')"
+          >
+            优化方法二
           </wd-button>
           <text v-if="scriptOptimizeResult.readiness" class="text-[22rpx] text-[#9d9ea3]">
             {{ scriptOptimizeResult.readiness === 'ready' ? '信息较完整' : scriptOptimizeResult.readiness === 'usable_but_thin' ? '可用但信息偏少' : '信息不足' }}
@@ -953,18 +1011,6 @@ onMounted(async () => {
         </view>
         <view v-if="scriptOptimizeResult.missingInfoHint" class="mt-[12rpx] rounded-[12rpx] bg-[#f3f6ff] p-[16rpx] text-[24rpx] text-[#5778ff] leading-[1.6]">
           {{ scriptOptimizeResult.missingInfoHint }}
-        </view>
-      </view>
-
-      <view class="mb-[24rpx] last:mb-0">
-        <text class="mb-[12rpx] block text-[28rpx] text-[#232338] font-medium">
-          提示词模板
-        </text>
-        <view class="flex cursor-pointer items-center justify-between border border-[#eeeeee] rounded-[12rpx] bg-[#f5f7fb] p-[20rpx] transition-all duration-300 active:bg-[#eef3ff]" @click="openPicker('promptTemplate')">
-          <text class="mx-[16rpx] flex-1 text-right text-[26rpx] text-[#65686f]">
-            {{ displayNames.promptTemplate }}
-          </text>
-          <wd-icon name="arrow-right" custom-class="text-[20rpx] text-[#9d9ea3]" />
         </view>
       </view>
     </view>
@@ -979,7 +1025,7 @@ onMounted(async () => {
     <!-- 模型配置卡片 -->
     <view class="mb-[24rpx] border border-[#eeeeee] rounded-[20rpx] bg-[#fbfbfb] p-[24rpx]" style="box-shadow: 0 2rpx 12rpx rgba(0, 0, 0, 0.04);">
       <view class="flex flex-col gap-[16rpx]">
-        <view class="flex cursor-pointer items-center justify-between border border-[#eeeeee] rounded-[12rpx] bg-[#f5f7fb] p-[20rpx] transition-all duration-300 active:bg-[#eef3ff]" @click="openPicker('vad')">
+        <!-- <view class="flex cursor-pointer items-center justify-between border border-[#eeeeee] rounded-[12rpx] bg-[#f5f7fb] p-[20rpx] transition-all duration-300 active:bg-[#eef3ff]" @click="openPicker('vad')">
           <text class="text-[28rpx] text-[#232338] font-medium">
             {{ t('agent.vad') }}
           </text>
@@ -987,9 +1033,9 @@ onMounted(async () => {
             {{ displayNames.vad }}
           </text>
           <wd-icon name="arrow-right" custom-class="text-[20rpx] text-[#9d9ea3]" />
-        </view>
+        </view> -->
 
-        <view class="flex cursor-pointer items-center justify-between border border-[#eeeeee] rounded-[12rpx] bg-[#f5f7fb] p-[20rpx] transition-all duration-300 active:bg-[#eef3ff]" @click="openPicker('asr')">
+        <!-- <view class="flex cursor-pointer items-center justify-between border border-[#eeeeee] rounded-[12rpx] bg-[#f5f7fb] p-[20rpx] transition-all duration-300 active:bg-[#eef3ff]" @click="openPicker('asr')">
           <text class="text-[28rpx] text-[#232338] font-medium">
             {{ t('agent.asr') }}
           </text>
@@ -997,7 +1043,7 @@ onMounted(async () => {
             {{ displayNames.asr }}
           </text>
           <wd-icon name="arrow-right" custom-class="text-[20rpx] text-[#9d9ea3]" />
-        </view>
+        </view> -->
 
         <view class="flex cursor-pointer items-center justify-between border border-[#eeeeee] rounded-[12rpx] bg-[#f5f7fb] p-[20rpx] transition-all duration-300 active:bg-[#eef3ff]" @click="openPicker('llm')">
           <text class="text-[28rpx] text-[#232338] font-medium">
@@ -1009,7 +1055,7 @@ onMounted(async () => {
           <wd-icon name="arrow-right" custom-class="text-[20rpx] text-[#9d9ea3]" />
         </view>
 
-        <view class="flex cursor-pointer items-center justify-between border border-[#eeeeee] rounded-[12rpx] bg-[#f5f7fb] p-[20rpx] transition-all duration-300 active:bg-[#eef3ff]" @click="openPicker('slm')">
+        <!-- <view class="flex cursor-pointer items-center justify-between border border-[#eeeeee] rounded-[12rpx] bg-[#f5f7fb] p-[20rpx] transition-all duration-300 active:bg-[#eef3ff]" @click="openPicker('slm')">
           <text class="text-[28rpx] text-[#232338] font-medium">
             {{ t('agent.slm') }}
           </text>
@@ -1017,9 +1063,9 @@ onMounted(async () => {
             {{ displayNames.slm }}
           </text>
           <wd-icon name="arrow-right" custom-class="text-[20rpx] text-[#9d9ea3]" />
-        </view>
+        </view> -->
 
-        <view class="flex cursor-pointer items-center justify-between border border-[#eeeeee] rounded-[12rpx] bg-[#f5f7fb] p-[20rpx] transition-all duration-300 active:bg-[#eef3ff]" @click="openPicker('vllm')">
+        <!-- <view class="flex cursor-pointer items-center justify-between border border-[#eeeeee] rounded-[12rpx] bg-[#f5f7fb] p-[20rpx] transition-all duration-300 active:bg-[#eef3ff]" @click="openPicker('vllm')">
           <text class="text-[28rpx] text-[#232338] font-medium">
             {{ t('agent.vllm') }}
           </text>
@@ -1027,7 +1073,7 @@ onMounted(async () => {
             {{ displayNames.vllm }}
           </text>
           <wd-icon name="arrow-right" custom-class="text-[20rpx] text-[#9d9ea3]" />
-        </view>
+        </view> -->
 
         <view class="flex cursor-pointer items-center justify-between border border-[#eeeeee] rounded-[12rpx] bg-[#f5f7fb] p-[20rpx] transition-all duration-300 active:bg-[#eef3ff]" @click="openPicker('intent')">
           <text class="text-[28rpx] text-[#232338] font-medium">
@@ -1039,7 +1085,7 @@ onMounted(async () => {
           <wd-icon name="arrow-right" custom-class="text-[20rpx] text-[#9d9ea3]" />
         </view>
 
-        <view class="flex cursor-pointer items-center justify-between border border-[#eeeeee] rounded-[12rpx] bg-[#f5f7fb] p-[20rpx] transition-all duration-300 active:bg-[#eef3ff]" @click="openPicker('memory')">
+        <!-- <view class="flex cursor-pointer items-center justify-between border border-[#eeeeee] rounded-[12rpx] bg-[#f5f7fb] p-[20rpx] transition-all duration-300 active:bg-[#eef3ff]" @click="openPicker('memory')">
           <text class="text-[28rpx] text-[#232338] font-medium">
             {{ t('agent.memory') }}
           </text>
@@ -1047,9 +1093,9 @@ onMounted(async () => {
             {{ displayNames.memory }}
           </text>
           <wd-icon name="arrow-right" custom-class="text-[20rpx] text-[#9d9ea3]" />
-        </view>
+        </view> -->
 
-        <view v-show="isVisibleReport" class="flex cursor-pointer items-center justify-between border border-[#eeeeee] rounded-[12rpx] bg-[#f5f7fb] p-[20rpx] transition-all duration-300 active:bg-[#eef3ff]" @click="openPicker('report')">
+        <!-- <view v-show="isVisibleReport" class="flex cursor-pointer items-center justify-between border border-[#eeeeee] rounded-[12rpx] bg-[#f5f7fb] p-[20rpx] transition-all duration-300 active:bg-[#eef3ff]" @click="openPicker('report')">
           <text class="text-[28rpx] text-[#232338] font-medium">
             {{ t('agent.reportMode') }}
           </text>
@@ -1057,7 +1103,7 @@ onMounted(async () => {
             {{ displayNames.report }}
           </text>
           <wd-icon name="arrow-right" custom-class="text-[20rpx] text-[#9d9ea3]" />
-        </view>
+        </view> -->
       </view>
     </view>
 
@@ -1122,14 +1168,14 @@ onMounted(async () => {
     </view>
 
     <!-- 记忆历史标题 -->
-    <view class="pb-[20rpx]">
+    <!-- <view class="pb-[20rpx]">
       <text class="text-[32rpx] text-[#232338] font-bold">
         {{ t('agent.historyMemory') }}
       </text>
-    </view>
+    </view> -->
 
     <!-- 记忆历史卡片 -->
-    <view class="mb-[24rpx] border border-[#eeeeee] rounded-[20rpx] bg-[#fbfbfb] p-[24rpx]" style="box-shadow: 0 2rpx 12rpx rgba(0, 0, 0, 0.04);">
+    <!-- <view class="mb-[24rpx] border border-[#eeeeee] rounded-[20rpx] bg-[#fbfbfb] p-[24rpx]" style="box-shadow: 0 2rpx 12rpx rgba(0, 0, 0, 0.04);">
       <view class="mb-[24rpx] last:mb-0">
         <textarea
           v-model="formData.summaryMemory"
@@ -1139,7 +1185,7 @@ onMounted(async () => {
           class="box-border h-[500rpx] w-full resize-none break-words break-all border border-[#eeeeee] rounded-[12rpx] p-[20rpx] text-[26rpx] leading-[1.6] opacity-80 outline-none"
         />
       </view>
-    </view>
+    </view> -->
 
     <!-- 保存按钮 -->
     <view class="mt-[40rpx] p-0">

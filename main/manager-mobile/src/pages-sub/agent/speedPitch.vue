@@ -64,6 +64,9 @@ onMounted(() => {
       </template>
     </wd-navbar>
     <view class="flex flex-1 flex-col overflow-hidden">
+      <text class="px-[40rpx] py-[30rpx] text-[32rpx] text-[#232338] font-bold">
+        并非所有语音模型都支持以下设置，具体效果请以实际使用为准。
+      </text>
       <view class="flex flex-1 flex-col gap-[50rpx] overflow-y-auto px-[40rpx] py-[50rpx]">
         <!-- 音量调节 -->
         <view class="flex flex-col gap-[20rpx]">

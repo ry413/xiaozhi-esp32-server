@@ -6,8 +6,8 @@ import type {
   RoleTemplate,
 } from './types'
 import { http } from '@/http/request/alova'
-import { clearLoginState, getStoredAuthInfo, isValidToken, markAuthExpired } from '@/utils/auth'
 import { getEnvBaseUrl } from '@/utils'
+import { clearLoginState, getStoredAuthInfo, isValidToken, markAuthExpired } from '@/utils/auth'
 
 // 获取智能体详情
 export function getAgentDetail(id: string) {
@@ -194,6 +194,53 @@ export function optimizePrompt(prompt: string) {
           readiness: result?.readiness,
           missing_info_hint: result?.missing_info_hint,
         })
+      },
+      fail: reject,
+    })
+  })
+}
+
+// 恐怖谷风格优化角色提示词
+export function uncannyValleyOptimizePrompt(prompt: string) {
+  return new Promise<string>((resolve, reject) => {
+    const authInfo = getStoredAuthInfo()
+    if (!isValidToken(authInfo.token)) {
+      clearLoginState()
+      reject(new Error('未登录'))
+      return
+    }
+    uni.request({
+      url: `${getEnvBaseUrl()}/agent/uncanny-valley-optimize-prompt`,
+      method: 'POST',
+      timeout: 120000,
+      header: {
+        'Content-Type': 'application/json',
+        'Accept': 'application/json, text/plain, */*',
+        'Authorization': `Bearer ${authInfo.token}`,
+      },
+      data: { prompt },
+      success: (response) => {
+        const body = response.data as any
+        if (response.statusCode === 401 || body?.code === 401) {
+          markAuthExpired()
+          clearLoginState()
+          uni.reLaunch({ url: '/pages-sub/login/index' })
+          reject(new Error(body?.msg || '登录已过期'))
+          return
+        }
+        if (response.statusCode === 504) {
+          reject(new Error('服务器繁忙，请稍后重试'))
+          return
+        }
+        if (response.statusCode !== 200) {
+          reject(new Error(`HTTP ${response.statusCode}: ${JSON.stringify(body)}`))
+          return
+        }
+        if (!body || body.code !== 0) {
+          reject(new Error(body?.msg || `接口返回异常: ${JSON.stringify(body)}`))
+          return
+        }
+        resolve(String(body.data || ''))
       },
       fail: reject,
     })

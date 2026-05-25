@@ -830,7 +830,7 @@ onMounted(() => {
                   间隔时长（秒）
                 </text>
                 <view class="stepper">
-                  <view class="step-btn" @click="stepNumberField(selectedScheme.panels.awkward, 'interval', -10, 1)">
+                  <view class="step-btn" @click="stepNumberField(selectedScheme.panels.awkward, 'interval', -1, 1)">
                     -
                   </view>
                   <input
@@ -839,7 +839,7 @@ onMounted(() => {
                     type="number"
                     @input="updateNumberField(selectedScheme.panels.awkward, 'interval', $event.detail.value, 1)"
                   >
-                  <view class="step-btn" @click="stepNumberField(selectedScheme.panels.awkward, 'interval', 10, 1)">
+                  <view class="step-btn" @click="stepNumberField(selectedScheme.panels.awkward, 'interval', 1, 1)">
                     +
                   </view>
                 </view>

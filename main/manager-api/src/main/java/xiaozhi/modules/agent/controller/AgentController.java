@@ -137,6 +137,9 @@ public class AgentController {
     @Value("${agent.llm.optimize-prompt:You are a helpful assistant.}")
     private String agentLlmOptimizePrompt;
 
+    @Value("${agent.llm.uncanny-valley-optimize-prompt:You are a helpful assistant.}")
+    private String agentLlmUncannyValleyOptimizePrompt;
+
     @Value("${agent.llm.generate-script-prompt:You are a helpful assistant.}")
     private String agentLlmGenerateScriptPrompt;
 
@@ -180,9 +183,9 @@ public class AgentController {
     }
 
     @PostMapping("/optimize-prompt")
-    @Operation(summary = "调用环境变量配置的LLM并返回文本回复")
+    @Operation(summary = "优化角色prompt")
     @RequiresPermissions("sys:role:normal")
-    public Result<String> getLlmReply(@RequestBody @Valid AgentLlmReplyDTO dto) {
+    public Result<String> optimizePrompt(@RequestBody @Valid AgentLlmReplyDTO dto) {
         if (StringUtils.isBlank(agentLlmApiKey)) {
             return new Result<String>().error("未配置agent.llm.api-key");
         }
@@ -194,6 +197,26 @@ public class AgentController {
 
         try {
             return new Result<String>().ok(callAgentLlm(agentLlmOptimizePrompt, dto.getPrompt()));
+        } catch (Exception e) {
+            return new Result<String>().error("LLM调用失败: " + e.getMessage());
+        }
+    }
+
+    @PostMapping("/uncanny-valley-optimize-prompt")
+    @Operation(summary = "使用恐怖谷prompt返回优化的角色prompt")
+    @RequiresPermissions("sys:role:normal")
+    public Result<String> UncannyValleyOptimizePrompt(@RequestBody @Valid AgentLlmReplyDTO dto) {
+        if (StringUtils.isBlank(agentLlmApiKey)) {
+            return new Result<String>().error("未配置agent.llm.api-key");
+        }
+
+        String blockedReply = detectPromptInjectionReply(dto.getPrompt());
+        if (blockedReply != null) {
+            return new Result<String>().ok(blockedReply);
+        }
+
+        try {
+            return new Result<String>().ok(callAgentLlm(agentLlmUncannyValleyOptimizePrompt, dto.getPrompt()));
         } catch (Exception e) {
             return new Result<String>().error("LLM调用失败: " + e.getMessage());
         }

@@ -2,7 +2,7 @@
 import type { Agent } from '@/api/agent/types'
 import type { Device } from '@/api/device/types'
 import { onHide, onShow, onUnload } from '@dcloudio/uni-app'
-import { computed, onMounted, onUnmounted, ref } from 'vue'
+import { computed, onMounted, onUnmounted, ref, watch } from 'vue'
 import { getMyBenefits } from '@/api/activation-code/activation-code'
 import { getAgentList } from '@/api/agent/agent'
 import { getBindDevices, getDeviceAutoStartPlan, getDeviceStatus, sendDeviceCommand, updateDeviceAutoStartPlan } from '@/api/device'
@@ -45,6 +45,7 @@ interface ConsoleMessage {
 const robots = ref<RobotItem[]>([])
 const selectedRobotId = ref('')
 const showRobotPopup = ref(false)
+const currentRobotFocus = ref(false)
 
 const livePlanOptions = ref<LivePlanOption[]>([])
 const selectedPlanNoMap = ref<Record<string, string>>({})
@@ -54,6 +55,7 @@ const pendingMessage = ref('')
 const consoleMessages = ref<ConsoleMessage[]>([])
 const consoleMessageMap = ref<Record<string, ConsoleMessage[]>>({})
 const sentMsgAfterIdMap = ref<Record<string, number>>({})
+const screenBrightness = ref(100)
 
 const benefitLabel = ref('有效期')
 const benefitValue = ref('-')
@@ -65,6 +67,7 @@ const benefitBalanceSeconds = ref(0)
 
 const startLiveLoading = ref(false)
 const autoStartPlanLoading = ref(false)
+const screenBrightnessLoading = ref(false)
 const listLoading = ref(false)
 const refreshing = ref(false)
 
@@ -80,9 +83,13 @@ const roomEndedDurationSeconds = ref(0)
 
 const sentMsgTimer = ref<ReturnType<typeof setTimeout> | null>(null)
 const liveStatusTimer = ref<ReturnType<typeof setTimeout> | null>(null)
+const robotStatusTimer = ref<ReturnType<typeof setTimeout> | null>(null)
+const currentRobotFocusTimer = ref<ReturnType<typeof setTimeout> | null>(null)
+const robotStatusPolling = ref(false)
 const activeMonitorDeviceId = ref('')
 const sentMsgAfterId = ref(0)
 const sentMsgLimit = 20
+const maxConsoleMessagesPerDevice = 200
 
 const selectedRobot = computed(() => {
   return robots.value.find(item => item.id === selectedRobotId.value) || null
@@ -144,6 +151,23 @@ function setDeviceMicrophoneEnabled(deviceId: string, enabled: boolean) {
   })
 }
 
+function setDeviceScreenBrightness(deviceId: string, brightness: number) {
+  return sendDeviceCommand(deviceId, {
+    type: 'mcp',
+    payload: {
+      jsonrpc: '2.0',
+      id: 1,
+      method: 'tools/call',
+      params: {
+        name: 'self.screen.set_brightness',
+        arguments: {
+          brightness,
+        },
+      },
+    },
+  })
+}
+
 async function handleManualMicrophoneSwitch(enabled: boolean) {
   const target = selectedRobot.value
   if (!target) {
@@ -158,6 +182,37 @@ async function handleManualMicrophoneSwitch(enabled: boolean) {
   catch (error: any) {
     console.error(`${enabled ? '开启' : '关闭'}麦克风失败:`, error)
     toast.error(error?.message || `${enabled ? '开启' : '关闭'}麦克风失败`)
+  }
+}
+
+function updateScreenBrightness(value: number) {
+  const nextValue = Math.round(Number(value))
+  if (!Number.isFinite(nextValue))
+    return
+  screenBrightness.value = Math.min(100, Math.max(0, nextValue))
+}
+
+async function handleSetScreenBrightness() {
+  const target = selectedRobot.value
+  if (!target) {
+    toast.warning('请先选择机器人')
+    return
+  }
+
+  if (screenBrightnessLoading.value)
+    return
+
+  try {
+    screenBrightnessLoading.value = true
+    await setDeviceScreenBrightness(target.id, screenBrightness.value)
+    toast.success(`已设置屏幕亮度为 ${screenBrightness.value}%`)
+  }
+  catch (error: any) {
+    console.error('设置屏幕亮度失败:', error)
+    toast.error(error?.message || '设置屏幕亮度失败')
+  }
+  finally {
+    screenBrightnessLoading.value = false
   }
 }
 
@@ -200,7 +255,7 @@ function parseDateValue(value?: string | number | Date | null) {
     return new Date(value)
 
   if (!value)
-    return new Date(NaN)
+    return new Date(Number.NaN)
 
   const raw = String(value).trim()
   const normalized = /^\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}$/.test(raw)
@@ -334,6 +389,40 @@ function updateDeviceStatusFromResponse(targetRobots: RobotItem[], deviceStatusM
   })
 }
 
+async function refreshRobotOnlineStatuses() {
+  if (!robots.value.length || robotStatusPolling.value)
+    return
+
+  robotStatusPolling.value = true
+  try {
+    const robotsByAgent = robots.value.reduce<Record<string, RobotItem[]>>((groups, robot) => {
+      if (!robot.agentId)
+        return groups
+      if (!groups[robot.agentId])
+        groups[robot.agentId] = []
+      groups[robot.agentId].push(robot)
+      return groups
+    }, {})
+
+    await Promise.all(Object.entries(robotsByAgent).map(async ([agentId, agentRobots]) => {
+      try {
+        const rawStatus: any = await getDeviceStatus(agentId)
+        const statusData = typeof rawStatus === 'string' ? JSON.parse(rawStatus) : rawStatus
+        if (statusData && typeof statusData === 'object')
+          updateDeviceStatusFromResponse(agentRobots, statusData)
+      }
+      catch {
+        // Keep the last known status for this agent group.
+      }
+    }))
+
+    sortRobots()
+  }
+  finally {
+    robotStatusPolling.value = false
+  }
+}
+
 function sortRobots() {
   robots.value = [...robots.value].sort((a, b) => {
     if (a.online !== b.online)
@@ -353,13 +442,13 @@ async function fetchUserBenefits() {
     if (benefitMembershipActive.value && benefitMembershipEndAt.value) {
       const dailyRemainingSeconds = Number(benefit?.membershipDailyRemainingSeconds) || 0
       benefitMembershipDailyRemainingSeconds.value = dailyRemainingSeconds
-      benefitLabel.value = '剩余可用时长'
+      benefitLabel.value = '账户余额'
       benefitValue.value = `月卡今日 ${formatBenefitDuration(dailyRemainingSeconds)} / 点卡 ${formatBenefitDuration(balanceSeconds)}`
       canStartLiveByBenefits.value = true
       return
     }
 
-    benefitLabel.value = '剩余可用时长'
+    benefitLabel.value = '账户余额'
     benefitValue.value = `点卡 ${formatBenefitDuration(balanceSeconds)}`
     canStartLiveByBenefits.value = balanceSeconds > 0
   }
@@ -556,9 +645,10 @@ function appendSentMessages(messages: any[], deviceId: string) {
     )
   })
 
-  consoleMessageMap.value[deviceId] = deviceMessages
+  const trimmedMessages = deviceMessages.slice(-maxConsoleMessagesPerDevice)
+  consoleMessageMap.value[deviceId] = trimmedMessages
   if (selectedRobot.value?.mac === deviceId)
-    consoleMessages.value = deviceMessages.slice()
+    consoleMessages.value = trimmedMessages.slice()
 
   sentMsgAfterId.value = Number(sentMsgAfterIdMap.value[deviceId]) || 0
 }
@@ -624,11 +714,41 @@ function stopLiveStatusPolling() {
   }
 }
 
+function stopRobotStatusPolling() {
+  if (robotStatusTimer.value) {
+    clearTimeout(robotStatusTimer.value)
+    robotStatusTimer.value = null
+  }
+}
+
 function scheduleLiveStatusPolling() {
   stopLiveStatusPolling()
   liveStatusTimer.value = setTimeout(() => {
     void fetchLiveStatus()
   }, 5000)
+}
+
+function scheduleRobotStatusPolling() {
+  stopRobotStatusPolling()
+  if (!showRobotPopup.value)
+    return
+
+  robotStatusTimer.value = setTimeout(() => {
+    void pollRobotOnlineStatuses()
+  }, 5000)
+}
+
+async function pollRobotOnlineStatuses() {
+  if (!showRobotPopup.value)
+    return
+
+  try {
+    await refreshRobotOnlineStatuses()
+  }
+  finally {
+    if (showRobotPopup.value)
+      scheduleRobotStatusPolling()
+  }
 }
 
 function resetLiveStatusDisplay() {
@@ -674,14 +794,14 @@ async function fetchLiveStatus() {
     if (!benefitMembershipActive.value && liveData?.benefit_balance_seconds !== undefined) {
       const balanceSeconds = Number(liveData.benefit_balance_seconds) || 0
       benefitBalanceSeconds.value = balanceSeconds
-      benefitLabel.value = '剩余可用时长'
+      benefitLabel.value = '账户余额'
       benefitValue.value = `点卡 ${formatBenefitDuration(balanceSeconds)}`
       canStartLiveByBenefits.value = balanceSeconds > 0
     }
     else if (benefitMembershipActive.value && benefitMembershipEndAt.value) {
       if (liveData?.benefit_balance_seconds !== undefined)
         benefitBalanceSeconds.value = Number(liveData.benefit_balance_seconds) || 0
-      benefitLabel.value = '剩余可用时长'
+      benefitLabel.value = '账户余额'
       benefitValue.value = `月卡今日 ${formatBenefitDuration(benefitMembershipDailyRemainingSeconds.value)} / 点卡 ${formatBenefitDuration(benefitBalanceSeconds.value)}`
       canStartLiveByBenefits.value = true
     }
@@ -731,9 +851,24 @@ function selectRobot(id: string) {
   selectedRobotId.value = id
   ensureRobotPlanSelection(id)
   showRobotPopup.value = false
+  flashCurrentRobotFocus()
   stopSentMsgTracking()
   setConsoleMessagesForDevice(selectedRobot.value?.mac || '')
   void refreshSelectedRobotState(id)
+}
+
+function flashCurrentRobotFocus() {
+  if (currentRobotFocusTimer.value)
+    clearTimeout(currentRobotFocusTimer.value)
+
+  currentRobotFocus.value = false
+  currentRobotFocusTimer.value = setTimeout(() => {
+    currentRobotFocus.value = true
+    currentRobotFocusTimer.value = setTimeout(() => {
+      currentRobotFocus.value = false
+      currentRobotFocusTimer.value = null
+    }, 900)
+  }, 0)
 }
 
 async function refreshSelectedRobotState(robotId: string) {
@@ -767,10 +902,10 @@ async function handleStartStopLive() {
     return
   }
 
-  if (!selectedRobot.value.online && !isLiveRunning.value) {
-    toast.warning('机器人不在线')
-    return
-  }
+  // if (!selectedRobot.value.online && !isLiveRunning.value) {
+  //   toast.warning('机器人不在线')
+  //   return
+  // }
 
   const targetRobot = {
     id: selectedRobot.value.id,
@@ -963,19 +1098,33 @@ onMounted(() => {
   void initializePage()
 })
 
+watch(showRobotPopup, (isOpen) => {
+  if (isOpen) {
+    void pollRobotOnlineStatuses()
+  }
+  else {
+    stopRobotStatusPolling()
+  }
+})
+
 onHide(() => {
   stopSentMsgPolling()
   stopLiveStatusPolling()
+  stopRobotStatusPolling()
 })
 
 onUnload(() => {
   stopSentMsgPolling()
   stopLiveStatusPolling()
+  stopRobotStatusPolling()
 })
 
 onUnmounted(() => {
   stopSentMsgPolling()
   stopLiveStatusPolling()
+  stopRobotStatusPolling()
+  if (currentRobotFocusTimer.value)
+    clearTimeout(currentRobotFocusTimer.value)
 })
 </script>
 
@@ -990,9 +1139,9 @@ onUnmounted(() => {
       @refresherrefresh="handleRefresh"
     >
       <view class="page-body">
-      <view class="current-robot-card" @click="showRobotPopup = true">
+      <view class="current-robot-card" :class="{ 'current-robot-card--open': showRobotPopup, 'current-robot-card--focus': currentRobotFocus }" @click="showRobotPopup = !showRobotPopup">
         <view class="section-label">
-          当前机器人
+          当前机器人 - 智能体
         </view>
         <template v-if="selectedRobot">
           <view class="current-robot-row">
@@ -1000,13 +1149,31 @@ onUnmounted(() => {
               <view class="current-robot-name">
                 {{ selectedRobot.name }}
               </view>
-              <view class="current-robot-mac">
+              <!-- <view class="current-robot-mac">
                 {{ selectedRobot.mac }}
-              </view>
+              </view> -->
             </view>
             <view class="current-switch">
-              切换
+              {{ showRobotPopup ? '收起列表' : '点击切换机器人' }}
             </view>
+          </view>
+
+          <!-- <view class="meta-line">
+            <view class="meta-tag">
+              当前设备信息
+            </view>
+            <text class="meta-text">
+              {{ selectedRobot.meta }}
+            </text>
+          </view> -->
+
+          <view class="meta-line">
+            <view class="meta-tag">
+              {{ benefitLabel }}
+            </view>
+            <text class="meta-text">
+              {{ benefitValue }}
+            </text>
           </view>
         </template>
         <template v-else>
@@ -1014,44 +1181,92 @@ onUnmounted(() => {
             <text class="empty-text">
               暂无机器人
             </text>
-            <view class="current-switch" @click="showRobotPopup = true">
-              查看列表
+            <view class="current-switch">
+              {{ showRobotPopup ? '收起列表' : '查看列表' }}
             </view>
           </view>
         </template>
+
+        <view v-if="showRobotPopup" class="robot-drawer" @click.stop>
+          <view class="robot-drawer__header">
+            <text class="robot-drawer__title">
+              选择机器人
+            </text>
+            <text class="robot-drawer__count">
+              {{ listLoading ? '加载中' : `${robots.length} 台` }}
+            </text>
+          </view>
+
+          <scroll-view scroll-y class="robot-list-scroll">
+            <view class="robot-list-inner">
+              <template v-if="robots.length">
+                <view
+                  v-for="robot in robots"
+                  :key="robot.id"
+                  class="robot-card"
+                  :class="{ 'robot-card--active': selectedRobotId === robot.id }"
+                  @click="selectRobot(robot.id)"
+                >
+                  <view class="robot-card__header">
+                    <view class="robot-card__id">
+                      {{ robot.mac }}
+                    </view>
+                    <text class="robot-card__use">
+                      {{ selectedRobotId === robot.id ? '当前使用' : '切换' }}
+                    </text>
+                  </view>
+
+                  <view class="robot-card__name">
+                    {{ robot.name }}
+                  </view>
+
+                  <view class="robot-card__footer">
+                    <view class="robot-card__status" :class="{ 'robot-card__status--online': robot.online }">
+                      {{ robot.online ? '在线' : '离线' }}
+                    </view>
+                    <view class="robot-card__time">
+                      {{ robot.updatedAt }}
+                    </view>
+                  </view>
+                </view>
+              </template>
+              <view v-else class="robot-empty">
+                {{ listLoading ? '加载中...' : '暂无机器人' }}
+              </view>
+              <view class="robot-list-bottom-spacer" />
+            </view>
+          </scroll-view>
+        </view>
       </view>
 
       <template v-if="selectedRobot">
         <view class="summary-card">
-          <view class="summary-title">
+          <!-- <view class="summary-title">
             {{ selectedRobot.name }}
           </view>
-
           <view class="meta-line">
             <view class="meta-tag">
-              设备信息
+              当前设备信息
             </view>
             <text class="meta-text">
               {{ selectedRobot.meta }}
             </text>
           </view>
 
-          <view class="benefit-card">
-            <view class="benefit-line">
-              <view class="benefit-tag">
-                {{ benefitLabel }}
-              </view>
-              <text class="benefit-value">
-                {{ benefitValue }}
-              </text>
+          <view class="meta-line">
+            <view class="meta-tag">
+              {{ benefitLabel }}
             </view>
-          </view>
+            <text class="meta-text">
+              {{ benefitValue }}
+            </text>
+          </view> -->
 
           <view class="plan-row">
             <picker mode="selector" :range="planPickerRange" :value="selectedPlanIndex < 0 ? 0 : selectedPlanIndex" @change="handlePlanChange">
               <view class="plan-selector">
                 <text class="plan-selector__label">
-                  导播方案
+                  选择导播方案
                 </text>
                 <text class="plan-selector__value">
                   {{ selectedPlanLabel }}
@@ -1104,6 +1319,33 @@ onUnmounted(() => {
             </view>
             <view class="microphone-btn microphone-btn--off" @click="handleManualMicrophoneSwitch(false)">
               关闭麦克风
+            </view>
+          </view>
+
+          <view class="brightness-control">
+            <view class="brightness-track">
+              <view class="brightness-title">
+                屏幕亮度
+              </view>
+              <slider
+                class="brightness-slider"
+                :value="screenBrightness"
+                :min="0"
+                :max="100"
+                :step="1"
+                active-color="#336cff"
+                background-color="#d9e2ff"
+                block-color="#336cff"
+                :block-size="20"
+                @changing="event => updateScreenBrightness(event.detail.value)"
+                @change="event => updateScreenBrightness(event.detail.value)"
+              />
+              <view class="brightness-value">
+                {{ screenBrightness }}%
+              </view>
+            </view>
+            <view class="brightness-apply-btn" :class="{ 'brightness-apply-btn--loading': screenBrightnessLoading }" @click="handleSetScreenBrightness">
+              {{ screenBrightnessLoading ? '...' : '应用' }}
             </view>
           </view>
         </view>
@@ -1159,58 +1401,6 @@ onUnmounted(() => {
       </template>
     </view>
 
-    <view v-if="showRobotPopup" class="robot-popup-mask" @click="showRobotPopup = false">
-      <view class="robot-popup" @click.stop>
-        <view class="robot-popup__header">
-          <text class="robot-popup__title">
-            选择机器人
-          </text>
-          <text class="robot-popup__close" @click="showRobotPopup = false">
-            ×
-          </text>
-        </view>
-
-        <scroll-view scroll-y class="robot-list-scroll">
-          <view class="robot-list-inner">
-            <template v-if="robots.length">
-              <view
-                v-for="robot in robots"
-                :key="robot.id"
-                class="robot-card"
-                :class="{ 'robot-card--active': selectedRobotId === robot.id }"
-                @click="selectRobot(robot.id)"
-              >
-                <view class="robot-card__header">
-                  <view class="robot-card__id">
-                    {{ robot.mac }}
-                  </view>
-                  <text class="robot-card__use">
-                    {{ selectedRobotId === robot.id ? '当前使用' : '切换' }}
-                  </text>
-                </view>
-
-                <view class="robot-card__name">
-                  {{ robot.name }}
-                </view>
-
-                <view class="robot-card__footer">
-                  <view class="robot-card__status" :class="{ 'robot-card__status--online': robot.online }">
-                    {{ robot.online ? '在线' : '离线' }}
-                  </view>
-                  <view class="robot-card__time">
-                    {{ robot.updatedAt }}
-                  </view>
-                </view>
-              </view>
-            </template>
-            <view v-else class="robot-empty">
-              {{ listLoading ? '加载中...' : '暂无机器人' }}
-            </view>
-            <view class="robot-list-bottom-spacer" />
-          </view>
-        </scroll-view>
-      </view>
-      </view>
     </scroll-view>
   </view>
 </template>
@@ -1235,14 +1425,30 @@ onUnmounted(() => {
 .message-card {
   margin-bottom: 24rpx;
   border-radius: 28rpx;
+  border: 2rpx solid transparent;
   background: #fff;
   box-shadow: 0 10rpx 30rpx rgba(48, 74, 138, 0.08);
+  box-sizing: border-box;
 }
 
 .current-robot-card,
 .summary-card,
 .message-card {
   padding: 28rpx;
+}
+
+.current-robot-card {
+  transition:
+    box-shadow 0.2s ease,
+    transform 0.2s ease;
+}
+
+.current-robot-card--open {
+  box-shadow: 0 16rpx 42rpx rgba(48, 74, 138, 0.12);
+}
+
+.current-robot-card--focus {
+  animation: current-card-focus 0.9s ease-out;
 }
 
 .section-label {
@@ -1300,8 +1506,7 @@ onUnmounted(() => {
   align-items: flex-start;
 }
 
-.meta-tag,
-.benefit-tag {
+.meta-tag {
   min-width: 92rpx;
   height: 46rpx;
   padding: 0 18rpx;
@@ -1319,26 +1524,13 @@ onUnmounted(() => {
   color: #5d90ea;
 }
 
-.benefit-card {
-  margin-top: 22rpx;
-  padding: 22rpx;
-  border-radius: 22rpx;
-  background: #f8fbff;
-}
-
-.benefit-tag {
-  border: 2rpx solid #b8e2c3;
-  background: #f3fbf3;
-  color: #55a36a;
-}
-
-.meta-text,
-.benefit-value {
+.meta-text {
   flex: 1;
   min-width: 0;
   font-size: 23rpx;
   line-height: 1.6;
   color: #4b5568;
+  align-self: center;
 }
 
 .message-input,
@@ -1358,7 +1550,8 @@ onUnmounted(() => {
 }
 
 .send-btn,
-.start-btn {
+.start-btn,
+.brightness-apply-btn {
   display: flex;
   align-items: center;
   justify-content: center;
@@ -1408,7 +1601,7 @@ onUnmounted(() => {
 }
 
 .plan-row {
-  margin-top: 22rpx;
+  margin-top: 0;
   align-items: stretch;
 }
 
@@ -1439,6 +1632,57 @@ onUnmounted(() => {
   background: rgba(238, 92, 92, 0.12);
 }
 
+.brightness-control {
+  margin-top: 18rpx;
+  height: 68rpx;
+  display: flex;
+  align-items: center;
+  gap: 14rpx;
+}
+
+.brightness-track {
+  flex: 1;
+  min-width: 0;
+  height: 68rpx;
+  padding: 0 14rpx;
+  border-radius: 16rpx;
+  background: #f7f9ff;
+  border: 2rpx solid #edf2ff;
+  display: flex;
+  align-items: center;
+  gap: 10rpx;
+}
+
+.brightness-title {
+  flex: none;
+  font-size: 24rpx;
+  font-weight: 700;
+  color: #273042;
+}
+
+.brightness-value {
+  flex: none;
+  min-width: 64rpx;
+  text-align: right;
+  font-size: 24rpx;
+  font-weight: 700;
+  color: #336cff;
+}
+
+.brightness-slider {
+  flex: 1;
+  min-width: 0;
+}
+
+.brightness-apply-btn {
+  min-width: 88rpx;
+  padding: 0 18rpx;
+}
+
+.brightness-apply-btn--loading {
+  opacity: 0.65;
+}
+
 .plan-row picker {
   flex: 1;
 }
@@ -1466,6 +1710,8 @@ onUnmounted(() => {
 .start-btn {
   min-width: 176rpx;
   padding: 0 24rpx;
+  height: auto;
+  min-height: 96rpx;
 }
 
 .status-row {
@@ -1552,50 +1798,39 @@ onUnmounted(() => {
   text-align: left;
 }
 
-.robot-popup-mask {
-  position: fixed;
-  inset: 0;
-  z-index: 99;
-  background: rgba(17, 24, 39, 0.42);
-  display: flex;
-  align-items: flex-end;
+.robot-drawer {
+  margin-top: 24rpx;
+  padding-top: 22rpx;
+  border-top: 2rpx solid #eef2f8;
+  animation: robot-drawer-in 0.18s ease-out;
 }
 
-.robot-popup {
-  width: 100%;
-  max-height: 68vh;
-  border-radius: 32rpx 32rpx 0 0;
-  background: #fff;
-  overflow: hidden;
-  margin-bottom: calc(110rpx + env(safe-area-inset-bottom));
-}
-
-.robot-popup__header {
+.robot-drawer__header {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 24rpx;
-  border-bottom: 2rpx solid #eef1f6;
+  margin-bottom: 18rpx;
 }
 
-.robot-popup__title {
-  font-size: 30rpx;
+.robot-drawer__title {
+  font-size: 26rpx;
   font-weight: 700;
   color: #1f2430;
 }
 
-.robot-popup__close {
-  font-size: 44rpx;
-  color: #c2c7d4;
-  line-height: 1;
+.robot-drawer__count {
+  font-size: 22rpx;
+  color: #98a0b1;
 }
 
 .robot-list-scroll {
-  max-height: calc(68vh - 96rpx);
+  max-height: 620rpx;
+  border-radius: 22rpx;
+  background: #f7f9fc;
 }
 
 .robot-list-inner {
-  padding: 24rpx 24rpx calc(140rpx + env(safe-area-inset-bottom));
+  padding: 16rpx;
   box-sizing: border-box;
 }
 
@@ -1658,6 +1893,38 @@ onUnmounted(() => {
 }
 
 .robot-list-bottom-spacer {
-  height: calc(60rpx + env(safe-area-inset-bottom));
+  height: 2rpx;
+}
+
+@keyframes robot-drawer-in {
+  from {
+    opacity: 0;
+    transform: translateY(-12rpx);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes current-card-focus {
+  0% {
+    border-color: #bcd0ff;
+    box-shadow: 0 0 0 0 rgba(93, 144, 234, 0.22), 0 10rpx 30rpx rgba(48, 74, 138, 0.08);
+    transform: translateY(0);
+  }
+
+  35% {
+    border-color: #9ab8ff;
+    box-shadow: 0 0 0 8rpx rgba(93, 144, 234, 0.12), 0 18rpx 42rpx rgba(48, 74, 138, 0.14);
+    transform: translateY(-2rpx);
+  }
+
+  100% {
+    border-color: transparent;
+    box-shadow: 0 10rpx 30rpx rgba(48, 74, 138, 0.08);
+    transform: translateY(0);
+  }
 }
 </style>

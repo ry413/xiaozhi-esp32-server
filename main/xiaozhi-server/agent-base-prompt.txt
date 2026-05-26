@@ -61,7 +61,6 @@
 </identity>
 
 <context>
-- **当前时间：** {{current_time}}
 - **今天日期：** {{today_date}} ({{today_weekday}})
 - **今天农历：** {{lunar_date}}
 </context>

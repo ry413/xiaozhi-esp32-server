@@ -895,7 +895,7 @@ onMounted(async () => {
           :placeholder="t('agent.inputAgentName')"
         >
       </view>
-<!-- 
+      <!--
       <view class="mb-[24rpx] last:mb-0">
         <text class="mb-[12rpx] block text-[28rpx] text-[#232338] font-medium">
           {{ t('agent.agentTag') }}
@@ -1199,106 +1199,108 @@ onMounted(async () => {
         {{ saving ? t('agent.saving') : t('agent.save') }}
       </wd-button>
     </view>
-    <!-- 模型选择器 -->
-    <wd-action-sheet
-      v-model="pickerShow.vad"
-      :actions="modelOptions.VAD && modelOptions.VAD.map(item => ({ name: item.modelName, value: item.id }))"
-      @close="onPickerCancel('vad')"
-      @select="({ item }) => onPickerConfirm('vad', item.value, item.name)"
-    />
+    <root-portal>
+      <!-- 模型选择器 -->
+      <wd-action-sheet
+        v-model="pickerShow.vad"
+        :actions="modelOptions.VAD && modelOptions.VAD.map(item => ({ name: item.modelName, value: item.id }))"
+        @close="onPickerCancel('vad')"
+        @select="({ item }) => onPickerConfirm('vad', item.value, item.name)"
+      />
 
-    <wd-action-sheet
-      v-model="pickerShow.asr"
-      :actions="modelOptions.ASR && modelOptions.ASR.map(item => ({ name: item.modelName, value: item.id }))"
-      @close="onPickerCancel('asr')"
-      @select="({ item }) => onPickerConfirm('asr', item.value, item.name)"
-    />
+      <wd-action-sheet
+        v-model="pickerShow.asr"
+        :actions="modelOptions.ASR && modelOptions.ASR.map(item => ({ name: item.modelName, value: item.id }))"
+        @close="onPickerCancel('asr')"
+        @select="({ item }) => onPickerConfirm('asr', item.value, item.name)"
+      />
 
-    <wd-action-sheet
-      v-model="pickerShow.llm"
-      :actions="modelOptions.LLM && modelOptions.LLM.map(item => ({ name: item.modelName, value: item.id }))"
-      @close="onPickerCancel('llm')"
-      @select="({ item }) => onPickerConfirm('llm', item.value, item.name)"
-    />
+      <wd-action-sheet
+        v-model="pickerShow.llm"
+        :actions="modelOptions.LLM && modelOptions.LLM.map(item => ({ name: item.modelName, value: item.id }))"
+        @close="onPickerCancel('llm')"
+        @select="({ item }) => onPickerConfirm('llm', item.value, item.name)"
+      />
 
-    <wd-action-sheet
-      v-model="pickerShow.slm"
-      :actions="modelOptions.LLM && modelOptions.LLM.map(item => ({ name: item.modelName, value: item.id }))"
-      @close="onPickerCancel('slm')"
-      @select="({ item }) => onPickerConfirm('slm', item.value, item.name)"
-    />
+      <wd-action-sheet
+        v-model="pickerShow.slm"
+        :actions="modelOptions.LLM && modelOptions.LLM.map(item => ({ name: item.modelName, value: item.id }))"
+        @close="onPickerCancel('slm')"
+        @select="({ item }) => onPickerConfirm('slm', item.value, item.name)"
+      />
 
-    <wd-action-sheet
-      v-model="pickerShow.vllm"
-      :actions="modelOptions.VLLM && modelOptions.VLLM.map(item => ({ name: item.modelName, value: item.id }))"
-      @close="onPickerCancel('vllm')"
-      @select="({ item }) => onPickerConfirm('vllm', item.value, item.name)"
-    />
+      <wd-action-sheet
+        v-model="pickerShow.vllm"
+        :actions="modelOptions.VLLM && modelOptions.VLLM.map(item => ({ name: item.modelName, value: item.id }))"
+        @close="onPickerCancel('vllm')"
+        @select="({ item }) => onPickerConfirm('vllm', item.value, item.name)"
+      />
 
-    <wd-action-sheet
-      v-model="pickerShow.intent"
-      :actions="modelOptions.Intent && modelOptions.Intent.map(item => ({ name: item.modelName, value: item.id }))"
-      @close="onPickerCancel('intent')"
-      @select="({ item }) => onPickerConfirm('intent', item.value, item.name)"
-    />
+      <wd-action-sheet
+        v-model="pickerShow.intent"
+        :actions="modelOptions.Intent && modelOptions.Intent.map(item => ({ name: item.modelName, value: item.id }))"
+        @close="onPickerCancel('intent')"
+        @select="({ item }) => onPickerConfirm('intent', item.value, item.name)"
+      />
 
-    <wd-action-sheet
-      v-model="pickerShow.memory"
-      :actions="modelOptions.Memory && modelOptions.Memory.map(item => ({ name: item.modelName, value: item.id }))"
-      @close="onPickerCancel('memory')"
-      @select="({ item }) => onPickerConfirm('memory', item.value, item.name)"
-    />
+      <wd-action-sheet
+        v-model="pickerShow.memory"
+        :actions="modelOptions.Memory && modelOptions.Memory.map(item => ({ name: item.modelName, value: item.id }))"
+        @close="onPickerCancel('memory')"
+        @select="({ item }) => onPickerConfirm('memory', item.value, item.name)"
+      />
 
-    <wd-action-sheet
-      v-model="pickerShow.tts"
-      :actions="modelOptions.TTS && modelOptions.TTS.map(item => ({ name: item.modelName, value: item.id }))"
-      class="custom-sheet-tts"
-      @close="onPickerCancel('tts')"
-      @select="({ item }) => onPickerConfirm('tts', item.value, item.name)"
-    />
+      <wd-action-sheet
+        v-model="pickerShow.tts"
+        :actions="modelOptions.TTS && modelOptions.TTS.map(item => ({ name: item.modelName, value: item.id }))"
+        class="custom-sheet-tts"
+        @close="onPickerCancel('tts')"
+        @select="({ item }) => onPickerConfirm('tts', item.value, item.name)"
+      />
 
-    <!-- 自定义语音选择弹出层 -->
-    <wd-popup v-model="pickerShow.voiceprint" class="custom-popup" position="bottom" @close="onPickerCancel('voiceprint')">
-      <view class="overflow-hidden rounded-[20rpx] bg-white pb-[20rpx] pt-[20rpx]">
-        <view class="max-h-[600rpx] overflow-y-auto">
-          <view
-            v-for="voice in voiceOptions"
-            :key="voice.value"
-            class="flex items-center justify-between border-b border-[#f5f5f5] p-[32rpx] transition-all active:bg-[#f5f7fb]"
-            @click="onPickerConfirm('voiceprint', voice.value, voice.name)"
-          >
-            <text :class="`flex-1 text-[28rpx] text-[#232338] ${(voice.voiceDemo || voice.voice_demo) ? '' : 'text-center'}`">
-              {{ voice.name }}
-            </text>
-            <view v-if="voice.voiceDemo || voice.voice_demo" class="ml-[20rpx]" @click.stop="playAudio(voice.voiceDemo || voice.voice_demo, voice.value, $event)">
-              <wd-icon
-                :name="playingVoiceId === voice.value ? 'pause-circle' : 'play-circle'"
-                size="24px"
-                :custom-class="playingVoiceId === voice.value ? 'text-[#336cff]' : 'text-[#9d9ea3]'"
-              />
+      <!-- 自定义语音选择弹出层 -->
+      <wd-popup v-model="pickerShow.voiceprint" class="custom-popup" position="bottom" @close="onPickerCancel('voiceprint')">
+        <view class="overflow-hidden rounded-[20rpx] bg-white pb-[20rpx] pt-[20rpx]">
+          <view class="max-h-[600rpx] overflow-y-auto">
+            <view
+              v-for="voice in voiceOptions"
+              :key="voice.value"
+              class="flex items-center justify-between border-b border-[#f5f5f5] p-[32rpx] transition-all active:bg-[#f5f7fb]"
+              @click="onPickerConfirm('voiceprint', voice.value, voice.name)"
+            >
+              <text :class="`flex-1 text-[28rpx] text-[#232338] ${(voice.voiceDemo || voice.voice_demo) ? '' : 'text-center'}`">
+                {{ voice.name }}
+              </text>
+              <view v-if="voice.voiceDemo || voice.voice_demo" class="ml-[20rpx]" @click.stop="playAudio(voice.voiceDemo || voice.voice_demo, voice.value, $event)">
+                <wd-icon
+                  :name="playingVoiceId === voice.value ? 'pause-circle' : 'play-circle'"
+                  size="24px"
+                  :custom-class="playingVoiceId === voice.value ? 'text-[#336cff]' : 'text-[#9d9ea3]'"
+                />
+              </view>
             </view>
           </view>
         </view>
-      </view>
-    </wd-popup>
-    <wd-action-sheet
-      v-model="pickerShow.language"
-      :actions="languageOptions"
-      @close="onPickerCancel('language')"
-      @select="({ item }) => onPickerConfirm('language', item.value, item.name)"
-    />
-    <wd-action-sheet
-      v-model="pickerShow.report"
-      :actions="reportOptions"
-      @close="onPickerCancel('report')"
-      @select="({ item }) => onPickerConfirm('report', item.value, item.name)"
-    />
-    <wd-action-sheet
-      v-model="pickerShow.promptTemplate"
-      :actions="promptTemplateOptions"
-      @close="onPickerCancel('promptTemplate')"
-      @select="({ item }) => onPickerConfirm('promptTemplate', item.value, item.name)"
-    />
+      </wd-popup>
+      <wd-action-sheet
+        v-model="pickerShow.language"
+        :actions="languageOptions"
+        @close="onPickerCancel('language')"
+        @select="({ item }) => onPickerConfirm('language', item.value, item.name)"
+      />
+      <wd-action-sheet
+        v-model="pickerShow.report"
+        :actions="reportOptions"
+        @close="onPickerCancel('report')"
+        @select="({ item }) => onPickerConfirm('report', item.value, item.name)"
+      />
+      <wd-action-sheet
+        v-model="pickerShow.promptTemplate"
+        :actions="promptTemplateOptions"
+        @close="onPickerCancel('promptTemplate')"
+        @select="({ item }) => onPickerConfirm('promptTemplate', item.value, item.name)"
+      />
+    </root-portal>
   </view>
 </template>
 

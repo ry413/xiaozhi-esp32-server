@@ -1,6 +1,6 @@
 <script lang="ts" setup>
 import { onShow } from '@dcloudio/uni-app'
-import { computed, onMounted, ref } from 'vue'
+import { computed, onMounted, onUnmounted, ref } from 'vue'
 import { generateAgentScript } from '@/api/agent/agent'
 import { updatePlanConfig } from '@/api/live-streaming/live-streaming'
 import { addLivePlan, deleteLivePlan, getDouyinRoomId, getLivePlanList, updateLivePlan } from '@/api/live-plan/live-plan'
@@ -90,6 +90,7 @@ const listLoading = ref(false)
 const addPlanLoading = ref(false)
 const savePlanLoading = ref(false)
 const showSchemeActions = ref(false)
+const currentSchemeFocus = ref(false)
 const showEditPopup = ref(false)
 const editingField = ref<'name' | 'roomId' | ''>('')
 const editingValue = ref('')
@@ -98,6 +99,7 @@ const generateScriptPrompt = ref('')
 const generateScriptLoading = ref(false)
 const showGeneratedScriptsPopup = ref(false)
 const generatedAwkwardTemplates = ref<string[]>([])
+const currentSchemeFocusTimer = ref<ReturnType<typeof setTimeout> | null>(null)
 
 const selectedScheme = computed(() => {
   return schemes.value.find(item => item.id === selectedSchemeId.value) || null
@@ -369,6 +371,21 @@ async function handleAddScheme() {
 function selectScheme(id: string) {
   selectedSchemeId.value = id
   showSchemeActions.value = false
+  flashCurrentSchemeFocus()
+}
+
+function flashCurrentSchemeFocus() {
+  if (currentSchemeFocusTimer.value)
+    clearTimeout(currentSchemeFocusTimer.value)
+
+  currentSchemeFocus.value = false
+  currentSchemeFocusTimer.value = setTimeout(() => {
+    currentSchemeFocus.value = true
+    currentSchemeFocusTimer.value = setTimeout(() => {
+      currentSchemeFocus.value = false
+      currentSchemeFocusTimer.value = null
+    }, 900)
+  }, 0)
 }
 
 async function duplicateScheme(id: string) {
@@ -673,13 +690,18 @@ onShow(() => {
 onMounted(() => {
   fetchLivePlanData()
 })
+
+onUnmounted(() => {
+  if (currentSchemeFocusTimer.value)
+    clearTimeout(currentSchemeFocusTimer.value)
+})
 </script>
 
 <template>
   <view class="page">
     <scroll-view scroll-y class="page-scroll" enable-back-to-top>
       <view class="page-body">
-        <view class="current-scheme-card" @click="showSchemeActions = true">
+        <view class="current-scheme-card" :class="{ 'current-scheme-card--open': showSchemeActions, 'current-scheme-card--focus': currentSchemeFocus }" @click="showSchemeActions = !showSchemeActions">
         <view class="current-label">
           当前方案
         </view>
@@ -690,16 +712,16 @@ onMounted(() => {
                 {{ selectedScheme.name }}
               </view>
               <view class="current-meta-row">
-                <view class="current-room">
-                  直播间id {{ selectedScheme.roomId }}
-                </view>
                 <view class="current-platform">
                   {{ selectedScheme.platform }}
+                </view>
+                <view class="current-room">
+                  直播间id {{ selectedScheme.roomId }}
                 </view>
               </view>
             </view>
             <view class="current-switch">
-              切换
+              {{ showSchemeActions ? '收起列表' : '点击切换方案' }}
             </view>
           </view>
         </template>
@@ -708,11 +730,98 @@ onMounted(() => {
             <text class="empty-text">
               暂无方案
             </text>
-            <view class="current-switch" @click="showSchemeActions = true">
-              添加
+            <view class="current-switch">
+              {{ showSchemeActions ? '收起列表' : '添加方案' }}
             </view>
           </view>
         </template>
+
+        <view v-if="showSchemeActions" class="scheme-drawer" @click.stop>
+          <view class="scheme-drawer__header">
+            <text class="scheme-drawer__title">
+              选择方案
+            </text>
+            <text class="scheme-drawer__count">
+              {{ listLoading ? '加载中' : `${schemes.length} 个` }}
+            </text>
+          </view>
+
+          <view class="scheme-drawer__add">
+            <input
+              v-model.trim="newSchemeRoomId"
+              class="scheme-drawer__input"
+              placeholder="输入直播间 ID 或分享链接"
+            >
+            <view
+              class="scheme-drawer__add-btn"
+              :class="{ 'scheme-drawer__add-btn--loading': addPlanLoading }"
+              @click="handleAddScheme"
+            >
+              {{ addPlanLoading ? '添加中...' : '添加方案' }}
+            </view>
+          </view>
+
+          <scroll-view scroll-y class="scheme-list-scroll">
+            <view class="scheme-list-inner">
+              <view
+                v-for="scheme in schemes"
+                :key="scheme.id"
+                class="scheme-card"
+                :class="{ 'scheme-card--active': selectedSchemeId === scheme.id }"
+                @click="selectScheme(scheme.id)"
+              >
+                <view class="scheme-card__header">
+                  <view class="scheme-card__id">
+                    {{ scheme.roomId }}
+                  </view>
+                  <view class="scheme-card__icon-actions">
+                    <text class="scheme-card__icon-action" @click.stop="duplicateScheme(scheme.id)">
+                      复制
+                    </text>
+                    <text class="scheme-card__icon-action scheme-card__icon-action--danger" @click.stop="removeScheme(scheme.id)">
+                      删除
+                    </text>
+                  </view>
+                </view>
+
+                <view class="scheme-card__name">
+                  {{ scheme.name }}
+                </view>
+
+                <view class="scheme-card__footer">
+                  <view class="scheme-card__meta">
+                    <!-- <text class="scheme-card__status-tag">
+                      {{ scheme.status }}
+                    </text> -->
+                    <text class="scheme-card__time">
+                      {{ scheme.updatedAt }}
+                    </text>
+                  </view>
+                  <view class="scheme-card__footer-actions">
+                    <text
+                      v-if="selectedSchemeId === scheme.id"
+                      class="scheme-card__action scheme-card__action--active"
+                    >
+                      当前使用
+                    </text>
+                    <text
+                      v-else
+                      class="scheme-card__action scheme-card__action--active"
+                      @click.stop="selectScheme(scheme.id)"
+                    >
+                      切换
+                    </text>
+                  </view>
+                </view>
+              </view>
+
+              <view v-if="!schemes.length" class="scheme-empty">
+                {{ listLoading ? '加载中...' : '暂无方案' }}
+              </view>
+              <view class="scheme-list-bottom-spacer" />
+            </view>
+          </scroll-view>
+        </view>
       </view>
 
       <template v-if="selectedScheme">
@@ -1062,99 +1171,6 @@ onMounted(() => {
       </view>
     </scroll-view>
 
-    <view v-if="showSchemeActions" class="scheme-popup-mask" @click="showSchemeActions = false">
-      <view class="scheme-popup" @click.stop>
-        <view class="scheme-popup__header">
-          <text class="scheme-popup__title">
-            选择方案
-          </text>
-          <text class="scheme-popup__close" @click="showSchemeActions = false">
-            ×
-          </text>
-        </view>
-
-        <view class="scheme-popup__content">
-          <input
-            v-model.trim="newSchemeRoomId"
-            class="scheme-popup__input"
-            placeholder="输入直播间 ID 或分享链接 后点添加"
-          >
-
-          <view class="platform-row">
-            <view class="platform-chip platform-chip--active">
-              抖音
-            </view>
-          </view>
-
-          <view
-            class="scheme-popup__add-btn"
-            :class="{ 'scheme-popup__add-btn--loading': addPlanLoading }"
-            @click="handleAddScheme"
-          >
-            {{ addPlanLoading ? '添加中...' : '添加方案' }}
-          </view>
-
-          <scroll-view scroll-y class="scheme-list-scroll">
-            <view class="scheme-list-inner">
-              <view
-                v-for="scheme in schemes"
-                :key="scheme.id"
-                class="scheme-card"
-                :class="{ 'scheme-card--active': selectedSchemeId === scheme.id }"
-                @click="selectScheme(scheme.id)"
-              >
-                <view class="scheme-card__header">
-                  <view class="scheme-card__id">
-                    {{ scheme.roomId }}
-                  </view>
-                  <view class="scheme-card__icon-actions">
-                    <text class="scheme-card__icon-action" @click.stop="duplicateScheme(scheme.id)">
-                      复制
-                    </text>
-                    <text class="scheme-card__icon-action scheme-card__icon-action--danger" @click.stop="removeScheme(scheme.id)">
-                      删除
-                    </text>
-                  </view>
-                </view>
-
-                <view class="scheme-card__name">
-                  {{ scheme.name }}
-                </view>
-
-                <view class="scheme-card__footer">
-                  <view class="scheme-card__meta">
-                    <text class="scheme-card__status-tag">
-                      {{ scheme.status }}
-                    </text>
-                    <text class="scheme-card__time">
-                      {{ scheme.updatedAt }}
-                    </text>
-                  </view>
-                  <view class="scheme-card__footer-actions">
-                    <text
-                      v-if="selectedSchemeId === scheme.id"
-                      class="scheme-card__action scheme-card__action--active"
-                    >
-                      当前使用
-                    </text>
-                    <text
-                      v-else
-                      class="scheme-card__action scheme-card__action--active"
-                      @click.stop="selectScheme(scheme.id)"
-                    >
-                      切换
-                    </text>
-                  </view>
-                </view>
-              </view>
-
-              <view class="scheme-list-bottom-spacer" />
-            </view>
-          </scroll-view>
-        </view>
-      </view>
-    </view>
-
     <wd-popup
       v-model="showEditPopup"
       position="center"
@@ -1263,12 +1279,25 @@ onMounted(() => {
 .panel-card {
   margin-bottom: 24rpx;
   border-radius: 28rpx;
+  border: 2rpx solid transparent;
   background: #fff;
   box-shadow: 0 10rpx 30rpx rgba(48, 74, 138, 0.08);
+  box-sizing: border-box;
 }
 
 .current-scheme-card {
   padding: 28rpx;
+  transition:
+    box-shadow 0.2s ease,
+    transform 0.2s ease;
+}
+
+.current-scheme-card--open {
+  box-shadow: 0 16rpx 42rpx rgba(48, 74, 138, 0.12);
+}
+
+.current-scheme-card--focus {
+  animation: current-card-focus 0.9s ease-out;
 }
 
 .current-label {
@@ -1659,49 +1688,41 @@ onMounted(() => {
   color: #fff;
 }
 
-.scheme-popup-mask {
-  position: fixed;
-  inset: 0;
-  z-index: 99;
-  background: rgba(17, 24, 39, 0.42);
-  display: flex;
-  align-items: flex-end;
+.scheme-drawer {
+  margin-top: 24rpx;
+  padding-top: 22rpx;
+  border-top: 2rpx solid #eef2f8;
+  animation: scheme-drawer-in 0.18s ease-out;
 }
 
-.scheme-popup {
-  width: 100%;
-  max-height: 68vh;
-  border-radius: 32rpx 32rpx 0 0;
-  background: #fff;
-  overflow: hidden;
-  margin-bottom: calc(110rpx + env(safe-area-inset-bottom));
-}
-
-.scheme-popup__header {
+.scheme-drawer__header {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 24rpx;
-  border-bottom: 2rpx solid #eef1f6;
+  margin-bottom: 18rpx;
 }
 
-.scheme-popup__title {
-  font-size: 30rpx;
+.scheme-drawer__title {
+  font-size: 26rpx;
   font-weight: 700;
   color: #1f2430;
 }
 
-.scheme-popup__close {
-  font-size: 44rpx;
-  color: #c2c7d4;
-  line-height: 1;
+.scheme-drawer__count {
+  font-size: 22rpx;
+  color: #98a0b1;
 }
 
-.scheme-popup__content {
-  padding: 24rpx 24rpx calc(36rpx + env(safe-area-inset-bottom));
+.scheme-drawer__add {
+  display: flex;
+  align-items: center;
+  gap: 14rpx;
+  margin-bottom: 18rpx;
 }
 
-.scheme-popup__input {
+.scheme-drawer__input {
+  flex: 1;
+  min-width: 0;
   height: 70rpx;
   padding: 0 20rpx;
   border: 2rpx solid #dfe5f0;
@@ -1711,33 +1732,10 @@ onMounted(() => {
   background: #fff;
 }
 
-.platform-row {
-  display: flex;
-  margin-top: 16rpx;
-}
-
-.platform-chip {
-  min-width: 96rpx;
-  height: 50rpx;
-  padding: 0 20rpx;
-  border-radius: 12rpx;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  font-size: 22rpx;
-  color: #6c7384;
-  background: #f4f7fc;
-}
-
-.platform-chip--active {
-  color: #4c9a64;
-  border: 2rpx solid #87d39d;
-  background: #eff9f2;
-}
-
-.scheme-popup__add-btn {
-  margin-top: 18rpx;
+.scheme-drawer__add-btn {
+  min-width: 148rpx;
   height: 70rpx;
+  padding: 0 20rpx;
   border-radius: 16rpx;
   display: flex;
   align-items: center;
@@ -1748,22 +1746,30 @@ onMounted(() => {
   font-weight: 600;
 }
 
-.scheme-popup__add-btn--loading {
+.scheme-drawer__add-btn--loading {
   opacity: 0.72;
 }
 
 .scheme-list-scroll {
-  max-height: calc(68vh - 260rpx);
-  margin-top: 20rpx;
+  max-height: 520rpx;
+  border-radius: 22rpx;
+  background: #f7f9fc;
 }
 
 .scheme-list-inner {
-  padding-bottom: calc(140rpx + env(safe-area-inset-bottom));
+  padding: 16rpx;
   box-sizing: border-box;
 }
 
 .scheme-list-bottom-spacer {
-  height: calc(60rpx + env(safe-area-inset-bottom));
+  height: 2rpx;
+}
+
+.scheme-empty {
+  padding: 48rpx 0;
+  text-align: center;
+  color: #99a0b2;
+  font-size: 24rpx;
 }
 
 .scheme-card {
@@ -1870,6 +1876,38 @@ onMounted(() => {
   color: #e95b5b;
 }
 
+@keyframes scheme-drawer-in {
+  from {
+    opacity: 0;
+    transform: translateY(-12rpx);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes current-card-focus {
+  0% {
+    border-color: #bcd0ff;
+    box-shadow: 0 0 0 0 rgba(93, 144, 234, 0.22), 0 10rpx 30rpx rgba(48, 74, 138, 0.08);
+    transform: translateY(0);
+  }
+
+  35% {
+    border-color: #9ab8ff;
+    box-shadow: 0 0 0 8rpx rgba(93, 144, 234, 0.12), 0 18rpx 42rpx rgba(48, 74, 138, 0.14);
+    transform: translateY(-2rpx);
+  }
+
+  100% {
+    border-color: transparent;
+    box-shadow: 0 10rpx 30rpx rgba(48, 74, 138, 0.08);
+    transform: translateY(0);
+  }
+}
+
 .edit-popup {
   padding: 32rpx;
 }
@@ -1918,7 +1956,7 @@ onMounted(() => {
 }
 
 .generated-list {
-  max-height: 420rpx;
+  max-height: 620rpx;
   margin-top: 8rpx;
 }
 

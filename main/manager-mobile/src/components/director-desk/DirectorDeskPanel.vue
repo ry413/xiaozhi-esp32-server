@@ -34,6 +34,7 @@ interface LivePlanOption {
   roomId: string
   platform: string
   displayLabel: string
+  configJson?: any
 }
 
 interface ConsoleMessage {
@@ -48,6 +49,7 @@ const showRobotPopup = ref(false)
 const currentRobotFocus = ref(false)
 
 const livePlanOptions = ref<LivePlanOption[]>([])
+const livePlanConfigMap = ref<Record<string, any>>({})
 const selectedPlanNoMap = ref<Record<string, string>>({})
 const autoStartPlanNoMap = ref<Record<string, string>>({})
 
@@ -118,6 +120,14 @@ const currentSelectedPlanNo = computed({
       [selectedRobotId.value]: value || '',
     }
   },
+})
+
+const currentManualQuickTemplates = computed(() => {
+  const configJson = livePlanConfigMap.value[currentSelectedPlanNo.value]
+  const templates = configJson?.manual?.quickTemplates
+  return Array.isArray(templates)
+    ? templates.map(item => String(item).trim()).filter(Boolean)
+    : []
 })
 
 const currentAutoStartPlanNo = computed(() => {
@@ -431,6 +441,33 @@ function sortRobots() {
   })
 }
 
+function parsePlanConfig(configJson: any) {
+  if (!configJson)
+    return null
+
+  if (typeof configJson === 'string') {
+    try {
+      return JSON.parse(configJson)
+    }
+    catch {
+      return null
+    }
+  }
+
+  return typeof configJson === 'object' ? configJson : null
+}
+
+function setPlanConfig(planNo: string, configJson: any) {
+  const parsedConfig = parsePlanConfig(configJson)
+  if (!planNo || !parsedConfig)
+    return
+
+  livePlanConfigMap.value = {
+    ...livePlanConfigMap.value,
+    [planNo]: parsedConfig,
+  }
+}
+
 async function fetchUserBenefits() {
   try {
     const benefit: any = await getMyBenefits()
@@ -472,12 +509,27 @@ async function fetchLivePlanData() {
       roomId: item.roomId,
       platform: item.platform,
       displayLabel: `${item.planName}(${item.roomId})`,
+      configJson: item.configJson,
     }))
     livePlanOptions.value = list
+    list.forEach((item: LivePlanOption) => setPlanConfig(item.planNo, item.configJson))
     ensureRobotPlanSelections()
   }
   catch (error: any) {
     toast.error(error?.message || '获取导播方案失败')
+  }
+}
+
+async function ensurePlanConfig(planNo?: string) {
+  if (!planNo || livePlanConfigMap.value[planNo])
+    return
+
+  try {
+    const plan: any = await getLivePlanDetail(planNo)
+    setPlanConfig(planNo, plan?.configJson)
+  }
+  catch {
+    // Missing quick templates should not block the message panel.
   }
 }
 
@@ -886,6 +938,11 @@ async function handleSendMessage() {
   if (!pendingMessage.value)
     return
 
+  if (!isLiveRunning.value) {
+    toast.warning('请先启动导播')
+    return
+  }
+
   try {
     await sendManualMsg(selectedRobot.value.mac, { message: pendingMessage.value })
     toast.success('消息已发送')
@@ -894,6 +951,12 @@ async function handleSendMessage() {
   catch (error: any) {
     toast.error(error?.message || '消息发送失败')
   }
+}
+
+function applyQuickTemplate(template: string) {
+  pendingMessage.value = template
+  if (!isLiveRunning.value)
+    toast.warning('请先启动导播')
 }
 
 async function handleStartStopLive() {
@@ -984,6 +1047,7 @@ async function handleStartStopLive() {
     await delay(2000)
 
     const plan: any = await getLivePlanDetail(targetPlanNo)
+    setPlanConfig(targetPlanNo, plan?.configJson)
     await startLive({
       platform: plan?.platform,
       live_id: plan?.roomId,
@@ -1105,6 +1169,10 @@ watch(showRobotPopup, (isOpen) => {
   else {
     stopRobotStatusPolling()
   }
+})
+
+watch(currentSelectedPlanNo, (planNo) => {
+  void ensurePlanConfig(planNo)
 })
 
 onHide(() => {
@@ -1365,14 +1433,28 @@ onUnmounted(() => {
             </view>
           </view>
 
+          <scroll-view v-if="currentManualQuickTemplates.length" scroll-x class="quick-template-scroll" enable-flex>
+            <view class="quick-template-row">
+              <view
+                v-for="(template, index) in currentManualQuickTemplates"
+                :key="`quick-${index}`"
+                class="quick-template-chip"
+                @click="applyQuickTemplate(template)"
+              >
+                {{ template }}
+              </view>
+            </view>
+          </scroll-view>
+
           <view class="message-toolbar">
             <input
               v-model.trim="pendingMessage"
               class="message-input"
-              placeholder="输入消息，指挥机器人..."
+              :disabled="!isLiveRunning"
+              :placeholder="isLiveRunning ? '输入消息，指挥机器人...' : '启动导播后可发送消息'"
               @confirm="handleSendMessage"
             >
-            <view class="send-btn" @click="handleSendMessage">
+            <view class="send-btn" :class="{ 'send-btn--disabled': !isLiveRunning }" @click="handleSendMessage">
               发送
             </view>
           </view>
@@ -1600,6 +1682,10 @@ onUnmounted(() => {
   padding: 0 22rpx;
 }
 
+.send-btn--disabled {
+  opacity: 0.55;
+}
+
 .plan-row {
   margin-top: 0;
   align-items: stretch;
@@ -1769,6 +1855,32 @@ onUnmounted(() => {
   font-size: 24rpx;
   font-weight: 600;
   color: #202430;
+}
+
+.quick-template-scroll {
+  margin-bottom: 16rpx;
+  white-space: nowrap;
+}
+
+.quick-template-row {
+  display: flex;
+  gap: 12rpx;
+}
+
+.quick-template-chip {
+  max-width: 360rpx;
+  height: 58rpx;
+  padding: 0 18rpx;
+  border-radius: 999rpx;
+  border: 2rpx solid #dce7ff;
+  background: #f6f9ff;
+  color: #4f7fe8;
+  font-size: 22rpx;
+  line-height: 58rpx;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  flex-shrink: 0;
 }
 
 .console-panel {

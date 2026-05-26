@@ -41,6 +41,7 @@ interface SchemePanels {
   manual: {
     latestCount: number
     fixedTemplate: string
+    quickTemplates: string[]
   }
   basic: {
     ignoreNumericName: boolean
@@ -148,8 +149,13 @@ function createDefaultPanels(): SchemePanels {
       ],
     },
     manual: {
-      latestCount: 10,
+      latestCount: 3,
       fixedTemplate: '【Admin】{text}',
+      quickTemplates: [
+        '提醒观众点点关注',
+        '介绍一下当前商品亮点',
+        '(快捷模板可在 方案配置-手动指挥 中配置)'
+      ],
     },
     basic: {
       ignoreNumericName: false,
@@ -196,6 +202,9 @@ function normalizePanels(rawPanels: Partial<SchemePanels> = {}): SchemePanels {
     merged.manual.fixedTemplate = typeof rawPanels.manual.fixedTemplate === 'string'
       ? rawPanels.manual.fixedTemplate
       : defaults.manual.fixedTemplate
+    merged.manual.quickTemplates = Array.isArray(rawPanels.manual.quickTemplates)
+      ? rawPanels.manual.quickTemplates.map(item => String(item))
+      : defaults.manual.quickTemplates
   }
 
   if (rawPanels.basic) {
@@ -772,7 +781,7 @@ onUnmounted(() => {
               >
                 <view class="scheme-card__header">
                   <view class="scheme-card__id">
-                    {{ scheme.roomId }}
+                    {{ scheme.name }}
                   </view>
                   <view class="scheme-card__icon-actions">
                     <text class="scheme-card__icon-action" @click.stop="duplicateScheme(scheme.id)">
@@ -785,7 +794,7 @@ onUnmounted(() => {
                 </view>
 
                 <view class="scheme-card__name">
-                  {{ scheme.name }}
+                  {{ scheme.platform }} {{ scheme.roomId }}
                 </view>
 
                 <view class="scheme-card__footer">
@@ -1018,6 +1027,28 @@ onUnmounted(() => {
                   class="template-input template-input--full"
                   maxlength="400"
                 >
+              </view>
+              <view class="template-block">
+                <text class="block-title">
+                  快捷模板
+                </text>
+                <view v-for="(item, index) in selectedScheme.panels.manual.quickTemplates" :key="`manual-quick-${index}`" class="template-item">
+                  <input v-model="selectedScheme.panels.manual.quickTemplates[index]" class="template-input" maxlength="200">
+                  <view class="row-actions">
+                    <view class="sort-btn" :class="{ 'sort-btn--disabled': index === 0 }" @click="moveListItem(selectedScheme.panels.manual.quickTemplates, index, -1)">
+                      ↑
+                    </view>
+                    <view class="sort-btn" :class="{ 'sort-btn--disabled': index === selectedScheme.panels.manual.quickTemplates.length - 1 }" @click="moveListItem(selectedScheme.panels.manual.quickTemplates, index, 1)">
+                      ↓
+                    </view>
+                    <view class="remove-btn" @click="removeListItem(selectedScheme.panels.manual.quickTemplates, index)">
+                      ×
+                    </view>
+                  </view>
+                </view>
+                <view class="add-template-btn" @click="addTextListItem(selectedScheme.panels.manual.quickTemplates, '新增快捷模板')">
+                  + 添加模板
+                </view>
               </view>
             </template>
 

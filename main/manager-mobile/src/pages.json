@@ -218,15 +218,6 @@
           }
         },
         {
-          "path": "maihuo-config/index",
-          "type": "page",
-          "layout": "default",
-          "style": {
-            "navigationStyle": "custom",
-            "navigationBarTitleText": "卖货配置"
-          }
-        },
-        {
           "path": "register/index",
           "type": "page",
           "layout": "default",

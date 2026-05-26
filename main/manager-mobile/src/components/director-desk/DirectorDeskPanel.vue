@@ -1390,7 +1390,7 @@ onUnmounted(() => {
             </view>
           </view>
 
-          <view class="brightness-control">
+          <view class="brightness-control" v-if="selectedRobot.model == 'xiaozhu3'" >
             <view class="brightness-track">
               <view class="brightness-title">
                 屏幕亮度

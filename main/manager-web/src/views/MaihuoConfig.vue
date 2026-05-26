@@ -243,6 +243,26 @@
                           <div class="field-label">固定模板</div>
                           <el-input v-model="selectedScheme.panels.manual.fixedTemplate"></el-input>
                         </div>
+
+                        <div class="form-section">
+                          <div class="field-label">快捷模板</div>
+                          <div class="dynamic-list">
+                            <div v-for="(item, index) in selectedScheme.panels.manual.quickTemplates"
+                              :key="`manual-quick-${index}`" class="dynamic-row">
+                              <el-input v-model="selectedScheme.panels.manual.quickTemplates[index]"></el-input>
+                              <div class="row-actions">
+                                <button type="button" class="step-btn"
+                                  @click="removeListItem(selectedScheme.panels.manual.quickTemplates, index)">
+                                  <i class="el-icon-minus"></i>
+                                </button>
+                                <button type="button" class="step-btn"
+                                  @click="addTextListItem(selectedScheme.panels.manual.quickTemplates, '新增快捷模板')">
+                                  <i class="el-icon-plus"></i>
+                                </button>
+                              </div>
+                            </div>
+                          </div>
+                        </div>
                       </template>
 
                       <template v-else-if="tab.name === 'basic'">
@@ -440,6 +460,11 @@ const createDefaultPanels = () => ({
   manual: {
     latestCount: 10,
     fixedTemplate: "【Admin】{text}",
+    quickTemplates: [
+      "提醒观众点点关注",
+      "介绍一下当前商品亮点",
+      "(快捷模板可在 方案配置-手动指挥 中配置)",
+    ],
   },
   basic: {
     ignoreNumericName: false,
@@ -503,6 +528,9 @@ const normalizePanels = (rawPanels = {}) => {
       typeof rawPanels.manual.fixedTemplate === "string"
         ? rawPanels.manual.fixedTemplate
         : defaults.manual.fixedTemplate;
+    merged.manual.quickTemplates = Array.isArray(rawPanels.manual.quickTemplates)
+      ? rawPanels.manual.quickTemplates.map((item) => String(item))
+      : defaults.manual.quickTemplates;
   }
 
   if (rawPanels.basic) {
@@ -551,7 +579,10 @@ const formatRelativeTime = (value) => {
     return "刚刚";
   }
 
-  const date = new Date(value);
+  const normalized = /^\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}$/.test(String(value).trim())
+    ? String(value).trim().replace(" ", "T")
+    : value;
+  const date = new Date(normalized);
   if (Number.isNaN(date.getTime())) {
     return "刚刚";
   }

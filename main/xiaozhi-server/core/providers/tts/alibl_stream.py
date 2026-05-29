@@ -39,6 +39,8 @@ class TTSProvider(TTSProviderBase):
         self.ws_url = "wss://dashscope.aliyuncs.com/api-ws/v1/inference/"
         self.ws = None
         self._monitor_task = None
+        self._session_started_event = None
+        self._session_start_error = None
         self.activate_session = False
         self.last_active_time = None
 
@@ -172,7 +174,7 @@ class TTSProvider(TTSProviderBase):
                             self.finish_session(self.conn.sentence_id),
                             loop=self.conn.loop,
                         )
-                        future.result()
+                        future.result(timeout=self.tts_timeout)
                     except Exception as e:
                         logger.bind(tag=TAG).error(f"结束TTS会话失败: {str(e)}")
                         continue
@@ -238,6 +240,9 @@ class TTSProvider(TTSProviderBase):
                 logger.bind(tag=TAG).debug("启动监听任务...")
                 self._monitor_task = asyncio.create_task(self._start_monitor_tts_response())
 
+            self._session_started_event = asyncio.Event()
+            self._session_start_error = None
+
             # 发送run-task消息启动会话
             run_task_message = {
                 "header": {
@@ -266,6 +271,13 @@ class TTSProvider(TTSProviderBase):
             await self.ws.send(json.dumps(run_task_message))
             self.last_active_time = time.time()
             logger.bind(tag=TAG).debug("会话启动请求已发送")
+
+            await asyncio.wait_for(
+                self._session_started_event.wait(), timeout=self.tts_timeout
+            )
+            if self._session_start_error:
+                raise RuntimeError(self._session_start_error)
+            logger.bind(tag=TAG).debug("会话启动成功")
         except Exception as e:
             logger.bind(tag=TAG).error(f"启动会话失败: {str(e)}")
             await self.close()
@@ -300,6 +312,8 @@ class TTSProvider(TTSProviderBase):
         """清理资源"""
         await super().close()
         self.activate_session = False
+        self._session_started_event = None
+        self._session_start_error = None
         # 取消监听任务
         if self._monitor_task:
             try:
@@ -344,6 +358,8 @@ class TTSProvider(TTSProviderBase):
 
                             if event == "task-started":
                                 logger.bind(tag=TAG).debug("TTS任务启动成功~")
+                                if self._session_started_event:
+                                    self._session_started_event.set()
                                 self.tts_audio_queue.put((SentenceType.FIRST, [], None))
                             elif event == "result-generated":
                                 # 发送缓存的数据
@@ -366,6 +382,12 @@ class TTSProvider(TTSProviderBase):
                                 logger.bind(tag=TAG).error(
                                     f"TTS任务失败: {error_code} - {error_message}"
                                 )
+                                self._session_start_error = (
+                                    f"{error_code} - {error_message}"
+                                )
+                                if self._session_started_event:
+                                    self._session_started_event.set()
+                                self._process_before_stop_play_files()
                                 break
                         except json.JSONDecodeError:
                             logger.bind(tag=TAG).warning("收到无效的JSON消息")
@@ -375,11 +397,23 @@ class TTSProvider(TTSProviderBase):
                         )
                 except websockets.ConnectionClosed:
                     logger.bind(tag=TAG).warning("WebSocket连接已关闭")
+                    if (
+                        self._session_started_event
+                        and not self._session_started_event.is_set()
+                    ):
+                        self._session_start_error = "WebSocket连接在任务启动前已关闭"
+                        self._session_started_event.set()
                     break
                 except Exception as e:
                     logger.bind(tag=TAG).error(
                         f"处理TTS响应时出错: {e}\n{traceback.format_exc()}"
                     )
+                    if (
+                        self._session_started_event
+                        and not self._session_started_event.is_set()
+                    ):
+                        self._session_start_error = f"任务启动前监听响应失败: {e}"
+                        self._session_started_event.set()
                     break
 
             # 连接异常时关闭WebSocket
